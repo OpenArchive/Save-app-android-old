@@ -12,12 +12,14 @@ buildscript {
                 includeGroup 'com.squareup'
                 includeGroupByRegex 'commons-.*'
                 includeModule 'org.jdom', 'jdom2'
+                includeModule 'org.ow2', 'ow2'
                 includeGroup 'org.ow2.asm'
                 includeGroupByRegex 'org\\.jetbrains.*'
                 includeGroup 'org.slf4j'
                 includeModule 'org.bitbucket.b_c', 'jose4j'
                 includeModule 'org.checkerframework', 'checker-qual'
                 includeGroup 'net.java.dev.jna'
+                includeModule 'net.java', 'jvnet-parent'
                 includeModule 'javax.annotation', 'javax.annotation-api'
                 includeGroupByRegex 'org\\.apache.*'
                 includeGroupByRegex 'com\\.sun.*'
@@ -38,8 +40,12 @@ buildscript {
                 includeModule 'gradle.plugin.com.browserstack.gradle', 'browserstack-gradle-plugin'
                 includeGroup 'com.testdroid'
                 includeModule 'log4j', 'log4j'
-                includeGroup 'com.fasterxml.jackson.core'
+                includeModule 'com.fasterxml', 'oss-parent'
+                includeGroupByRegex 'com\\.fasterxml\\.jackson.*'
                 includeModule 'com.neenbedankt.gradle.plugins', 'android-apt'
+                includeModule 'org.sonatype.oss', 'oss-parent'
+                includeModule 'org.eclipse.ee4j', 'project'
+                includeGroup 'org.codehaus.mojo'
             }
         }
     }
