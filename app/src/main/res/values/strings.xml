@@ -144,8 +144,8 @@
     <string name="prefs_nearby_title">Nearby</string>
 
     <string name="prefs_user_interface_title">Presentation</string>
-    <string name="prefs_theme_title">Style</string>
-    <string name="prefs_theme_summary">Change how Safe looks.</string>
+    <string name="prefs_theme_title">Theme</string>
+    <string name="prefs_theme_summary">Change Saves theme to light/dark.</string>
     <string name="prefs_theme_system">System Controlled</string>
     <string name="prefs_theme_light">Light</string>
     <string name="prefs_theme_dark">Dark</string>
