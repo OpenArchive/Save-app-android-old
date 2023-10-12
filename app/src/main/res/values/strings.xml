@@ -237,8 +237,8 @@
     <string name="oa_subtitle_3">Capture notes, location and people with each piece of media</string>
     <string name="oa_title_4">Ensure Authenticity</string>
     <string name="oa_subtitle_4">Includes your credentials while \"Save\" adds extra metadata to help with chain of custody and verification workflows</string>
-    <string name="connect_your_space">To get started, connect to a space to store your media.</string>
-    <string name="set_up_where_you_want_your_media_to_be_stored">In settings, you can add another storage space and connect to multiple servers</string>
+    <string name="connect_your_space">To get started, connect to a derver to store your media.</string>
+    <string name="set_up_where_you_want_your_media_to_be_stored">In settings, you can add another storage server and connect to multiple servers</string>
     <string name="send_directly_to_a_private_server">Send to a webdav server</string>
     <string name="upload_to_the_internet_archive">Upload to the IA</string>
     <string name="save_connects_to_webdav_compatible_servers_only_such_as_nextcloud_and_owncloud"><b><i>Save</i></b> only connects to WebDAV-compatible servers, e.g Nextcloud and ownCloud.</string>
@@ -316,7 +316,7 @@
     <string name="batch_waiting_for_upload">Waiting for upload…</string>
     <string name="batch_uploading_now">Uploading now…</string>
     <string name="login_activity_logging_message">Logging in…</string>
-    <string name="login_you_have_already_space">You\'ve already got a space with these credentials</string>
+    <string name="login_you_have_already_space">You\'ve already got a server with these credentials</string>
     <string name="tor_connection_exception">Unable to connect to Orbot/Tor.</string>
     <string name="tor_connection_timeout">Unable to connect to Orbot/Tor: TIMEOUT</string>
     <string name="tor_connection_invalid">Unable to connect to Orbot/Tor: INVALID</string>
