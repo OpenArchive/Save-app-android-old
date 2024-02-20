@@ -2,8 +2,11 @@ package net.opendasharchive.openarchive.upload
 
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Context.RECEIVER_NOT_EXPORTED
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 object BroadcastManager {
@@ -37,11 +40,10 @@ object BroadcastManager {
     }
 
     fun register(context: Context, receiver: BroadcastReceiver) {
-        LocalBroadcastManager.getInstance(context)
-            .registerReceiver(receiver, IntentFilter(Action.Change.id))
-
-        LocalBroadcastManager.getInstance(context)
-            .registerReceiver(receiver, IntentFilter(Action.Delete.id))
+        LocalBroadcastManager.getInstance(context).apply {
+            ContextCompat.registerReceiver(context, receiver, IntentFilter(Action.Change.id), ContextCompat.RECEIVER_NOT_EXPORTED)
+            ContextCompat.registerReceiver(context, receiver, IntentFilter(Action.Delete.id), ContextCompat.RECEIVER_NOT_EXPORTED)
+        }
     }
 
     fun unregister(context: Context, receiver: BroadcastReceiver) {
