@@ -23,7 +23,7 @@
     <string name="gdrive" translatable="false">Google Drive</string>
     <string name="gdrive_tm" translatable="false">Google Drive™</string>
     <string name="upload_to_gdrive">Upload to Google Drive</string>
-    <string name="sign_in_or_create_an_account_with_gdrive">Sing in or create an account with Google Drive</string>
+    <string name="sign_in_or_create_an_account_with_gdrive">Sign in or create an account with Google Drive</string>
 
     <!--<string name="sign_up_btn">Don\'t have a virtual library card?\n<a href="https://archive.org/account/login.createaccount.php">Register for free.</a></string>-->
 
