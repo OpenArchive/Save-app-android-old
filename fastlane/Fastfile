@@ -5,30 +5,32 @@ platform :android do
   lane :test do
     gradle(task: "test")
   end
-    before_all do
-        ENV["SLACK_URL"]
-    end
 
-  desc "Submit a new Beta Build to Beta"
+  desc "Submit a new Internal Build"
+  lane :internal do
+    send_progress_message("Build Started :rocket:")
+    gradle(task: "clean assembleRelease")
+
+    send_progress_message("Uploading To Internal track :rocket:")
+    upload_to_play_store(track: "internal")
+  end
+
+  desc "Submit a new Alpha Build"
+  lane :alpha do
+    send_progress_message("Build Started :rocket:")
+    gradle(task: "clean assembleRelease")
+
+    send_progress_message("Uploading To Alpha track :rocket:")
+    upload_to_play_store(track: "alpha")
+  end
+
+  desc "Submit a new Beta Build"
   lane :beta do
     send_progress_message("Build Started :rocket:")
     gradle(task: "clean assembleRelease")
-    gradle(task: "assemble", build_type: "debug")
 
-    # sh "your_script.sh"
-    # You can also use other beta testing services here
-    send_progress_message("Uploading To Slack :rocket:")
-    upload_to_slack()
-  end
-
-  desc "Upload the latest output APK to #distribution Slack channel"
-  private_lane :upload_to_slack do |options|
-    file_path = lane_context[SharedValues::GRADLE_APK_OUTPUT_PATH]
-    file_name = file_path.gsub(/\/.*\//,"")
-    access_token = ENV["ACCESS_TOKEN"]
-    channel_name = "#distribution"
-    sh "echo Uploading " + file_name + " to Slack"
-    sh "curl https://slack.com/api/files.upload -F token=\"" + access_token + "\" -F channels=\"" + channel_name + "\" -F title=\"" + file_name + "\" -F filename=\"" + file_name + "\" -F file=@" + file_path
+    send_progress_message("Uploading To Beta track :rocket:")
+    upload_to_play_store(track: "beta")
   end
 
   desc "Deploy a new version to the Google Play"
@@ -38,66 +40,31 @@ platform :android do
   end
 end
 
-  def send_message(message)
-  slack(
-    message: message,
-    success: true,
-    slack_url: ENV["SLACK_URL"],
-    attachment_properties: {
-               fields: [
-                   {
-                       title: "Build number",
-                       value: ENV["BUILD_NUMBER"],
-                   }
-               ]
-           }
-    )
-    end
+def send_message(message)
+  puts message
+end
 
-      def send_progress_message(message)
-          slack(
-                message: message,
-                success: true,
-                slack_url: ENV["SLACK_URL"],
-        )
-       end
+def send_progress_message(message)
+  puts message
+end
 
-    def on_error(exception)
-       slack(
-           message: "Some thing goes wrong",
-           success: false,
-           slack_url: ENV["SLACK_URL"],
-           attachment_properties: {
-               fields: [
-                   {
-                       title: "Build number",
-                       value: ENV["BUILD_NUMBER"],
-                   },
-                   {
-                       title: "Error message",
-                       value: exception.to_s,
-                       short: false
-                   }
-               ]
-           }
-       )
+def on_error(exception)
+  send_message "${exception}"
+end
 
-     after_all do |lane|
-            file_name = lane_context[SharedValues::GRADLE_APK_OUTPUT_PATH].gsub(/\/.*\//,"")
-            slack(
-                message: "Successfully deployed new App Update! :champagne:",
-                channel: "@user.name,#channel.name",
-                default_payloads: [
-                    :git_branch,
-                    :last_git_commit_hash,
-                    :last_git_commit_message
-                ],
-                payload: {
-                    # Optional, lets you specify any number of your own Slack attachments.
-                    "Build Date" => Time.new.to_s,
-                    "APK" => file_name
-                },
-                success: true
-            )
-        end
-end 
+after_all do |lane|
+  file_name = lane_context[SharedValues::GRADLE_APK_OUTPUT_PATH].gsub(/\/.*\//,"")
+  send_message "Successfully deployed new App Update! :champagne:"
+  default_payloads = [
+      :git_branch,
+      :last_git_commit_hash,
+      :last_git_commit_message
+  ]
+  payload = {
+      "Build Date" => Time.new.to_s,
+      "APK" => file_name
+  }
+  send_message file_name
+  send_message "#{default_payloads}"
+  send_message "#{payload}"
+end
