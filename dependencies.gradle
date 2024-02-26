@@ -1,6 +1,0 @@
-ext {
-    versions = [
-            glide                         : '4.16.0',
-            kotlin                        : '1.8.22',
-    ]
-}

@@ -81,6 +81,7 @@ class MainMediaFragment : Fragment() {
         BroadcastManager.unregister(requireContext(), mMessageReceiver)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.menu_delete -> {

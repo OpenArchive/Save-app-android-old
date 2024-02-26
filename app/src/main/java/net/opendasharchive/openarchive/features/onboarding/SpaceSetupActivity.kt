@@ -212,6 +212,7 @@ class SpaceSetupActivity : BaseActivity() {
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         supportFragmentManager.findFragmentByTag(FRAGMENT_TAG)
