@@ -18,7 +18,7 @@ class WebDavConduit(media: Media, context: Context) : Conduit(media, context) {
     override suspend fun upload(): Boolean {
         val space = mMedia.space ?: return false
         val base = space.hostUrl ?: return false
-        val path = getPath() ?: return false
+        val path = getPath()?.sanitizeUrlPaths() ?: return false
 
         mClient = SaveClient.getSardine(mContext, space)
 
@@ -27,7 +27,10 @@ class WebDavConduit(media: Media, context: Context) : Conduit(media, context) {
         val fileName = getUploadFileName(mMedia)
 
         try {
-            createFolders(base, path)
+
+            // webdav can support one-shot folder path creation
+            val url = construct(base, path)
+            createFolder(url)
 
             uploadMetadata(base, path, fileName)
         }
@@ -80,6 +83,7 @@ class WebDavConduit(media: Media, context: Context) : Conduit(media, context) {
     override suspend fun createFolder(url: String) {
         if (!mClient.exists(url)) mClient.createDirectory(url)
     }
+
 
     @Throws(IOException::class)
     private suspend fun uploadChunked(base: HttpUrl, path: List<String>, fileName: String): Boolean {
@@ -187,6 +191,18 @@ class WebDavConduit(media: Media, context: Context) : Conduit(media, context) {
             mClient.put(
                 construct(base, path, file.name), file, "text/plain",
                 false, null)
+        }
+    }
+
+    // split paths specified by the user.
+    private fun List<String>.sanitizeUrlPaths(): List<String> {
+        return this.fold(mutableListOf()) { res, it ->
+            if (it.contains('/')) {
+                res.addAll(it.split('/'))
+            } else {
+                res.add(it)
+            }
+            res
         }
     }
 }
