@@ -70,6 +70,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:layout_marginBottom="4dp"
+                    tools:text="folder name"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toEndOf="@id/current_folder_icon"
                     app:layout_constraintTop_toTopOf="parent" />
@@ -80,6 +81,7 @@
                     android:layout_height="match_parent"
                     android:layout_marginStart="8dp"
                     android:background="@drawable/pill"
+                    tools:text="1"
                     android:gravity="center"
                     android:paddingStart="8dp"
                     android:paddingEnd="8dp"

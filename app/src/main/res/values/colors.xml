@@ -91,7 +91,7 @@
 
      -->
 
-    <color name="colorPill">@color/extra_light_grey</color>
+    <color name="colorPill">#E3E3E4</color>
     <color name="colorMediaOverlayIcon">@color/white</color>
     <color name="colorDanger">@color/red</color>
     <color name="colorDivider">@color/light_grey</color>

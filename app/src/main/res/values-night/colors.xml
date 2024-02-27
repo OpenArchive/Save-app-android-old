@@ -19,4 +19,5 @@
     <color name="colorSpaceSetupProgressOff">@color/c23_medium_grey</color>
     <color name="colorBackgroundSpaceIcon">@color/c23_darker_grey</color>
 
+    <color name="colorPill">#434343</color>
 </resources>
