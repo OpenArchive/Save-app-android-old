@@ -1,7 +1,10 @@
 package net.opendasharchive.openarchive.util
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
+import android.provider.Settings.ACTION_BIOMETRIC_ENROLL
+import android.provider.Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.security.keystore.UserNotAuthenticatedException
@@ -29,8 +32,16 @@ object Hbks {
         fun canAuthenticate(manager: BiometricManager): Boolean {
             return manager.canAuthenticate(value) == BiometricManager.BIOMETRIC_SUCCESS
         }
-    }
 
+        fun canEnroll(manager: BiometricManager): Boolean {
+            return manager.canAuthenticate(value) == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
+        }
+    }
+    sealed interface Availability {
+        data class Available(val type: BiometryType) : Availability
+        @RequiresApi(Build.VERSION_CODES.R) data class Enroll(val type: BiometryType): Availability
+        data object Unavailable : Availability
+    }
 
     private const val alias = "save-main-key"
     private const val type = "AndroidKeyStore"
@@ -232,8 +243,41 @@ object Hbks {
         return output
     }
 
-    fun deviceSecured(context: Context): Boolean {
-        return biometryType(context) != BiometryType.None
+    fun deviceAvailablity(context: Context): Availability {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return Availability.Unavailable
+        }
+
+        val manager = BiometricManager.from(context)
+
+        for (type in arrayOf(BiometryType.Both, BiometryType.StrongBiometry, BiometryType.DeviceCredential)) {
+            if (type.canAuthenticate(manager)) {
+                return Availability.Available(type)
+            }
+        }
+
+        // enrolling only available in version greater than R
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            for (type in arrayOf(
+                BiometryType.Both,
+                BiometryType.StrongBiometry,
+                BiometryType.DeviceCredential
+            )) {
+                if (type.canEnroll(manager)) {
+                    return Availability.Enroll(type)
+                }
+            }
+        }
+
+        return Availability.Unavailable
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    fun enrollIntent(type: BiometryType) = Intent(ACTION_BIOMETRIC_ENROLL).apply {
+        putExtra(
+            EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+            type.value
+        )
     }
 
     fun biometryType(context: Context): BiometryType {

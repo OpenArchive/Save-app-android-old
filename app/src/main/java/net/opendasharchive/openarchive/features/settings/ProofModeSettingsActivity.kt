@@ -9,12 +9,16 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.MenuItem
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
 import com.permissionx.guolindev.PermissionX
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.ActivitySettingsContainerBinding
 import net.opendasharchive.openarchive.features.core.BaseActivity
@@ -30,6 +34,14 @@ import javax.crypto.SecretKey
 class ProofModeSettingsActivity: BaseActivity() {
 
     class Fragment: PreferenceFragmentCompat() {
+
+        private val enrollBiometrics = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            findPreference<SwitchPreferenceCompat>(Prefs.USE_PROOFMODE_KEY_ENCRYPTION)?.let {
+                MainScope().launch {
+                    enableProofModeKeyEncryption(it)
+                }
+            }
+        }
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.prefs_proof_mode, rootKey)
@@ -67,8 +79,9 @@ class ProofModeSettingsActivity: BaseActivity() {
 
             val pkePreference = findPreference<SwitchPreferenceCompat>(Prefs.USE_PROOFMODE_KEY_ENCRYPTION)
             val activity = activity
+            val availability = Hbks.deviceAvailablity(requireContext())
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && activity != null && Hbks.deviceSecured(activity)) {
+            if (activity != null && availability !is Hbks.Availability.Unavailable) {
                 pkePreference?.isSingleLineTitle = false
 
                 pkePreference?.setTitle(when (Hbks.biometryType(activity)) {
@@ -81,23 +94,10 @@ class ProofModeSettingsActivity: BaseActivity() {
 
                 pkePreference?.setOnPreferenceChangeListener { _, newValue ->
                     if (newValue as Boolean) {
-                        val key = Hbks.loadKey() ?: Hbks.createKey()
-
-                        if (key != null && Prefs.proofModeEncryptedPassphrase == null) {
-                            createPassphrase(key, activity) {
-                                if (it != null) {
-                                    ProofModeHelper.removePgpKey(activity)
-
-                                    // We need to kill the app and restart,
-                                    // since the ProofMode singleton loads the passphrase
-                                    // in its singleton constructor. Urgh.
-                                    ProofModeHelper.restartApp(activity)
-                                } else {
-                                    Hbks.removeKey()
-
-                                    pkePreference.isChecked = false
-                                }
-                            }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && availability is Hbks.Availability.Enroll) {
+                            enrollBiometrics.launch(Hbks.enrollIntent(availability.type))
+                        } else {
+                            enableProofModeKeyEncryption(pkePreference)
                         }
                     }
                     else {
@@ -115,6 +115,34 @@ class ProofModeSettingsActivity: BaseActivity() {
             }
             else {
                 pkePreference?.isVisible = false
+            }
+        }
+
+        private fun enableProofModeKeyEncryption(pkePreference: SwitchPreferenceCompat) {
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+                return
+            }
+
+            val key = Hbks.loadKey() ?: Hbks.createKey()
+
+            if (key != null && Prefs.proofModeEncryptedPassphrase == null) {
+                createPassphrase(key, activity) {
+                    if (it != null) {
+                        ProofModeHelper.removePgpKey(requireContext())
+
+                        // We need to kill the app and restart,
+                        // since the ProofMode singleton loads the passphrase
+                        // in its singleton constructor. Urgh.
+                        ProofModeHelper.restartApp(requireActivity())
+                    } else {
+                        Hbks.removeKey()
+
+                        pkePreference.isChecked = false
+                    }
+                }
+            } else {
+                // What??  shouldn't happen if enrolled with a PIN or Fingerprint
             }
         }
     }
