@@ -1,6 +1,10 @@
 package net.opendasharchive.openarchive
 
+import android.app.AlertDialog
 import android.content.Context
+import android.content.DialogInterface
+import android.os.Build
+import androidx.appcompat.view.ContextThemeWrapper
 import com.facebook.drawee.backends.pipeline.Fresco
 import com.facebook.imagepipeline.core.ImagePipelineConfig
 import com.facebook.imagepipeline.decoder.SimpleProgressiveJpegConfig
@@ -42,13 +46,17 @@ class SaveApp : SugarApp() {
     }
 
     private fun initNetCipher() {
-        Timber.d( "Initializing NetCipher client")
-        val oh = OrbotHelper.get(this)
+        // NetCipher initialization is broken on Android 14 and above
+        // So we're not offering Tor integration on these Android versions.
+        // https://github.com/OpenArchive/Save-app-android/issues/534
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.TIRAMISU) {
+            val oh = OrbotHelper.get(this)
 
-        if (BuildConfig.DEBUG) {
-            oh.skipOrbotValidation()
+            if (BuildConfig.DEBUG) {
+                oh.skipOrbotValidation()
+            }
+
+            oh.init()
         }
-
-        oh.init()
     }
 }
