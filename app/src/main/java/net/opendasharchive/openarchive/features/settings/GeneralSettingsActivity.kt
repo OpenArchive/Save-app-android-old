@@ -1,6 +1,7 @@
 package net.opendasharchive.openarchive.features.settings
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
 import androidx.preference.Preference
@@ -80,6 +81,14 @@ class GeneralSettingsActivity: BaseActivity() {
                 }
 
                 true
+            }
+
+            // Hide Tor option on android 14+ because NetCipher doesn't work on this API level
+            // https://github.com/OpenArchive/Save-app-android/issues/534
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                findPreference<Preference>(Prefs.USE_TOR)?.let {
+                     it.isVisible = false
+                }
             }
         }
 

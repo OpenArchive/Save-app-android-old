@@ -2,6 +2,8 @@ package net.opendasharchive.openarchive.features.main
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlertDialog
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -11,6 +13,7 @@ import android.view.MenuItem
 import android.widget.ProgressBar
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -53,6 +56,7 @@ import net.opendasharchive.openarchive.util.extensions.scaled
 import net.opendasharchive.openarchive.util.extensions.setDrawable
 import net.opendasharchive.openarchive.util.extensions.show
 import net.opendasharchive.openarchive.util.extensions.toggle
+import timber.log.Timber
 import java.text.NumberFormat
 
 class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener {
@@ -203,6 +207,20 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
                 this
             ) { _, _ ->
                 addClicked(typeFiles = true)
+            }
+        }
+
+        // Prompt users when that Saves built in Tor support is not available on Android 14+.
+        // https://github.com/OpenArchive/Save-app-android/issues/534
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (Prefs.useTor) {
+                Timber.d("NetCipher incompatible, prompting user to deactivate TOR.")
+                AlertDialog.Builder(ContextThemeWrapper(this, R.style.AlertDialogTheme))
+                    .setMessage(getString(R.string.tor_not_available_dialog))
+                    .setPositiveButton(getString(R.string.deactivate_tor)) { _: DialogInterface, _: Int -> Prefs.useTor = false }
+                    .setCancelable(false)
+                    .create()
+                    .show()
             }
         }
     }
