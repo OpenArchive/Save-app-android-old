@@ -1,13 +1,18 @@
-version: 2
+version: 2.1
+
+executors:
+  android:
+    working_directory: ~/save-app
+    docker:
+      - image: cimg/android:2024.01
+    environment:
+      JVM_OPTS: -Xmx3200m
 
 workflows:
-  version: 2
+  version: 2.1
   build-lint-test:
     jobs:
-      - setup
       - lint:
-          requires:
-            - setup
           filters:
             branches:
               only:
@@ -15,8 +20,6 @@ workflows:
                 - /feature\/.*/
                 - /bug\/.*/
       - test:
-          requires:
-            - setup
           filters:
             branches:
               only:
@@ -24,58 +27,51 @@ workflows:
                 - /feature\/.*/
                 - /bug\/.*/
 
-executors:
-  android:
-    working_directory: ~/code
-    docker:
-      - image: cimg/android:2024.01
-    resource_class: medium
-    environment:
-      JVM_OPTS: -Xmx3200m
+setup_steps: &setup
+  - checkout
+  - restore_cache:
+      key: jars-{{ checksum "build.gradle" }}-{{ checksum  "app/build.gradle" }}
+  - run:
+      name: Chmod permissions #if permission for Gradlew Dependencies fail, use this.
+      command: sudo chmod +x ./gradlew
+  - run:
+      name: Create user properties
+      command: mkdir $HOME/.gradle && touch $HOME/.gradle/gradle.properties
+  - run:
+      name: Add user properties
+      command: |
+        if [ ! -f $HOME/.gradle/gradle.properties ]; then
+          echo "oaDropboxKey=\"${OA_DROPBOX_KEY:-foo}\"" >> $HOME/.gradle/gradle.properties
+        else
+          cat $HOME/.gradle/gradle.properties
+        fi
+
+save_steps: &save
+  - save_cache:
+      paths:
+        - ~/.gradle
+      key: jars-{{ checksum "build.gradle" }}-{{ checksum  "app/build.gradle" }}
 
 jobs:
-  setup:
-    executor: android
-    steps:
-      - checkout
-      - restore_cache:
-          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "app/build.gradle" }}
-      - run:
-          name: Chmod permissions #if permission for Gradlew Dependencies fail, use this.
-          command: sudo chmod +x ./gradlew
-      - run:
-          name: Create user properties
-          command: mkdir $HOME/.gradle && touch $HOME/.gradle/gradle.properties
-      - run:
-          name: Add user properties
-          command: |
-            if [ ! -f $HOME/.gradle/gradle.properties ]; then
-              echo "oaDropboxKey=\"${OA_DROPBOX_KEY:-foo}\"" >> $HOME/.gradle/gradle.properties
-            else
-              cat $HOME/.gradle/gradle.properties
-            fi
-      - save_cache:
-          paths:
-            - ~/.gradle
-          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "app/build.gradle" }}
-
   test:
     executor: android
     steps:
+      - *setup
       - run:
           name: Run Tests
           command: ./gradlew test
+      - *save
       - store_test_results: # for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
           path: app/build/test-results
 
   lint:
     executor: android
-    environment:
-      JVM_OPTS: -Xmx3200m
     steps:
+      - *setup
       - run:
           name: Run Tests
           command: ./gradlew lint
+      - *save
       - store_artifacts: # for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
           path: app/build/reports
           destination: reports
