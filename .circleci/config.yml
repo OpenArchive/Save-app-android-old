@@ -27,52 +27,53 @@ workflows:
                 - /feature\/.*/
                 - /bug\/.*/
 
-setup_steps: &setup
-  steps:
-    - checkout
-    - restore_cache:
-        key: jars-{{ checksum "build.gradle" }}-{{ checksum  "app/build.gradle" }}
-    - run:
-        name: Chmod permissions #if permission for Gradlew Dependencies fail, use this.
-        command: sudo chmod +x ./gradlew
-    - run:
-        name: Create user properties
-        command: mkdir $HOME/.gradle && touch $HOME/.gradle/gradle.properties
-    - run:
-        name: Add user properties
-        command: |
-          if [ ! -f $HOME/.gradle/gradle.properties ]; then
-            echo "oaDropboxKey=\"${OA_DROPBOX_KEY:-foo}\"" >> $HOME/.gradle/gradle.properties
-          else
-            cat $HOME/.gradle/gradle.properties
-          fi
-save_steps: &save
-  steps:
-    - save_cache:
-        paths:
-          - ~/.gradle
-        key: jars-{{ checksum "build.gradle" }}-{{ checksum  "app/build.gradle" }}
+commands:
+  setup:
+    steps:
+      - checkout
+      - restore_cache:
+          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "app/build.gradle" }}
+      - run:
+          name: Chmod permissions #if permission for Gradlew Dependencies fail, use this.
+          command: sudo chmod +x ./gradlew
+      - run:
+          name: Create user properties
+          command: mkdir $HOME/.gradle && touch $HOME/.gradle/gradle.properties
+      - run:
+          name: Add user properties
+          command: |
+            if [ ! -f $HOME/.gradle/gradle.properties ]; then
+              echo "oaDropboxKey=\"${OA_DROPBOX_KEY:-foo}\"" >> $HOME/.gradle/gradle.properties
+            else
+              cat $HOME/.gradle/gradle.properties
+            fi
+  save:
+    steps:
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "app/build.gradle" }}
 
 jobs:
   test:
     executor: android
-    <<: *setup
     steps:
+      - setup
       - run:
           name: Run Tests
           command: ./gradlew test
       - store_test_results: # for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
           path: app/build/test-results
-    <<: *save
+      - save
 
   lint:
     executor: android
-    <<: *setup
     steps:
+      - setup
       - run:
           name: Run Tests
           command: ./gradlew lint
       - store_artifacts: # for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
           path: app/build/reports
           destination: reports
-    <<: *save
+      - save
