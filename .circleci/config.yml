@@ -42,7 +42,7 @@ commands:
       - run:
           name: Add user properties
           command: |
-            if [ ! grep oaDropboxKey $HOME/.gradle/gradle.properties ]; then
+            if [ ! `grep "oaDropboxKey" "$HOME/.gradle/gradle.properties"` ]; then
               echo "Setting user properties"
               echo "oaDropboxKey=\"${OA_DROPBOX_KEY:-foo}\"" >> $HOME/.gradle/gradle.properties
             fi
@@ -56,6 +56,7 @@ commands:
 jobs:
   test:
     executor: android
+    parallelism: 3
     steps:
       - setup
       - run:
@@ -67,6 +68,7 @@ jobs:
 
   lint:
     executor: android
+    parallelism: 3
     steps:
       - setup
       - run:
