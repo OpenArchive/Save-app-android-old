@@ -37,15 +37,14 @@ commands:
           name: Chmod permissions #if permission for Gradlew Dependencies fail, use this.
           command: sudo chmod +x ./gradlew
       - run:
-          name: Create user properties
-          command: mkdir $HOME/.gradle && touch $HOME/.gradle/gradle.properties
+          name: Create user properties folder
+          command: mkdir $HOME/.gradle
       - run:
           name: Add user properties
           command: |
-            if [ ! -f $HOME/.gradle/gradle.properties ]; then
+            if [ ! grep oaDropboxKey $HOME/.gradle/gradle.properties ]; then
+              echo "Setting user properties"
               echo "oaDropboxKey=\"${OA_DROPBOX_KEY:-foo}\"" >> $HOME/.gradle/gradle.properties
-            else
-              cat $HOME/.gradle/gradle.properties
             fi
   save:
     steps:
