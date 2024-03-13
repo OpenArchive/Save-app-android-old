@@ -101,6 +101,7 @@ dependencies {
     implementation "com.google.android.material:material:1.10.0"
 
     implementation "com.github.bumptech.glide:glide:$versions.glide"
+    implementation project(':netcipher')
     annotationProcessor "com.github.bumptech.glide:compiler:$versions.glide"
     implementation "com.github.derlio:audio-waveform:v1.0.1"
     implementation "com.github.esafirm:android-image-picker:3.0.0"
@@ -112,7 +113,6 @@ dependencies {
     implementation "com.github.abdularis:circularimageview:1.4"
 
     implementation "org.cleaninsights.sdk:clean-insights-sdk:2.8.0"
-    implementation "info.guardianproject.netcipher:netcipher:2.2.0-alpha"
 
     //from here: https://github.com/guardianproject/proofmode
     implementation ("org.proofmode:android-libproofmode:1.0.26") {
