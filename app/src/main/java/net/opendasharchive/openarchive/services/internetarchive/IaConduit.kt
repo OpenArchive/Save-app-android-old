@@ -12,6 +12,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okio.BufferedSink
 import java.io.File
 import java.io.IOException
+import java.lang.RuntimeException
 
 class IaConduit(media: Media, context: Context) : Conduit(media, context) {
 
@@ -37,21 +38,27 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
 
             // TODO this should make sure we aren't accidentally using one of archive.org's metadata fields by accident
             val slug = getSlug(mMedia.title)
+            /// Upload metadata
             var basePath = "$slug-${Util.RandomString(4).nextString()}"
-            val url = "$ARCHIVE_API_ENDPOINT/$basePath/" + getUploadFileName(mMedia, true)
+            val fileName = getUploadFileName(mMedia, true)
+
+            uploadMetaData(Gson().toJson(mMedia), basePath, fileName)
+
+            basePath = "$slug-${Util.RandomString(4).nextString()}"
+            val url = "$ARCHIVE_API_ENDPOINT/$basePath/$fileName"
             val requestBody = getRequestBody(mMedia, mediaUri, mimeType.toMediaTypeOrNull(), basePath)
 
             put(url, requestBody, mainHeader())
-
-            /// Upload metadata
-            basePath = "$slug-${Util.RandomString(4).nextString()}"
-
-            uploadMetaData(Gson().toJson(mMedia), basePath, getUploadFileName(mMedia, true))
 
             /// Upload ProofMode metadata, if enabled and successfully created.
             for (file in getProof()) {
                 uploadProofFiles(file, basePath)
             }
+
+            val finalPath = ARCHIVE_DETAILS_ENDPOINT + basePath
+            mMedia.serverUrl = finalPath
+
+            jobSucceeded()
 
             return true
         }
@@ -76,6 +83,8 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             override fun writeTo(sink: BufferedSink) {
                 sink.writeString(content, Charsets.UTF_8)
             }
+
+            override fun contentLength() = content.length.toLong()
         }
 
         put(
@@ -88,11 +97,17 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
     /// upload proof mode
     @Throws(IOException::class)
     private suspend fun uploadProofFiles(uploadFile: File, basePath: String) {
-        val requestBody = getRequestBodyMetaData(
-            uploadFile,
-            Uri.fromFile(uploadFile).toString(),
-            "texts".toMediaTypeOrNull()
-        )
+        val requestBody = RequestBodyUtil.create(
+            mContext.contentResolver,
+            Uri.fromFile(uploadFile),
+            uploadFile.length(),
+            "texts".toMediaTypeOrNull(), object : RequestListener {
+                override fun transferred(bytes: Long) = Unit
+
+                override fun continueUpload() =  !mCancelled
+
+                override fun transferComplete() = Unit
+            })
 
         put("$ARCHIVE_API_ENDPOINT/$basePath/${uploadFile.name}",
             requestBody,
@@ -106,50 +121,13 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             media.contentLength,
             mediaType,
             object : RequestListener {
-                var lastBytes: Long = 0
                 override fun transferred(bytes: Long) {
-                    if (bytes > lastBytes) {
-                        jobProgress(bytes)
-                        lastBytes = bytes
-                    }
+                    jobProgress(bytes)
                 }
 
-                override fun continueUpload(): Boolean {
-                    return !mCancelled
-                }
+                override fun continueUpload() =  !mCancelled
 
-                override fun transferComplete() {
-                    val finalPath = ARCHIVE_DETAILS_ENDPOINT + basePath
-                    media.serverUrl = finalPath
-                    jobSucceeded()
-                }
-            })
-    }
-
-    /// request body for meta data
-    private fun getRequestBodyMetaData(media: File, mediaUri: String, mediaType: MediaType?): RequestBody {
-        return RequestBodyUtil.create(
-            mContext.contentResolver,
-            Uri.parse(mediaUri),
-            media.length(),
-            mediaType,
-            object : RequestListener {
-                var lastBytes: Long = 0
-
-                override fun transferred(bytes: Long) {
-                    if (bytes > lastBytes) {
-                        jobProgress(bytes)
-                        lastBytes = bytes
-                    }
-                }
-
-                override fun continueUpload(): Boolean {
-                    return !mCancelled
-                }
-
-                override fun transferComplete() {
-                    jobSucceeded()
-                }
+                override fun transferComplete() = Unit
             })
     }
 
@@ -238,22 +216,15 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
     }
 
     @Throws(Exception::class)
-    private suspend fun execute(request: Request) {
-        SaveClient.get(mContext)
+    private suspend fun execute(request: Request): Boolean {
+        val result = SaveClient.get(mContext)
             .newCall(request)
-            .enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    jobFailed(e)
-                }
+            .execute()
 
-                override fun onResponse(call: Call, response: Response) {
-                    if (response.isSuccessful) {
-                        jobSucceeded()
-                    }
-                    else {
-                        jobFailed(Exception("${response.code} ${response.message}"))
-                    }
-                }
-            })
+        if (result.isSuccessful.not()) {
+            throw RuntimeException("${result.code}: ${result.message}")
+        }
+
+        return true
     }
 }
