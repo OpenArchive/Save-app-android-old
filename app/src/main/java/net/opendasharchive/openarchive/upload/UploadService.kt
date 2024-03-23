@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import androidx.work.Configuration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.CleanInsightsManager
 import net.opendasharchive.openarchive.R
@@ -64,8 +65,10 @@ class UploadService : JobService() {
         Configuration.Builder().setJobSchedulerJobIdRange(0, Integer.MAX_VALUE).build()
     }
 
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     override fun onStartJob(params: JobParameters): Boolean {
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             upload {
                 jobFinished(params, false)
             }
@@ -92,7 +95,9 @@ class UploadService : JobService() {
     }
 
     private suspend fun upload(completed: () -> Unit) {
-        if (mRunning) return completed()
+        if (mRunning) {
+            return completed()
+        }
 
         mRunning = true
 
@@ -103,47 +108,47 @@ class UploadService : JobService() {
         }
 
         // Get all media items that are set into queued state.
-        var results = emptyList<Media>()
+        val results = Media.getByStatus(
+            listOf(Media.Status.Queued, Media.Status.Uploading),
+            Media.ORDER_PRIORITY
+        ).toMutableList()
 
         while (mKeepUploading &&
-            Media.getByStatus(
-                listOf(Media.Status.Queued, Media.Status.Uploading),
-                Media.ORDER_PRIORITY
-            )
-                .also { results = it }
-                .isNotEmpty()
+           results.isNotEmpty()
         ) {
             val datePublish = Date()
 
-            for (media in results) {
-                if (media.sStatus != Media.Status.Uploading) {
-                    media.uploadDate = datePublish
-                    media.progress = 0 // Should we reset this?
-                    media.sStatus = Media.Status.Uploading
-                    media.statusMessage = ""
-                }
+            val media = results.removeFirst()
 
-                media.licenseUrl = media.project?.licenseUrl
-
-                val collection = media.collection
-
-                if (collection?.uploadDate == null) {
-                    collection?.uploadDate = datePublish
-                    collection?.save()
-                }
-
-                try {
-                    upload(media)
-                } catch (ioe: IOException) {
-                    Timber.d(ioe)
-
-                    media.statusMessage = "error in uploading media: " + ioe.message
-                    media.sStatus = Media.Status.Error
-                    media.save()
-                }
-
-                if (!mKeepUploading) break // Time to end this.
+            if (media.sStatus != Media.Status.Uploading) {
+                media.uploadDate = datePublish
+                media.progress = 0 // Should we reset this?
+                media.sStatus = Media.Status.Uploading
+                media.statusMessage = ""
             }
+
+            media.licenseUrl = media.project?.licenseUrl
+
+            val collection = media.collection
+
+            if (collection?.uploadDate == null) {
+                collection?.uploadDate = datePublish
+                collection?.save()
+            }
+
+            try {
+                upload(media)
+            } catch (ioe: IOException) {
+                Timber.d(ioe)
+
+                media.statusMessage = "error in uploading media: " + ioe.message
+                media.sStatus = Media.Status.Error
+                media.save()
+
+                BroadcastManager.postChange(applicationContext, media.collectionId, media.id)
+            }
+
+            if (!mKeepUploading) break // Time to end this.
         }
 
         mRunning = false
@@ -152,18 +157,21 @@ class UploadService : JobService() {
 
     @Throws(IOException::class)
     private suspend fun upload(media: Media): Boolean {
-        media.sStatus = Media.Status.Uploading
-        media.save()
-        BroadcastManager.postChange(this, media.id)
 
         val conduit = Conduit.get(media, this)
             ?: return false
 
+        media.sStatus = Media.Status.Uploading
+        media.save()
+        BroadcastManager.postChange(this, media.collectionId, media.id)
+
         CleanInsightsManager.measureEvent("upload", "try_upload", media.space?.tType?.friendlyName)
 
         mConduits.add(conduit)
-        conduit.upload()
-        mConduits.remove(conduit)
+        scope.launch {
+            conduit.upload()
+            mConduits.remove(conduit)
+        }
 
         return true
     }
