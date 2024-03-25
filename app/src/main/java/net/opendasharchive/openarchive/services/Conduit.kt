@@ -90,15 +90,15 @@ abstract class Conduit(
      * result is a site specific unique id that we can use to fetch the data,
      * build an embed tag, etc. for some sites this might be a URL
      */
-    fun jobSucceeded() {
-        mMedia.progress = 100
+     fun jobSucceeded() {
+        mMedia.progress = mMedia.contentLength
         mMedia.sStatus = Media.Status.Uploaded
         mMedia.save()
 
-        BroadcastManager.postChange(mContext, mMedia.id)
+        BroadcastManager.postChange(mContext, mMedia.collectionId, mMedia.id)
     }
 
-    fun jobFailed(exception: Throwable) {
+     fun jobFailed(exception: Throwable) {
         // If an upload was cancelled, ignore the error.
         if (mCancelled) return
 
@@ -109,25 +109,14 @@ abstract class Conduit(
 
         Timber.d(exception)
 
-        BroadcastManager.postChange(mContext, mMedia.id)
+        BroadcastManager.postChange(mContext, mMedia.collectionId, mMedia.id)
     }
 
-    // track when the last progress broadcast was sent, timestamp
-    // we use this to limit the rate of sending out these broadcasts
-    private var lastProgressBroadcast = 0L
+     fun jobProgress(uploadedBytes: Long) {
+         mMedia.progress = uploadedBytes
 
-    fun jobProgress(uploadedBytes: Long) {
-        // making sure we're not writing to the database more often than (1000/150=)~7 times a second.
-        // jobProgress is getting called up to several hundred times a second.
-        if (System.currentTimeMillis() > lastProgressBroadcast + 150) {
-            lastProgressBroadcast = System.currentTimeMillis()
-
-            mMedia.progress = uploadedBytes
-            mMedia.save()
-
-            BroadcastManager.postChange(mContext, mMedia.id)
-        }
-    }
+         BroadcastManager.postProgress(mContext, mMedia.collectionId, mMedia.id, uploadedBytes)
+     }
 
     /**
      * workaround to deal with some quirks in our data model?

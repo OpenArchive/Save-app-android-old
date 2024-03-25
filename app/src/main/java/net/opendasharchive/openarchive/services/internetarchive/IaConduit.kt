@@ -2,7 +2,9 @@ package net.opendasharchive.openarchive.services.internetarchive
 
 import android.content.Context
 import android.net.Uri
-import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.db.Media
 import net.opendasharchive.openarchive.services.Conduit
@@ -25,36 +27,51 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         private fun getSlug(title: String): String {
             return title.replace("[^A-Za-z\\d]".toRegex(), "-")
         }
+
+        val textMediaType = "texts".toMediaTypeOrNull()
+
+        private val gson = GsonBuilder().excludeFieldsWithoutExposeAnnotation().create()
     }
 
     override suspend fun upload(): Boolean {
         sanitize()
 
         try {
-            val mediaUri = mMedia.originalFilePath
             val mimeType = mMedia.mimeType
+
+            val client = SaveClient.get(mContext)
 
             // TODO this should make sure we aren't accidentally using one of archive.org's metadata fields by accident
             val slug = getSlug(mMedia.title)
-            var basePath = "$slug-${Util.RandomString(4).nextString()}"
-            val url = "$ARCHIVE_API_ENDPOINT/$basePath/" + getUploadFileName(mMedia, true)
-            val requestBody = getRequestBody(mMedia, mediaUri, mimeType.toMediaTypeOrNull(), basePath)
-
-            put(url, requestBody, mainHeader())
-
             /// Upload metadata
-            basePath = "$slug-${Util.RandomString(4).nextString()}"
+            var basePath = "$slug-${Util.RandomString(4).nextString()}"
+            val fileName = getUploadFileName(mMedia, true)
+            val metaJson = gson.toJsonTree(mMedia)
+            val proof = getProof()
 
-            uploadMetaData(Gson().toJson(mMedia), basePath, getUploadFileName(mMedia, true))
+            val url = "$ARCHIVE_API_ENDPOINT/$basePath/$fileName"
+
+            // upload content synchronously for progress
+            client.uploadContent(url, mimeType)
+
+            // upload metadata and proofs async, and report failures
+            basePath = "$slug-${Util.RandomString(4).nextString()}"
+            client.uploadMetaData(metaJson.toString(), basePath, fileName)
 
             /// Upload ProofMode metadata, if enabled and successfully created.
-            for (file in getProof()) {
-                uploadProofFiles(file, basePath)
+            for (file in proof) {
+                client.uploadProofFiles(file, basePath)
+            }
+
+            val finalPath = ARCHIVE_DETAILS_ENDPOINT + basePath
+            mMedia.serverUrl = finalPath
+
+            withContext(Dispatchers.IO) {
+                jobSucceeded()
             }
 
             return true
-        }
-        catch (e: Exception) {
+        } catch (e: Exception) {
             jobFailed(e)
         }
 
@@ -65,82 +82,74 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         // Ignored. Not used here.
     }
 
-    @Throws(IOException::class)
-    private suspend fun uploadMetaData(content: String, basePath: String, fileName: String) {
-        val requestBody = RequestBodyUtil.create(content)
+    private suspend fun OkHttpClient.uploadContent(url: String, mimeType: String) {
 
-        put(
-            "$ARCHIVE_API_ENDPOINT/$basePath/$fileName.meta.json",
-            requestBody,
-            metadataHeader()
+        val mediaUri = mMedia.originalFilePath
+        val requestBody = getRequestBody(mMedia, mediaUri, mimeType.toMediaTypeOrNull())
+
+        val request = Request.Builder()
+            .url(url)
+            .put(requestBody)
+            .headers(mainHeader())
+            .build()
+
+        execute(request)
+    }
+
+    @Throws(IOException::class)
+    private fun OkHttpClient.uploadMetaData(content: String, basePath: String, fileName: String) {
+        val requestBody = RequestBodyUtil.create(
+            textMediaType,
+            content.byteInputStream(),
+            content.length.toLong(),
+            null
         )
+
+        val url = "$ARCHIVE_API_ENDPOINT/$basePath/$fileName.meta.json"
+
+        val request = Request.Builder()
+            .url(url)
+            .put(requestBody)
+            .headers(metadataHeader())
+            .build()
+
+        enqueue(request)
     }
 
     /// upload proof mode
     @Throws(IOException::class)
-    private suspend fun uploadProofFiles(uploadFile: File, basePath: String) {
-        val requestBody = getRequestBodyMetaData(
-            uploadFile,
-            Uri.fromFile(uploadFile).toString(),
+    private fun OkHttpClient.uploadProofFiles(uploadFile: File, basePath: String) {
+        val requestBody = RequestBodyUtil.create(
+            mContext.contentResolver,
+            Uri.fromFile(uploadFile),
+            uploadFile.length(),
+            textMediaType, createListener(cancellable = { !mCancelled })
         )
 
-        put("$ARCHIVE_API_ENDPOINT/$basePath/${uploadFile.name}",
-            requestBody,
-            metadataHeader())
+        val url = "$ARCHIVE_API_ENDPOINT/$basePath/${uploadFile.name}"
+
+        val request = Request.Builder()
+            .url(url)
+            .put(requestBody)
+            .headers(metadataHeader())
+            .build()
+
+        enqueue(request)
     }
 
-    private fun getRequestBody(media: Media, mediaUri: String?, mediaType: MediaType?, basePath: String): RequestBody {
+    private fun getRequestBody(
+        media: Media,
+        mediaUri: String?,
+        mediaType: MediaType?
+    ): RequestBody {
         return RequestBodyUtil.create(
             mContext.contentResolver,
             Uri.parse(mediaUri),
             media.contentLength,
-            mediaType,
-            object : RequestListener {
-                var lastBytes: Long = 0
-                override fun transferred(bytes: Long) {
-                    if (bytes > lastBytes) {
-                        jobProgress(bytes)
-                        lastBytes = bytes
-                    }
-                }
-
-                override fun continueUpload(): Boolean {
-                    return !mCancelled
-                }
-
-                override fun transferComplete() {
-                    val finalPath = ARCHIVE_DETAILS_ENDPOINT + basePath
-                    media.serverUrl = finalPath
-                    jobSucceeded()
-                }
+            mediaType, createListener(cancellable = { !mCancelled }, onProgress = {
+                jobProgress(it)
             })
-    }
-
-    /// request body for meta data
-    private fun getRequestBodyMetaData(media: File, mediaUri: String, mediaType: MediaType? = "texts".toMediaTypeOrNull()): RequestBody {
-        return RequestBodyUtil.create(
-            mContext.contentResolver,
-            Uri.parse(mediaUri),
-            media.length(),
-            mediaType,
-            object : RequestListener {
-                var lastBytes: Long = 0
-
-                override fun transferred(bytes: Long) {
-                    if (bytes > lastBytes) {
-                        jobProgress(bytes)
-                        lastBytes = bytes
-                    }
-                }
-
-                override fun continueUpload(): Boolean {
-                    return !mCancelled
-                }
-
-                override fun transferComplete() {
-                    jobSucceeded()
-                }
-            })
+        )
     }
 
     private fun mainHeader(): Headers {
@@ -155,6 +164,10 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         val author = mMedia.author
         if (author.isNotEmpty()) {
             builder.add("x-archive-meta-author", author)
+        }
+
+        if (mMedia.contentLength > 0) {
+            builder.add("x-archive-size-hint", mMedia.contentLength.toString())
         }
 
         val collection = when {
@@ -209,7 +222,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
     private fun metadataHeader(): Headers {
         return Headers.Builder()
             .add("x-amz-auto-make-bucket", "1")
-            .add("x-archive-meta-language","eng") // FIXME set based on locale or selected
+            .add("x-archive-meta-language", "eng") // FIXME set based on locale or selected
             .add("Authorization", "LOW " + mMedia.space?.username + ":" + mMedia.space?.password)
             .add("x-archive-meta-mediatype", "texts")
             .add("x-archive-meta-collection", "opensource")
@@ -217,33 +230,29 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
     }
 
     @Throws(Exception::class)
-    private suspend fun put(url: String, requestBody: RequestBody, headers: Headers) {
-        val request = Request.Builder()
-            .url(url)
-            .put(requestBody)
-            .headers(headers)
-            .build()
+    private suspend fun OkHttpClient.execute(request: Request) = withContext(Dispatchers.IO) {
+        val result = newCall(request)
+            .execute()
 
-        execute(request)
+        if (result.isSuccessful.not()) {
+            throw RuntimeException("${result.code}: ${result.message}")
+        }
     }
 
     @Throws(Exception::class)
-    private suspend fun execute(request: Request) {
-        SaveClient.get(mContext)
-            .newCall(request)
+    private fun OkHttpClient.enqueue(request: Request) {
+        newCall(request)
             .enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     jobFailed(e)
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    if (response.isSuccessful) {
-                        jobSucceeded()
-                    }
-                    else {
-                        jobFailed(Exception("${response.code} ${response.message}"))
+                    if (!response.isSuccessful) {
+                        jobFailed(Exception("${response.code}: ${response.message}"))
                     }
                 }
+
             })
     }
 }

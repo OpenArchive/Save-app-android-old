@@ -28,6 +28,7 @@ import net.opendasharchive.openarchive.fragments.VideoRequestHandler
 import net.opendasharchive.openarchive.util.extensions.hide
 import net.opendasharchive.openarchive.util.extensions.show
 import timber.log.Timber
+import java.io.InputStream
 import kotlin.math.roundToInt
 
 abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView.ViewHolder(binding.root) {
@@ -303,18 +304,19 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
                 fileInfo?.text = Formatter.formatShortFileSize(mContext, file.length())
             } else {
                 if (media.contentLength == -1L) {
+                    var iStream: InputStream? = null
                     try {
-                        val iStream = mContext.contentResolver.openInputStream(media.fileUri)
+                        iStream = mContext.contentResolver.openInputStream(media.fileUri)
 
                         if (iStream != null) {
                             media.contentLength = iStream.available().toLong()
                             media.save()
-
-                            iStream.close()
                         }
                     }
                     catch (e: Throwable) {
                         Timber.e(e)
+                    } finally {
+                        iStream?.close()
                     }
                 }
 

@@ -35,9 +35,9 @@ class SaveClient(context: Context) : StrongBuilderBase<SaveClient, OkHttpClient>
 
         okBuilder = OkHttpClient.Builder()
             .addInterceptor(cacheInterceptor)
-            .connectTimeout(60L, TimeUnit.SECONDS)
-            .writeTimeout(60L, TimeUnit.SECONDS)
-            .readTimeout(60L, TimeUnit.SECONDS)
+            .connectTimeout(40L, TimeUnit.SECONDS)
+            .writeTimeout(40L, TimeUnit.SECONDS)
+            .readTimeout(40L, TimeUnit.SECONDS)
             .retryOnConnectionFailure(false)
             .protocols(arrayListOf(Protocol.HTTP_1_1))
     }

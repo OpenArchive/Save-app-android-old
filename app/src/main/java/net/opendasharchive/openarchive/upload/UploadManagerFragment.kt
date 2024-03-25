@@ -92,7 +92,7 @@ open class UploadManagerFragment : Fragment() {
     }
 
     open fun updateItem(mediaId: Long) {
-        mediaAdapter?.updateItem(mediaId)
+        mediaAdapter?.updateItem(mediaId, -1)
     }
 
     open fun removeItem(mediaId: Long) {

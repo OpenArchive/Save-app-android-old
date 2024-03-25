@@ -76,11 +76,14 @@ class MediaAdapter(
                                     it, it.getString(R.string.upload_unsuccessful_description),
                                     R.string.upload_unsuccessful, R.drawable.ic_error, listOf(
                                         AlertHelper.positiveButton(R.string.retry) { _, _ ->
-                                            media[pos].sStatus = Media.Status.Queued
-                                            media[pos].statusMessage = ""
-                                            media[pos].save()
 
-                                            updateItem(media[pos].id)
+                                            media[pos].apply {
+                                                sStatus = Media.Status.Queued
+                                                statusMessage = ""
+                                                save()
+
+                                                BroadcastManager.postChange(it, collectionId, id)
+                                            }
 
                                             UploadService.startUploadService(it)
                                         },
@@ -136,14 +139,16 @@ class MediaAdapter(
         holder.handle?.toggle(isEditMode)
     }
 
-    fun updateItem(mediaId: Long): Boolean {
+    fun updateItem(mediaId: Long, progress: Long): Boolean {
         val idx = media.indexOfFirst { it.id == mediaId }
         if (idx < 0) return false
 
-        val item = Media.get(mediaId) ?: return false
-
-        media[idx] = item
-
+        if (progress >= 0) {
+            media[idx].progress = progress
+        } else {
+            val item = Media.get(mediaId) ?: return false
+            media[idx] = item
+        }
         notifyItemChanged(idx)
 
         return true

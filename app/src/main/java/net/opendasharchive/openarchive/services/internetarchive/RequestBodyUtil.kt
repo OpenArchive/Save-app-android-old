@@ -12,19 +12,27 @@ import okio.source
 import timber.log.Timber
 import java.io.*
 
+fun createListener(cancellable: () -> Boolean, onProgress: (Long) -> Unit = {}, onComplete: () -> Unit = {}) = object : RequestListener {
+    override fun transferred(bytes: Long) = onProgress(bytes)
+
+    override fun continueUpload() =  cancellable()
+
+    override fun transferComplete() = onComplete()
+}
+
 /**
  * Created by n8fr8 on 12/29/17.
  */
 object RequestBodyUtil {
-    fun create(mediaType: MediaType?, inputStream: InputStream): RequestBody {
+
+    fun create(mediaType: MediaType?, inputStream: InputStream, contentLength: Long? = null,
+               listener: RequestListener?): RequestBody {
         return object : RequestBody() {
-            override fun contentType(): MediaType? {
-                return mediaType
-            }
+            override fun contentType() = mediaType
 
             override fun contentLength(): Long {
                 return try {
-                    inputStream.available().toLong()
+                    contentLength ?: inputStream.available().toLong()
                 } catch (e: IOException) {
                     Timber.i("BodyRequestUtil couldn't get contentLength, returning 0 instead", e)
                     0
@@ -36,7 +44,7 @@ object RequestBodyUtil {
                 var source: Source? = null
                 try {
                     source = inputStream.source()
-                    sink.writeAll(source)
+                    sink.writeAll(source, listener)
                 } finally {
                     source!!.closeQuietly()
                 }
@@ -66,38 +74,39 @@ object RequestBodyUtil {
                 }
             }
 
-            override fun contentType(): MediaType? {
-                return mediaType
-            }
+            override fun contentType() = mediaType
 
-            override fun contentLength(): Long {
-                return contentLength
-            }
+            override fun contentLength() = contentLength
 
             @Synchronized
             @Throws(IOException::class)
             override fun writeTo(sink: BufferedSink) {
                 init()
-                val source = inputStream!!.source()
-                if (mListener == null) {
-                    sink.writeAll(source)
-                } else {
-                    try {
-                        var total: Long = 0
-                        var read: Long
-                        while (source.read(sink.buffer, SEGMENT_SIZE.toLong()).also {
-                                read = it
-                            } != -1L && mListener != null && mListener!!.continueUpload()) {
-                            total += read
-                            if (mListener != null) mListener!!.transferred(total)
-                            sink.flush()
-                        }
-                        mListener!!.transferComplete()
-                    } finally {
-                        source.closeQuietly()
-                    }
+                var source: Source? = null
+                try {
+                    source = inputStream!!.source()
+                    sink.writeAll(source, listener)
+                } finally {
+                    source?.closeQuietly()
                 }
             }
+        }
+    }
+
+    fun BufferedSink.writeAll(source: Source, listener: RequestListener?) {
+        if (listener == null) {
+            writeAll(source)
+        } else {
+            var total: Long = 0
+            var read: Long
+            while (source.read(buffer, SEGMENT_SIZE.toLong()).also {
+                    read = it
+                } != -1L && listener.continueUpload()) {
+                total += read
+                listener.transferred(total)
+                flush()
+            }
+            listener.transferComplete()
         }
     }
 
@@ -112,13 +121,9 @@ object RequestBodyUtil {
                 }
             }
 
-            override fun contentType(): MediaType? {
-                return mediaType
-            }
+            override fun contentType() = mediaType
 
-            override fun contentLength(): Long {
-                return fileSource.length()
-            }
+            override fun contentLength() = fileSource.length()
 
             @Synchronized
             @Throws(IOException::class)
@@ -142,22 +147,6 @@ object RequestBodyUtil {
                         source.closeQuietly()
                     }
                 }
-            }
-        }
-    }
-
-    fun create(content: String, mediaType: MediaType? = "texts".toMediaTypeOrNull()): RequestBody {
-        return object : RequestBody() {
-            override fun contentType(): MediaType? {
-                return mediaType
-            }
-
-            override fun contentLength(): Long {
-                return content.length.toLong()
-            }
-
-            override fun writeTo(sink: BufferedSink) {
-                sink.writeString(content, Charsets.UTF_8)
             }
         }
     }
