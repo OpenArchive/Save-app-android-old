@@ -9,7 +9,6 @@ import net.opendasharchive.openarchive.services.Conduit
 import net.opendasharchive.openarchive.services.SaveClient
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okio.BufferedSink
 import java.io.File
 import java.io.IOException
 import java.lang.RuntimeException
@@ -27,6 +26,8 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         private fun getSlug(title: String): String {
             return title.replace("[^A-Za-z\\d]".toRegex(), "-")
         }
+
+        val textMediaType = "texts".toMediaTypeOrNull()
     }
 
     override suspend fun upload(): Boolean {
@@ -41,17 +42,19 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             /// Upload metadata
             var basePath = "$slug-${Util.RandomString(4).nextString()}"
             val fileName = getUploadFileName(mMedia, true)
+            val metaJson = Gson().toJson(mMedia)
+            val proof = getProof()
 
-            uploadMetaData(Gson().toJson(mMedia), basePath, fileName)
-
-            basePath = "$slug-${Util.RandomString(4).nextString()}"
             val url = "$ARCHIVE_API_ENDPOINT/$basePath/$fileName"
-            val requestBody = getRequestBody(mMedia, mediaUri, mimeType.toMediaTypeOrNull(), basePath)
+            val requestBody = getRequestBody(mMedia, mediaUri, mimeType.toMediaTypeOrNull())
 
             put(url, requestBody, mainHeader())
 
+            basePath = "$slug-${Util.RandomString(4).nextString()}"
+            uploadMetaData(metaJson, basePath, fileName)
+
             /// Upload ProofMode metadata, if enabled and successfully created.
-            for (file in getProof()) {
+            for (file in proof) {
                 uploadProofFiles(file, basePath)
             }
 
@@ -75,17 +78,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
 
     @Throws(IOException::class)
     private suspend fun uploadMetaData(content: String, basePath: String, fileName: String) {
-        val requestBody = object : RequestBody() {
-            override fun contentType(): MediaType? {
-                return "texts".toMediaTypeOrNull()
-            }
-
-            override fun writeTo(sink: BufferedSink) {
-                sink.writeString(content, Charsets.UTF_8)
-            }
-
-            override fun contentLength() = content.length.toLong()
-        }
+        val requestBody = RequestBodyUtil.create(textMediaType, content.byteInputStream(), content.length.toLong(), null)
 
         put(
             "$ARCHIVE_API_ENDPOINT/$basePath/$fileName.meta.json",
@@ -101,34 +94,22 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             mContext.contentResolver,
             Uri.fromFile(uploadFile),
             uploadFile.length(),
-            "texts".toMediaTypeOrNull(), object : RequestListener {
-                override fun transferred(bytes: Long) = Unit
-
-                override fun continueUpload() =  !mCancelled
-
-                override fun transferComplete() = Unit
-            })
+            textMediaType, createListener(cancellable = { !mCancelled }))
 
         put("$ARCHIVE_API_ENDPOINT/$basePath/${uploadFile.name}",
             requestBody,
             metadataHeader())
     }
 
-    private fun getRequestBody(media: Media, mediaUri: String?, mediaType: MediaType?, basePath: String): RequestBody {
+    private fun getRequestBody(media: Media, mediaUri: String?, mediaType: MediaType?): RequestBody {
         return RequestBodyUtil.create(
             mContext.contentResolver,
             Uri.parse(mediaUri),
             media.contentLength,
-            mediaType,
-            object : RequestListener {
-                override fun transferred(bytes: Long) {
-                    jobProgress(bytes)
-                }
-
-                override fun continueUpload() =  !mCancelled
-
-                override fun transferComplete() = Unit
+            mediaType, createListener(cancellable = { !mCancelled }, onProgress =  {
+                jobProgress(it)
             })
+        )
     }
 
     private fun mainHeader(): Headers {
@@ -143,6 +124,10 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         val author = mMedia.author
         if (author.isNotEmpty()) {
             builder.add("x-archive-meta-author", author)
+        }
+
+        if (mMedia.contentLength > 0) {
+            builder.add("x-archive-size-hint", mMedia.contentLength.toString())
         }
 
         val collection = when {
@@ -201,6 +186,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             .add("Authorization", "LOW " + mMedia.space?.username + ":" + mMedia.space?.password)
             .add("x-archive-meta-mediatype", "texts")
             .add("x-archive-meta-collection", "opensource")
+            .add("x-archive-interactive-priority", "1")
             .build()
     }
 

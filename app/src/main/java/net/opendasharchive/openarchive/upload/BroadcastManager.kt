@@ -8,18 +8,20 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 object BroadcastManager {
 
-    enum class Action(val id: String, var mediaId: Long = -1) {
+    enum class Action(val id: String, var collectionId: Long = -1, var mediaId: Long = -1) {
         Change("media_change_intent"),
         Delete("media_delete_intent")
     }
 
     private const val MEDIA_ID = "media_id"
+    private const val COLLECTION_ID = "collection_id"
 
-    fun postChange(context: Context, mediaId: Long) {
+    fun postChange(context: Context, collectionId: Long, mediaId: Long) {
         val i = Intent(Action.Change.id)
         i.putExtra(MEDIA_ID, mediaId)
+        i.putExtra(COLLECTION_ID, collectionId)
 
-        LocalBroadcastManager.getInstance(context).sendBroadcast(i)
+        LocalBroadcastManager.getInstance(context).sendBroadcastSync(i)
     }
 
     fun postDelete(context: Context, mediaId: Long) {
@@ -32,6 +34,7 @@ object BroadcastManager {
     fun getAction(intent: Intent): Action? {
         val action = Action.values().firstOrNull { it.id == intent.action }
         action?.mediaId = intent.getLongExtra(MEDIA_ID, -1)
+        action?.collectionId = intent.getLongExtra(COLLECTION_ID, -1)
 
         return action
     }
