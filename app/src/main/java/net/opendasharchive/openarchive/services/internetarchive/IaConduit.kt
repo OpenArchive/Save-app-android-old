@@ -11,7 +11,6 @@ import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.File
 import java.io.IOException
-import java.lang.RuntimeException
 
 class IaConduit(media: Media, context: Context) : Conduit(media, context) {
 
@@ -34,8 +33,9 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         sanitize()
 
         try {
-            val mediaUri = mMedia.originalFilePath
             val mimeType = mMedia.mimeType
+
+            val client = SaveClient.get(mContext)
 
             // TODO this should make sure we aren't accidentally using one of archive.org's metadata fields by accident
             val slug = getSlug(mMedia.title)
@@ -46,16 +46,17 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             val proof = getProof()
 
             val url = "$ARCHIVE_API_ENDPOINT/$basePath/$fileName"
-            val requestBody = getRequestBody(mMedia, mediaUri, mimeType.toMediaTypeOrNull())
 
-            put(url, requestBody, mainHeader())
+            // upload content synchronously for progress
+            client.uploadContent(url, mimeType)
 
+            // upload metadata and proofs async, and report failures
             basePath = "$slug-${Util.RandomString(4).nextString()}"
-            uploadMetaData(metaJson, basePath, fileName)
+            client.uploadMetaData(metaJson, basePath, fileName)
 
             /// Upload ProofMode metadata, if enabled and successfully created.
             for (file in proof) {
-                uploadProofFiles(file, basePath)
+                client.uploadProofFiles(file, basePath)
             }
 
             val finalPath = ARCHIVE_DETAILS_ENDPOINT + basePath
@@ -64,8 +65,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             jobSucceeded()
 
             return true
-        }
-        catch (e: Exception) {
+        } catch (e: Exception) {
             jobFailed(e)
         }
 
@@ -76,37 +76,71 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         // Ignored. Not used here.
     }
 
-    @Throws(IOException::class)
-    private suspend fun uploadMetaData(content: String, basePath: String, fileName: String) {
-        val requestBody = RequestBodyUtil.create(textMediaType, content.byteInputStream(), content.length.toLong(), null)
+    private suspend fun OkHttpClient.uploadContent(url: String, mimeType: String) {
 
-        put(
-            "$ARCHIVE_API_ENDPOINT/$basePath/$fileName.meta.json",
-            requestBody,
-            metadataHeader()
+        val mediaUri = mMedia.originalFilePath
+        val requestBody = getRequestBody(mMedia, mediaUri, mimeType.toMediaTypeOrNull())
+
+        val request = Request.Builder()
+            .url(url)
+            .put(requestBody)
+            .headers(mainHeader())
+            .build()
+
+        execute(request)
+    }
+
+    @Throws(IOException::class)
+    private fun OkHttpClient.uploadMetaData(content: String, basePath: String, fileName: String) {
+        val requestBody = RequestBodyUtil.create(
+            textMediaType,
+            content.byteInputStream(),
+            content.length.toLong(),
+            null
         )
+
+        val url = "$ARCHIVE_API_ENDPOINT/$basePath/$fileName.meta.json"
+
+        val request = Request.Builder()
+            .url(url)
+            .put(requestBody)
+            .headers(metadataHeader())
+            .build()
+
+        enqueue(request)
     }
 
     /// upload proof mode
     @Throws(IOException::class)
-    private suspend fun uploadProofFiles(uploadFile: File, basePath: String) {
+    private fun OkHttpClient.uploadProofFiles(uploadFile: File, basePath: String) {
         val requestBody = RequestBodyUtil.create(
             mContext.contentResolver,
             Uri.fromFile(uploadFile),
             uploadFile.length(),
-            textMediaType, createListener(cancellable = { !mCancelled }))
+            textMediaType, createListener(cancellable = { !mCancelled })
+        )
 
-        put("$ARCHIVE_API_ENDPOINT/$basePath/${uploadFile.name}",
-            requestBody,
-            metadataHeader())
+        val url = "$ARCHIVE_API_ENDPOINT/$basePath/${uploadFile.name}"
+
+        val request = Request.Builder()
+            .url(url)
+            .put(requestBody)
+            .headers(metadataHeader())
+            .build()
+
+        enqueue(request)
     }
 
-    private fun getRequestBody(media: Media, mediaUri: String?, mediaType: MediaType?): RequestBody {
+    private fun getRequestBody(
+        media: Media,
+        mediaUri: String?,
+        mediaType: MediaType?
+    ): RequestBody {
         return RequestBodyUtil.create(
             mContext.contentResolver,
             Uri.parse(mediaUri),
             media.contentLength,
-            mediaType, createListener(cancellable = { !mCancelled }, onProgress =  {
+            mediaType, createListener(cancellable = { !mCancelled }, onProgress = {
                 jobProgress(it)
             })
         )
@@ -182,29 +216,16 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
     private fun metadataHeader(): Headers {
         return Headers.Builder()
             .add("x-amz-auto-make-bucket", "1")
-            .add("x-archive-meta-language","eng") // FIXME set based on locale or selected
+            .add("x-archive-meta-language", "eng") // FIXME set based on locale or selected
             .add("Authorization", "LOW " + mMedia.space?.username + ":" + mMedia.space?.password)
             .add("x-archive-meta-mediatype", "texts")
             .add("x-archive-meta-collection", "opensource")
-            .add("x-archive-interactive-priority", "1")
             .build()
     }
 
     @Throws(Exception::class)
-    private suspend fun put(url: String, requestBody: RequestBody, headers: Headers) {
-        val request = Request.Builder()
-            .url(url)
-            .put(requestBody)
-            .headers(headers)
-            .build()
-
-        execute(request)
-    }
-
-    @Throws(Exception::class)
-    private suspend fun execute(request: Request): Boolean {
-        val result = SaveClient.get(mContext)
-            .newCall(request)
+    private suspend fun OkHttpClient.execute(request: Request): Boolean {
+        val result = newCall(request)
             .execute()
 
         if (result.isSuccessful.not()) {
@@ -212,5 +233,22 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         }
 
         return true
+    }
+
+    @Throws(Exception::class)
+    private fun OkHttpClient.enqueue(request: Request) {
+            newCall(request)
+            .enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    jobFailed(e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    if (!response.isSuccessful) {
+                        jobFailed(Exception("${response.code}: ${response.message}"))
+                    }
+                }
+
+            })
     }
 }
