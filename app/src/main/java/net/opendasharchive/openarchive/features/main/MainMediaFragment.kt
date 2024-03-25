@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
@@ -42,25 +44,26 @@ class MainMediaFragment : Fragment() {
     private var mAdapters = HashMap<Long, MediaAdapter>()
     private var mSection = HashMap<Long, SectionViewHolder>()
     private var mProjectId = -1L
-    private var mCollections = ArrayList<Collection>()
+    private var mCollections = mutableMapOf<Long, Collection>()
 
     private lateinit var mBinding: FragmentMainMediaBinding
 
     private val mMessageReceiver: BroadcastReceiver = object : BroadcastReceiver() {
-
+        private val handler = Handler(Looper.getMainLooper())
         override fun onReceive(context: Context, intent: Intent) {
-            val action = BroadcastManager.getAction(intent)
-            val mediaId = action?.mediaId ?: return
-
-            if (mediaId < 0) return
+            val action = BroadcastManager.getAction(intent) ?: return
 
             when (action) {
                 BroadcastManager.Action.Change -> {
-                    updateItem(mediaId)
+                    handler.post {
+                        updateItem(action.collectionId, action.mediaId)
+                    }
                 }
 
                 BroadcastManager.Action.Delete -> {
-                    refresh()
+                    handler.post {
+                        refresh()
+                    }
                 }
             }
         }
@@ -109,36 +112,43 @@ class MainMediaFragment : Fragment() {
 
         mBinding = FragmentMainMediaBinding.inflate(inflater, container, false)
 
-        refresh()
-
         return mBinding.root
     }
 
-    fun updateItem(mediaId: Long) {
-        for (adapter in mAdapters.values) {
-            if (adapter.updateItem(mediaId)) break
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        refresh()
+    }
+
+    fun updateItem(collectionId: Long, mediaId: Long) {
+        mAdapters[collectionId]?.apply {
+            updateItem(mediaId)
+             mCollections[collectionId]?.let { collection ->
+                 mSection[collectionId]?.setHeader(collection, media)
+             }
         }
     }
 
     fun refresh() {
-        mCollections = ArrayList(Collection.getByProject(mProjectId))
+        mCollections = Collection.getByProject(mProjectId).associateBy { it.id }.toMutableMap()
 
         // Remove all sections, which' collections don't exist anymore.
         val toDelete = mAdapters.keys.filter { id ->
-            mCollections.firstOrNull { it.id == id } == null
+            mCollections.containsKey(id).not()
         }.toMutableList()
 
-        mCollections.forEach { collection ->
+        mCollections.forEach { (id, collection) ->
             val media = collection.media
 
             // Also remove all empty collections.
             if (media.isEmpty()) {
-                toDelete.add(collection.id)
+                toDelete.add(id)
                 return@forEach
             }
 
-            val adapter = mAdapters[collection.id]
-            val holder = mSection[collection.id]
+            val adapter = mAdapters[id]
+            val holder = mSection[id]
 
             if (adapter != null) {
                 adapter.updateData(media)
@@ -154,22 +164,20 @@ class MainMediaFragment : Fragment() {
         // while adding images.
         deleteCollections(toDelete, false)
 
-        if (::mBinding.isInitialized) {
-            mBinding.addMediaHint.toggle(mCollections.isEmpty())
-        }
+        mBinding.addMediaHint.toggle(mCollections.isEmpty())
     }
 
     fun deleteSelected() {
         val toDelete = ArrayList<Long>()
 
-        mCollections.forEach { collection ->
-            if (mAdapters[collection.id]?.deleteSelected() == true) {
+        mCollections.forEach { (id, collection) ->
+            if (mAdapters[id]?.deleteSelected() == true) {
                 val media = collection.media
 
                 if (media.isEmpty()) {
                     toDelete.add(collection.id)
                 } else {
-                    mSection[collection.id]?.setHeader(collection, media)
+                    mSection[id]?.setHeader(collection, media)
                 }
             }
         }
@@ -208,12 +216,11 @@ class MainMediaFragment : Fragment() {
             val holder = mSection.remove(collectionId)
             (holder?.root?.parent as? ViewGroup)?.removeView(holder.root)
 
-            val idx = mCollections.indexOfFirst { it.id == collectionId }
-
-            if (idx > -1 && idx < mCollections.size) {
-                val collection = mCollections.removeAt(idx)
-
-                if (cleanup) collection.delete()
+            mCollections[collectionId]?.let {
+                mCollections.remove(collectionId)
+                if (cleanup) {
+                    it.delete()
+                }
             }
         }
     }

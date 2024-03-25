@@ -76,11 +76,14 @@ class MediaAdapter(
                                     it, it.getString(R.string.upload_unsuccessful_description),
                                     R.string.upload_unsuccessful, R.drawable.ic_error, listOf(
                                         AlertHelper.positiveButton(R.string.retry) { _, _ ->
-                                            media[pos].sStatus = Media.Status.Queued
-                                            media[pos].statusMessage = ""
-                                            media[pos].save()
 
-                                            updateItem(media[pos].id)
+                                            media[pos].apply {
+                                                sStatus = Media.Status.Queued
+                                                statusMessage = ""
+                                                save()
+
+                                                BroadcastManager.postChange(it, collectionId, id)
+                                            }
 
                                             UploadService.startUploadService(it)
                                         },
