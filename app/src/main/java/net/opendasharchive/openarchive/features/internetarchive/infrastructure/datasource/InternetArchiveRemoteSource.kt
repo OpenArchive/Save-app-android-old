@@ -3,6 +3,7 @@ package net.opendasharchive.openarchive.features.internetarchive.infrastructure.
 import android.content.Context
 import com.google.gson.Gson
 import net.opendasharchive.openarchive.core.infrastructure.client.enqueueResult
+import net.opendasharchive.openarchive.features.internetarchive.InternetArchiveGson
 import net.opendasharchive.openarchive.features.internetarchive.domain.model.InternetArchive
 import net.opendasharchive.openarchive.features.internetarchive.infrastructure.model.InternetArchiveLoginRequest
 import net.opendasharchive.openarchive.features.internetarchive.infrastructure.model.InternetArchiveLoginResponse
@@ -15,7 +16,7 @@ private const val LOGIN_URI = "https://archive.org/services/xauthn?op=login"
 
 class InternetArchiveRemoteSource(
     private val context: Context,
-    private val gson: Gson
+    private val gson: InternetArchiveGson
 ) {
     suspend fun login(request: InternetArchiveLoginRequest): Result<InternetArchiveLoginResponse> =
         SaveClient.get(context).enqueueResult(

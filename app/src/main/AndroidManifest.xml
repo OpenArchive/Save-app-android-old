@@ -102,22 +102,7 @@
         </activity>
 
         <activity
-            android:name=".services.internetarchive.IaScrapeActivity"
-            android:exported="false"
-            android:label="@string/title_activity_login"
-            android:parentActivityName=".features.onboarding.SpaceSetupActivity"
-            android:taskAffinity="">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="net.opendasharchive.openarchive.features.onboarding.SpaceSetupActivity" />
-        </activity>
-
-        <activity
             android:name=".services.webdav.WebDavActivity"
-            android:label="@string/title_activity_login"
-            android:taskAffinity="" />
-        <activity
-            android:name=".services.internetarchive.InternetArchiveActivity"
             android:label="@string/title_activity_login"
             android:taskAffinity="" />
 

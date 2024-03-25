@@ -13,8 +13,10 @@ import net.opendasharchive.openarchive.features.internetarchive.presentation.log
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
+typealias InternetArchiveGson = Gson
+
 val internetArchiveModule = module {
-    single {
+    single<InternetArchiveGson> {
         Gson().newBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
             .create()
