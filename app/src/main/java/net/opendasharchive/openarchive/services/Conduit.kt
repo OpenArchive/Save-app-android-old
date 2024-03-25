@@ -114,7 +114,6 @@ abstract class Conduit(
 
      fun jobProgress(uploadedBytes: Long) {
          mMedia.progress = uploadedBytes
-         mMedia.save()
          BroadcastManager.postProgress(mContext, mMedia.collectionId, mMedia.id, uploadedBytes)
      }
 

@@ -19,9 +19,7 @@ import androidx.viewpager2.widget.ViewPager2
 import com.esafirm.imagepicker.features.ImagePickerLauncher
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.snackbar.Snackbar.SnackbarLayout
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.FolderAdapter
 import net.opendasharchive.openarchive.FolderAdapterListener
@@ -333,19 +331,17 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
     private fun refreshCurrentProject() {
         val project = getSelectedProject()
 
-        MainScope().launch {
-            if (project != null) {
-                mPagerAdapter.notifyProjectChanged(project)
+        if (project != null) {
+            mPagerAdapter.notifyProjectChanged(project)
 
-                project.space?.setAvatar(mBinding.currentFolderIcon)
-                mBinding.currentFolderIcon.show()
+            project.space?.setAvatar(mBinding.currentFolderIcon)
+            mBinding.currentFolderIcon.show()
 
-                mBinding.currentFolderName.text = project.description
-                mBinding.currentFolderName.show()
-            } else {
-                mBinding.currentFolderIcon.cloak()
-                mBinding.currentFolderName.cloak()
-            }
+            mBinding.currentFolderName.text = project.description
+            mBinding.currentFolderName.show()
+        } else {
+            mBinding.currentFolderIcon.cloak()
+            mBinding.currentFolderName.cloak()
         }
 
         refreshCurrentFolderCount()
