@@ -11,7 +11,11 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.FragmentMainMediaBinding
 import net.opendasharchive.openarchive.databinding.ViewSectionBinding
@@ -123,10 +127,22 @@ class MainMediaFragment : Fragment() {
 
     fun updateItem(collectionId: Long, mediaId: Long, progress: Long) {
         mAdapters[collectionId]?.apply {
+            doImageFade = false
             updateItem(mediaId, progress)
-             mCollections[collectionId]?.let { collection ->
-                 mSection[collectionId]?.setHeader(collection, media)
-             }
+            if (progress == -1L) {
+                updateHeader(collectionId, media)
+            }
+        }
+    }
+
+    private fun updateHeader(collectionId: Long, media: ArrayList<Media>) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            Collection.get(collectionId)?.let { collection ->
+                mCollections[collectionId] = collection
+                withContext(Dispatchers.Main) {
+                    mSection[collectionId]?.setHeader(collection, media)
+                }
+            }
         }
     }
 

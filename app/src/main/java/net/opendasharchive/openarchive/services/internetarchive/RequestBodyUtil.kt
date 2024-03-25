@@ -17,7 +17,7 @@ fun createListener(cancellable: () -> Boolean, onProgress: (Long) -> Unit = {}, 
 
     override fun continueUpload() =  cancellable()
 
-    override fun transferComplete() = Unit
+    override fun transferComplete() = onComplete()
 }
 
 /**

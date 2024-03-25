@@ -85,7 +85,18 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
     private suspend fun OkHttpClient.uploadContent(url: String, mimeType: String) {
 
         val mediaUri = mMedia.originalFilePath
-        val requestBody = getRequestBody(mMedia, mediaUri, mimeType.toMediaTypeOrNull())
+        val requestBody = RequestBodyUtil.create(
+            mContext.contentResolver,
+            Uri.parse(mediaUri),
+            mMedia.contentLength,
+            mimeType.toMediaTypeOrNull(),
+            createListener(cancellable = { !mCancelled }, onProgress = {
+                jobProgress(it)
+            }) {
+                Thread.sleep(500)
+                jobSucceeded()
+            }
+        )
 
         val request = Request.Builder()
             .url(url)
@@ -135,21 +146,6 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             .build()
 
         enqueue(request)
-    }
-
-    private fun getRequestBody(
-        media: Media,
-        mediaUri: String?,
-        mediaType: MediaType?
-    ): RequestBody {
-        return RequestBodyUtil.create(
-            mContext.contentResolver,
-            Uri.parse(mediaUri),
-            media.contentLength,
-            mediaType, createListener(cancellable = { !mCancelled }, onProgress = {
-                jobProgress(it)
-            })
-        )
     }
 
     private fun mainHeader(): Headers {
