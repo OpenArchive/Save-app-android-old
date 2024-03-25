@@ -13,6 +13,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2
 import com.esafirm.imagepicker.features.ImagePickerLauncher
@@ -297,17 +298,15 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
     private fun refreshSpace() {
         val currentSpace = Space.current
 
-        MainScope().launch {
-            if (currentSpace != null) {
-                mBinding.space.setDrawable(
-                    currentSpace.getAvatar(this@MainActivity)
-                        ?.scaled(32, this@MainActivity), Position.Start, tint = false
-                )
-                mBinding.space.text = currentSpace.friendlyName
-            } else {
-                mBinding.space.setDrawable(R.drawable.avatar_default, Position.Start, tint = false)
-                mBinding.space.text = getString(R.string.app_name)
-            }
+        if (currentSpace != null) {
+            mBinding.space.setDrawable(
+                currentSpace.getAvatar(this@MainActivity)
+                    ?.scaled(32, this@MainActivity), Position.Start, tint = false
+            )
+            mBinding.space.text = currentSpace.friendlyName
+        } else {
+            mBinding.space.setDrawable(R.drawable.avatar_default, Position.Start, tint = false)
+            mBinding.space.text = getString(R.string.app_name)
         }
 
         mSpaceAdapter.update(Space.getAll().asSequence().toList())
@@ -355,18 +354,16 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
     private fun refreshCurrentFolderCount() {
         val project = getSelectedProject()
 
-        MainScope().launch {
-            if (project != null) {
-                mBinding.currentFolderCount.text = NumberFormat.getInstance().format(
-                    project.collections.map { it.size }
-                        .reduceOrNull { acc, count -> acc + count } ?: 0)
-                mBinding.currentFolderCount.show()
+        if (project != null) {
+            mBinding.currentFolderCount.text = NumberFormat.getInstance().format(
+                project.collections.map { it.size }
+                    .reduceOrNull { acc, count -> acc + count } ?: 0)
+            mBinding.currentFolderCount.show()
 
-                mBinding.uploadEditButton.toggle(project.isUploading)
-            } else {
-                mBinding.currentFolderCount.cloak()
-                mBinding.uploadEditButton.hide()
-            }
+            mBinding.uploadEditButton.toggle(project.isUploading)
+        } else {
+            mBinding.currentFolderCount.cloak()
+            mBinding.uploadEditButton.hide()
         }
     }
 
@@ -382,10 +379,10 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
 
         mSnackBar?.show()
 
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             val media = Picker.import(this@MainActivity, getSelectedProject(), uri)
 
-            MainScope().launch {
+            lifecycleScope.launch(Dispatchers.Main) {
                 mSnackBar?.dismiss()
                 intent = null
 

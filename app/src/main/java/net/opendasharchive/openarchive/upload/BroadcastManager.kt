@@ -22,7 +22,7 @@ object BroadcastManager {
         i.putExtra(MEDIA_ID, mediaId)
         i.putExtra(COLLECTION_ID, collectionId)
 
-        LocalBroadcastManager.getInstance(context).sendBroadcastSync(i)
+        LocalBroadcastManager.getInstance(context).sendBroadcast(i)
     }
 
     fun postProgress(context: Context, collectionId: Long, mediaId: Long, progress: Long) {
@@ -31,7 +31,7 @@ object BroadcastManager {
         i.putExtra(COLLECTION_ID, collectionId)
         i.putExtra(MEDIA_PROGRESS, progress)
 
-        LocalBroadcastManager.getInstance(context).sendBroadcastSync(i)
+        LocalBroadcastManager.getInstance(context).sendBroadcast(i)
     }
 
     fun postDelete(context: Context, mediaId: Long) {

@@ -117,7 +117,6 @@ private fun InternetArchiveLoginContent(
 
     Column(
         modifier = Modifier
-            .verticalScroll(rememberScrollState())
             .fillMaxSize()
             .padding(ThemeDimensions.spacing.medium),
         horizontalAlignment = Alignment.CenterHorizontally

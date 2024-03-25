@@ -124,9 +124,11 @@ class MainMediaFragment : Fragment() {
     fun updateItem(collectionId: Long, mediaId: Long, progress: Long) {
         mAdapters[collectionId]?.apply {
             updateItem(mediaId, progress)
-             mCollections[collectionId]?.let { collection ->
-                 mSection[collectionId]?.setHeader(collection, media)
-             }
+            if (progress == -1L) {
+                mCollections[collectionId]?.let { collection ->
+                    mSection[collectionId]?.setHeader(collection, media)
+                }
+            }
         }
     }
 

@@ -125,6 +125,7 @@ class UploadService : JobService() {
                 media.progress = 0 // Should we reset this?
                 media.sStatus = Media.Status.Uploading
                 media.statusMessage = ""
+                media.save()
             }
 
             media.licenseUrl = media.project?.licenseUrl
