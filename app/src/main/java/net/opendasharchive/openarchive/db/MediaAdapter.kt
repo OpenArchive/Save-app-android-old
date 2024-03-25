@@ -139,14 +139,16 @@ class MediaAdapter(
         holder.handle?.toggle(isEditMode)
     }
 
-    fun updateItem(mediaId: Long): Boolean {
+    fun updateItem(mediaId: Long, progress: Long): Boolean {
         val idx = media.indexOfFirst { it.id == mediaId }
         if (idx < 0) return false
 
-        val item = Media.get(mediaId) ?: return false
-
-        media[idx] = item
-
+        if (progress >= 0) {
+            media[idx].progress = progress
+        } else {
+            val item = Media.get(mediaId) ?: return false
+            media[idx] = item
+        }
         notifyItemChanged(idx)
 
         return true
