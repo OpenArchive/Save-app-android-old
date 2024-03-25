@@ -56,7 +56,7 @@ class MainMediaFragment : Fragment() {
             when (action) {
                 BroadcastManager.Action.Change -> {
                     handler.post {
-                        updateItem(action.collectionId, action.mediaId)
+                        updateItem(action.collectionId, action.mediaId, action.progress)
                     }
                 }
 
@@ -121,9 +121,9 @@ class MainMediaFragment : Fragment() {
         refresh()
     }
 
-    fun updateItem(collectionId: Long, mediaId: Long) {
+    fun updateItem(collectionId: Long, mediaId: Long, progress: Long) {
         mAdapters[collectionId]?.apply {
-            updateItem(mediaId)
+            updateItem(mediaId, progress)
              mCollections[collectionId]?.let { collection ->
                  mSection[collectionId]?.setHeader(collection, media)
              }

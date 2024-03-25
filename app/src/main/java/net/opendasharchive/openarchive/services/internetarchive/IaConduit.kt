@@ -2,7 +2,9 @@ package net.opendasharchive.openarchive.services.internetarchive
 
 import android.content.Context
 import android.net.Uri
-import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.db.Media
 import net.opendasharchive.openarchive.services.Conduit
@@ -27,6 +29,8 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         }
 
         val textMediaType = "texts".toMediaTypeOrNull()
+
+        private val gson = GsonBuilder().excludeFieldsWithoutExposeAnnotation().create()
     }
 
     override suspend fun upload(): Boolean {
@@ -42,7 +46,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             /// Upload metadata
             var basePath = "$slug-${Util.RandomString(4).nextString()}"
             val fileName = getUploadFileName(mMedia, true)
-            val metaJson = Gson().toJson(mMedia)
+            val metaJson = gson.toJsonTree(mMedia)
             val proof = getProof()
 
             val url = "$ARCHIVE_API_ENDPOINT/$basePath/$fileName"
@@ -52,7 +56,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
 
             // upload metadata and proofs async, and report failures
             basePath = "$slug-${Util.RandomString(4).nextString()}"
-            client.uploadMetaData(metaJson, basePath, fileName)
+            client.uploadMetaData(metaJson.toString(), basePath, fileName)
 
             /// Upload ProofMode metadata, if enabled and successfully created.
             for (file in proof) {
@@ -62,7 +66,9 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             val finalPath = ARCHIVE_DETAILS_ENDPOINT + basePath
             mMedia.serverUrl = finalPath
 
-            jobSucceeded()
+            withContext(Dispatchers.IO) {
+                jobSucceeded()
+            }
 
             return true
         } catch (e: Exception) {
@@ -224,20 +230,18 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
     }
 
     @Throws(Exception::class)
-    private suspend fun OkHttpClient.execute(request: Request): Boolean {
+    private suspend fun OkHttpClient.execute(request: Request) = withContext(Dispatchers.IO) {
         val result = newCall(request)
             .execute()
 
         if (result.isSuccessful.not()) {
             throw RuntimeException("${result.code}: ${result.message}")
         }
-
-        return true
     }
 
     @Throws(Exception::class)
     private fun OkHttpClient.enqueue(request: Request) {
-            newCall(request)
+        newCall(request)
             .enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     jobFailed(e)
