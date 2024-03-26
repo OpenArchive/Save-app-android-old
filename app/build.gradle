@@ -23,7 +23,7 @@ android {
         applicationId "net.opendasharchive.openarchive"
         minSdkVersion 21
         targetSdkVersion 34
-        versionCode 20554
+        versionCode 20555
         versionName '0.3.3'
         archivesBaseName = "Save-$versionName"
         multiDexEnabled true

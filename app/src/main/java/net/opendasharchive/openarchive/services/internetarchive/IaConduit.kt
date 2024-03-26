@@ -88,10 +88,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             mimeType.toMediaTypeOrNull(),
             createListener(cancellable = { !mCancelled }, onProgress = {
                 jobProgress(it)
-            }) {
-                Thread.sleep(500)
-                jobSucceeded()
-            }
+            })
         )
 
         val request = Request.Builder()
