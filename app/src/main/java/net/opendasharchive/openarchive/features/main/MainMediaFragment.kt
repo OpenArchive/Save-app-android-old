@@ -127,7 +127,6 @@ class MainMediaFragment : Fragment() {
 
     fun updateItem(collectionId: Long, mediaId: Long, progress: Long) {
         mAdapters[collectionId]?.apply {
-            doImageFade = false
             updateItem(mediaId, progress)
             if (progress == -1L) {
                 updateHeader(collectionId, media)

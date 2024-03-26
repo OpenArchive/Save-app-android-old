@@ -28,6 +28,7 @@ data class Space(
     var displayname: String = "",
     var password: String = "",
     var host: String = "",
+    var metaData: String = "",
     private var licenseUrl: String? = null,
     private var chunking: Boolean? = null
 ) : SugarRecord() {

@@ -10,7 +10,7 @@ import net.opendasharchive.openarchive.features.settings.SpaceSetupFragment
 import net.opendasharchive.openarchive.features.settings.SpaceSetupSuccessFragment
 import net.opendasharchive.openarchive.services.dropbox.DropboxFragment
 import net.opendasharchive.openarchive.services.gdrive.GDriveFragment
-import net.opendasharchive.openarchive.services.internetarchive.InternetArchiveFragment
+import net.opendasharchive.openarchive.features.internetarchive.presentation.InternetArchiveFragment
 import net.opendasharchive.openarchive.services.internetarchive.Util
 import net.opendasharchive.openarchive.services.webdav.WebDavFragment
 

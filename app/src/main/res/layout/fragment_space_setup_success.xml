@@ -52,8 +52,9 @@
             android:id="@+id/bt_authenticate"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:padding="@dimen/activity_row_padding"
             android:layout_marginHorizontal="@dimen/activity_horizontal_margin"
-            android:text="@string/action_done"
+            android:text="@string/action_continue"
             app:layout_constraintBottom_toBottomOf="parent"
             tools:ignore="ButtonStyle" />
 

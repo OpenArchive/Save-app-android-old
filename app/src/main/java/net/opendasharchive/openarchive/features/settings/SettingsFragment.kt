@@ -12,7 +12,7 @@ import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.features.core.BaseActivity
 import net.opendasharchive.openarchive.services.dropbox.DropboxActivity
 import net.opendasharchive.openarchive.services.gdrive.GDriveActivity
-import net.opendasharchive.openarchive.services.internetarchive.InternetArchiveActivity
+import net.opendasharchive.openarchive.features.internetarchive.presentation.InternetArchiveActivity
 import net.opendasharchive.openarchive.services.webdav.WebDavActivity
 import net.opendasharchive.openarchive.util.extensions.Position
 import net.opendasharchive.openarchive.util.extensions.getVersionName

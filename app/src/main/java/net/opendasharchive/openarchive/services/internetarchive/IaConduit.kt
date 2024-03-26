@@ -43,12 +43,11 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
 
             // TODO this should make sure we aren't accidentally using one of archive.org's metadata fields by accident
             val slug = getSlug(mMedia.title)
-            /// Upload metadata
-            var basePath = "$slug-${Util.RandomString(4).nextString()}"
             val fileName = getUploadFileName(mMedia, true)
-            val metaJson = gson.toJsonTree(mMedia)
+            val metaJson = gson.toJson(mMedia)
             val proof = getProof()
 
+            var basePath = "$slug-${Util.RandomString(4).nextString()}"
             val url = "$ARCHIVE_API_ENDPOINT/$basePath/$fileName"
 
             // upload content synchronously for progress
@@ -56,7 +55,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
 
             // upload metadata and proofs async, and report failures
             basePath = "$slug-${Util.RandomString(4).nextString()}"
-            client.uploadMetaData(metaJson.toString(), basePath, fileName)
+            client.uploadMetaData(metaJson, basePath, fileName)
 
             /// Upload ProofMode metadata, if enabled and successfully created.
             for (file in proof) {
@@ -66,9 +65,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             val finalPath = ARCHIVE_DETAILS_ENDPOINT + basePath
             mMedia.serverUrl = finalPath
 
-            withContext(Dispatchers.IO) {
-                jobSucceeded()
-            }
+            jobSucceeded()
 
             return true
         } catch (e: Exception) {
@@ -83,7 +80,6 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
     }
 
     private suspend fun OkHttpClient.uploadContent(url: String, mimeType: String) {
-
         val mediaUri = mMedia.originalFilePath
         val requestBody = RequestBodyUtil.create(
             mContext.contentResolver,
@@ -92,10 +88,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             mimeType.toMediaTypeOrNull(),
             createListener(cancellable = { !mCancelled }, onProgress = {
                 jobProgress(it)
-            }) {
-                Thread.sleep(500)
-                jobSucceeded()
-            }
+            })
         )
 
         val request = Request.Builder()
@@ -113,7 +106,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             textMediaType,
             content.byteInputStream(),
             content.length.toLong(),
-            null
+            createListener(cancellable = { !mCancelled })
         )
 
         val url = "$ARCHIVE_API_ENDPOINT/$basePath/$fileName.meta.json"

@@ -6,8 +6,12 @@ import com.facebook.imagepipeline.core.ImagePipelineConfig
 import com.facebook.imagepipeline.decoder.SimpleProgressiveJpegConfig
 import com.orm.SugarApp
 import info.guardianproject.netcipher.proxy.OrbotHelper
+import net.opendasharchive.openarchive.core.di.coreModule
+import net.opendasharchive.openarchive.core.di.featuresModule
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.Theme
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.startKoin
 import timber.log.Timber
 
 class SaveApp : SugarApp() {
@@ -18,6 +22,11 @@ class SaveApp : SugarApp() {
 
     override fun onCreate() {
         super.onCreate()
+
+        startKoin {
+            androidContext(this@SaveApp)
+            modules(coreModule, featuresModule)
+        }
 
         val config = ImagePipelineConfig.newBuilder(this)
             .setProgressiveJpegConfig(SimpleProgressiveJpegConfig())
