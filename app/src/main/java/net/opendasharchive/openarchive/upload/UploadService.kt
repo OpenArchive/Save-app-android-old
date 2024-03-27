@@ -18,6 +18,7 @@ import androidx.work.Configuration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.CleanInsightsManager
 import net.opendasharchive.openarchive.R
@@ -90,7 +91,7 @@ class UploadService : JobService() {
         mKeepUploading = false
         for (conduit in mConduits) conduit.cancel()
         mConduits.clear()
-
+        scope.cancel()
         return true
     }
 

@@ -41,34 +41,33 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
 
             val client = SaveClient.get(mContext)
 
-            // TODO this should make sure we aren't accidentally using one of archive.org's metadata fields by accident
-            val slug = getSlug(mMedia.title)
             val fileName = getUploadFileName(mMedia, true)
             val metaJson = gson.toJson(mMedia)
             val proof = getProof()
 
-            var basePath = "$slug-${Util.RandomString(4).nextString()}"
-            val url = "$ARCHIVE_API_ENDPOINT/$basePath/$fileName"
+            if (mMedia.serverUrl.isBlank()) {
+                // TODO this should make sure we aren't accidentally using one of archive.org's metadata fields by accident
+                val slug = getSlug(mMedia.title)
+                val newIdentifier = "$slug-${Util.RandomString(4).nextString()}"
+                // create an identifier for the upload
+                mMedia.serverUrl = newIdentifier
+            }
 
             // upload content synchronously for progress
-            client.uploadContent(url, mimeType)
+            client.uploadContent(fileName, mimeType)
 
             // upload metadata and proofs async, and report failures
-            basePath = "$slug-${Util.RandomString(4).nextString()}"
-            client.uploadMetaData(metaJson, basePath, fileName)
+            client.uploadMetaData(metaJson, fileName)
 
             /// Upload ProofMode metadata, if enabled and successfully created.
             for (file in proof) {
-                client.uploadProofFiles(file, basePath)
+                client.uploadProofFiles(file)
             }
-
-            val finalPath = ARCHIVE_DETAILS_ENDPOINT + basePath
-            mMedia.serverUrl = finalPath
 
             jobSucceeded()
 
             return true
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             jobFailed(e)
         }
 
@@ -79,8 +78,11 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         // Ignored. Not used here.
     }
 
-    private suspend fun OkHttpClient.uploadContent(url: String, mimeType: String) {
+    private suspend fun OkHttpClient.uploadContent(fileName: String, mimeType: String) {
         val mediaUri = mMedia.originalFilePath
+
+        val url = "${ARCHIVE_API_ENDPOINT}/${mMedia.serverUrl}/$fileName"
+
         val requestBody = RequestBodyUtil.create(
             mContext.contentResolver,
             Uri.parse(mediaUri),
@@ -101,7 +103,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
     }
 
     @Throws(IOException::class)
-    private fun OkHttpClient.uploadMetaData(content: String, basePath: String, fileName: String) {
+    private fun OkHttpClient.uploadMetaData(content: String, fileName: String) {
         val requestBody = RequestBodyUtil.create(
             textMediaType,
             content.byteInputStream(),
@@ -109,7 +111,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             createListener(cancellable = { !mCancelled })
         )
 
-        val url = "$ARCHIVE_API_ENDPOINT/$basePath/$fileName.meta.json"
+        val url = "${ARCHIVE_API_ENDPOINT}/${mMedia.serverUrl}/$fileName.meta.json"
 
         val request = Request.Builder()
             .url(url)
@@ -122,7 +124,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
 
     /// upload proof mode
     @Throws(IOException::class)
-    private fun OkHttpClient.uploadProofFiles(uploadFile: File, basePath: String) {
+    private fun OkHttpClient.uploadProofFiles(uploadFile: File) {
         val requestBody = RequestBodyUtil.create(
             mContext.contentResolver,
             Uri.fromFile(uploadFile),
@@ -130,7 +132,7 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
             textMediaType, createListener(cancellable = { !mCancelled })
         )
 
-        val url = "$ARCHIVE_API_ENDPOINT/$basePath/${uploadFile.name}"
+        val url = "$ARCHIVE_API_ENDPOINT/${mMedia.serverUrl}/${uploadFile.name}"
 
         val request = Request.Builder()
             .url(url)
