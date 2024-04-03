@@ -48,6 +48,8 @@ class UploadManagerActivity : BaseActivity() {
     }
 
     private val mMessageReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        private val handler = Handler(Looper.getMainLooper())
+
         override fun onReceive(context: Context, intent: Intent) {
             val action = BroadcastManager.getAction(intent)
             val mediaId = action?.mediaId ?: return
@@ -56,10 +58,10 @@ class UploadManagerActivity : BaseActivity() {
                 val media = Media.get(mediaId)
 
                 if (action == BroadcastManager.Action.Delete || media?.sStatus == Media.Status.Uploaded) {
-                    mFrag?.removeItem(mediaId)
+                    handler.post { mFrag?.removeItem(mediaId) }
                 }
                 else {
-                    mFrag?.updateItem(mediaId)
+                    handler.post { mFrag?.updateItem(mediaId) }
                 }
 
                 if (media?.sStatus == Media.Status.Error) {
@@ -70,7 +72,7 @@ class UploadManagerActivity : BaseActivity() {
                 }
             }
 
-            Handler(Looper.getMainLooper()).post {
+            handler.post {
                 updateTitle()
             }
         }

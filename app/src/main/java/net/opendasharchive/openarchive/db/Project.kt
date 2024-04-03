@@ -37,7 +37,7 @@ data class Project(
         }
 
     val isUploading
-        get() = collections.firstOrNull { it.isUploading } != null
+        get() = collections.any { it.isUploading }
 
     val collections: List<Collection>
         get() = find(Collection::class.java, "project_id = ?", id.toString())

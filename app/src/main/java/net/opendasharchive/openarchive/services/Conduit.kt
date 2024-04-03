@@ -49,6 +49,7 @@ abstract class Conduit(
 
     open fun cancel() {
         mCancelled = true
+        mMedia.save()
     }
 
 
