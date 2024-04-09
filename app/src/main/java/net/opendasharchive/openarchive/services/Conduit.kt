@@ -10,7 +10,6 @@ import com.google.gson.GsonBuilder
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.db.Media
 import net.opendasharchive.openarchive.db.Space
-import net.opendasharchive.openarchive.services.dropbox.DropboxConduit
 import net.opendasharchive.openarchive.services.gdrive.GDriveConduit
 import net.opendasharchive.openarchive.services.internetarchive.IaConduit
 import net.opendasharchive.openarchive.services.webdav.WebDavConduit
@@ -236,8 +235,6 @@ abstract class Conduit(
                 Space.Type.INTERNET_ARCHIVE -> IaConduit(media, context)
 
                 Space.Type.WEBDAV -> WebDavConduit(media, context)
-
-                Space.Type.DROPBOX -> DropboxConduit(media, context)
 
                 Space.Type.GDRIVE -> GDriveConduit(media, context)
 

@@ -46,6 +46,7 @@ class SaveApp : SugarApp() {
         // enable timber logging library for debug builds
         if(BuildConfig.DEBUG){
             Timber.plant(Timber.DebugTree())
+            Timber.tag("SAVE")
         }
     }
 

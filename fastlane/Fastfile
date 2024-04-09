@@ -1,6 +1,27 @@
 default_platform(:android)
 
 platform :android do
+  # changelog = prompt(
+  #   text: "Changelog: ",
+  #   multi_line_end_keyword: "END")
+
+  # desc "Fetches the latest version code from the Play Console and increments it by 1"
+  # lane :fetch_and_increment_build_number do
+  #   app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+
+  #   version_codes = google_play_track_version_codes(
+  #     package_name: app_identifier,
+  #     track: "internal",
+  #     json_key: ENV["ANDROID_JSON_KEY_FILE"]
+  #   )
+    
+  #   updated_version_code = version_codes[0] + 1
+    
+  #   increment_version_code(
+  #     version_code: updated_version_code
+  #   )
+  # end
+
   desc "Runs all the tests"
   lane :test do
     gradle(task: "test")
@@ -8,6 +29,7 @@ platform :android do
 
   desc "Create a release build for manual deployment"
   lane :release do
+    fetch_and_increment_build_number
     gradle(
       task: "assemble",
       build_type: "release",
@@ -18,7 +40,6 @@ platform :android do
         "android.injected.signing.key.password" => ENV["FASTLANE_KEY_PASSWORD"],
       }
     )
-
     send_progress_message("Copying APK to current folder")
     copy_artifacts(
       artifacts: [lane_context[SharedValues::GRADLE_APK_OUTPUT_PATH]],
@@ -26,12 +47,12 @@ platform :android do
     )
   end
 
-  desc "Increments the version code"
-  lane :increment_version_code do
-    android_increment_version_code(
-      app_project_dir: "./app"
-    )
-  end
+  # desc "Increments the version code"
+  # lane :increment_version_code do
+  #   android_increment_version_code(
+  #     app_project_dir: "./app"
+  #   )
+  # end
 
   desc "Increments the version name"
   lane :increment_version_name do
@@ -43,17 +64,30 @@ platform :android do
   desc "Submit a new Internal Build"
   lane :internal do
     send_progress_message("Build Started")
-    gradle(task: "clean assembleRelease")
-
+    # versions = google_play_track_version_codes(track: "internal")
+    # version_code = versions[0]
+    gradle(
+	  task: "bundle",
+      build_type: "release",
+      print_command_output: false,
+      properties: {
+        "android.injected.signing.store.file" => ENV["FASTLANE_KEYSTORE_FILE"],
+        "android.injected.signing.key.alias" => ENV["FASTLANE_KEY_ALIAS"],
+      })
     send_progress_message("Uploading To Internal track")
-    upload_to_play_store(track: "internal")
+    upload_to_play_store(
+        track: "internal",
+        skip_upload_images: true,
+        skip_upload_changelogs: true,
+        skip_upload_screenshots: true,
+        skip_upload_apk: true,
+        json_key: ENV["FASTLANE_JSON_KEY_FILE"])
   end
 
   desc "Submit a new Alpha Build"
   lane :alpha do
     send_progress_message("Build Started")
     gradle(task: "clean assembleRelease")
-
     send_progress_message("Uploading To Alpha track")
     upload_to_play_store(track: "alpha")
   end
@@ -61,10 +95,15 @@ platform :android do
   desc "Submit a new Beta Build"
   lane :beta do
     send_progress_message("Build Started 🚀")
-    gradle(task: "clean assembleRelease")
-
+    # increment_version_code
+    # gradle(task: "clean assembleRelease")
     send_progress_message("Uploading To Beta track")
-    upload_to_play_store(track: "beta")
+    upload_to_play_store(
+		track: "beta",
+		skip_upload_images: true,
+		skip_upload_changelogs: true,
+		skip_upload_screenshots: true,
+		json_key: ENV["FASTLANE_JSON_KEY_FILE"])
   end
 
   desc "Deploy a new version to the Google Play"

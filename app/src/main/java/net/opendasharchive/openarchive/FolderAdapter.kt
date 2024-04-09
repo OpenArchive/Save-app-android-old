@@ -10,10 +10,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import net.opendasharchive.openarchive.databinding.RvSimpleRowBinding
 import net.opendasharchive.openarchive.db.Project
-import net.opendasharchive.openarchive.util.extensions.Position
-import net.opendasharchive.openarchive.util.extensions.setDrawable
 import java.lang.ref.WeakReference
-import kotlin.math.roundToInt
 
 interface FolderAdapterListener {
 
@@ -29,12 +26,20 @@ class FolderAdapter(listener: FolderAdapterListener?) : ListAdapter<Project, Fol
         fun bind(listener: WeakReference<FolderAdapterListener>?, project: Project?) {
             binding.rvTitle.text = project?.description
 
+            if (listener?.get()?.getSelectedProject()?.id == project?.id) {
+                val icon = ContextCompat.getDrawable(binding.rvIcon.context, R.drawable.baseline_folder_white_24)
+                val color = ContextCompat.getColor(binding.rvIcon.context, R.color.colorPrimary)
+                icon?.setTint(color)
+                binding.rvIcon.setImageDrawable(icon)
+            } else {
+                val icon = ContextCompat.getDrawable(binding.rvIcon.context, R.drawable.outline_folder_white_24)
+                val color = ContextCompat.getColor(binding.rvIcon.context, R.color.colorOnBackground)
+                icon?.setTint(color)
+                binding.rvIcon.setImageDrawable(icon)
+            }
+
             binding.rvTitle.setTextColor(getColor(binding.rvTitle.context,
                 listener?.get()?.getSelectedProject()?.id == project?.id))
-
-            binding.rvTitle.setDrawable(R.drawable.ic_folder, Position.Start, 0.75)
-            binding.rvTitle.compoundDrawablePadding =
-                binding.rvTitle.context.resources.getDimension(R.dimen.padding_small).roundToInt()
 
             if (project != null) {
                 binding.root.setOnClickListener {

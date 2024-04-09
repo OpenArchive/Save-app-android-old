@@ -2,17 +2,14 @@ package net.opendasharchive.openarchive
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.core.view.updatePaddingRelative
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import net.opendasharchive.openarchive.databinding.RvSimpleRowBinding
 import net.opendasharchive.openarchive.db.Space
-import net.opendasharchive.openarchive.util.extensions.Position
 import net.opendasharchive.openarchive.util.extensions.scaled
-import net.opendasharchive.openarchive.util.extensions.setDrawable
 import java.lang.ref.WeakReference
-import kotlin.math.roundToInt
 
 interface SpaceAdapterListener {
 
@@ -31,35 +28,39 @@ class SpaceAdapter(listener: SpaceAdapterListener?) : ListAdapter<Space, SpaceAd
             val context = binding.rvTitle.context
 
             if (listener?.get()?.getSelectedSpace()?.id == space?.id) {
-                binding.root.setBackgroundColor(FolderAdapter.getColor(context, true))
+                val icon = Space.current?.getAvatar(context)?.scaled(32, context)
+                val color = ContextCompat.getColor(binding.rvIcon.context, R.color.colorPrimary)
+                icon?.setTint(color)
+                binding.rvIcon.setImageDrawable(icon)
             }
             else {
-                binding.root.setBackgroundColor(0)
+                val icon = space?.getAvatar(context)?.scaled(32, context)
+                val color = ContextCompat.getColor(binding.rvIcon.context, R.color.colorOnBackground)
+                icon?.setTint(color)
+                binding.rvIcon.setImageDrawable(icon)
             }
-
-            binding.rvTitle.compoundDrawablePadding =
-                context.resources.getDimension(R.dimen.padding_small).roundToInt()
 
             if (space?.type == ADD_SPACE_ID) {
                 binding.rvTitle.text = context.getText(R.string.add_another_account)
 
-                binding.rvTitle.setDrawable(R.drawable.ic_add, Position.Start, 0.75)
-
-                binding.rvTitle.updatePaddingRelative(start = context.resources.getDimension(R.dimen.activity_horizontal_margin).roundToInt())
+                val icon = ContextCompat.getDrawable(binding.rvIcon.context, R.drawable.ic_add)
+                binding.rvIcon.setImageDrawable(icon)
 
                 binding.root.setOnClickListener {
                     listener?.get()?.addSpaceClicked()
                 }
 
                 return
+            } else {
+                binding.rvTitle.text = space?.friendlyName
             }
 
-            binding.rvTitle.text = space?.friendlyName
-
-            binding.rvTitle.setDrawable(space?.getAvatar(context)?.scaled(32, context),
-                Position.Start, tint = false)
-
-            binding.rvTitle.updatePaddingRelative(start = 0)
+            binding.rvTitle.setTextColor(
+                FolderAdapter.getColor(
+                    binding.rvTitle.context,
+                    listener?.get()?.getSelectedSpace()?.id == space?.id
+                )
+            )
 
             if (space != null) {
                 binding.root.setOnClickListener {

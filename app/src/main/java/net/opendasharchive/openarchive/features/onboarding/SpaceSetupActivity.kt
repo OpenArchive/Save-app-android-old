@@ -8,7 +8,6 @@ import net.opendasharchive.openarchive.features.core.BaseActivity
 import net.opendasharchive.openarchive.features.main.MainActivity
 import net.opendasharchive.openarchive.features.settings.SpaceSetupFragment
 import net.opendasharchive.openarchive.features.settings.SpaceSetupSuccessFragment
-import net.opendasharchive.openarchive.services.dropbox.DropboxFragment
 import net.opendasharchive.openarchive.services.gdrive.GDriveFragment
 import net.opendasharchive.openarchive.features.internetarchive.presentation.InternetArchiveFragment
 import net.opendasharchive.openarchive.services.internetarchive.Util
@@ -31,7 +30,6 @@ class SpaceSetupActivity : BaseActivity() {
         initSpaceSetupFragmentBindings()
         initWebDavFragmentBindings()
         initSpaceSetupSuccessFragmentBindings()
-        initDropboxFragmentBindings()
         initInternetArchiveFragmentBindings()
         initGDriveFragmentBindings()
     }
@@ -75,15 +73,6 @@ class SpaceSetupActivity : BaseActivity() {
             SpaceSetupFragment.RESULT_REQUEST_KEY, this
         ) { _, bundle ->
             when (bundle.getString(SpaceSetupFragment.RESULT_BUNDLE_KEY)) {
-                SpaceSetupFragment.RESULT_VAL_DROPBOX -> {
-                    progress2()
-                    supportFragmentManager
-                        .beginTransaction()
-                        .setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
-                        .replace(mBinding.spaceSetupFragment.id, DropboxFragment(), FRAGMENT_TAG)
-                        .commit()
-                }
-
                 SpaceSetupFragment.RESULT_VAL_INTERNET_ARCHIVE -> {
                     progress2()
                     supportFragmentManager
@@ -119,36 +108,6 @@ class SpaceSetupActivity : BaseActivity() {
                         .commit()
                 }
             }
-        }
-    }
-
-    private fun initDropboxFragmentBindings() {
-        supportFragmentManager.setFragmentResultListener(
-            DropboxFragment.RESP_CANCEL,
-            this
-        ) { _, _ ->
-            progress1()
-            supportFragmentManager
-                .beginTransaction()
-                .setCustomAnimations(R.anim.slide_in_left, R.anim.slide_out_right)
-                .replace(mBinding.spaceSetupFragment.id, SpaceSetupFragment(), FRAGMENT_TAG)
-                .commit()
-        }
-
-        supportFragmentManager.setFragmentResultListener(
-            DropboxFragment.RESP_AUTHENTICATED,
-            this
-        ) { _, _ ->
-            progress3()
-            supportFragmentManager
-                .beginTransaction()
-                .setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
-                .replace(
-                    mBinding.spaceSetupFragment.id,
-                    SpaceSetupSuccessFragment.newInstance(getString(R.string.you_have_successfully_connected_to_dropbox)),
-                    FRAGMENT_TAG
-                )
-                .commit()
         }
     }
 

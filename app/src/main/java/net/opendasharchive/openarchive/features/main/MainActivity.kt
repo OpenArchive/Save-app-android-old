@@ -8,17 +8,15 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
-import android.widget.ProgressBar
+import android.view.View
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2
 import com.esafirm.imagepicker.features.ImagePickerLauncher
 import com.google.android.material.snackbar.Snackbar
-import com.google.android.material.snackbar.Snackbar.SnackbarLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.FolderAdapter
@@ -29,6 +27,7 @@ import net.opendasharchive.openarchive.SpaceAdapterListener
 import net.opendasharchive.openarchive.databinding.ActivityMainBinding
 import net.opendasharchive.openarchive.db.Project
 import net.opendasharchive.openarchive.db.Space
+import net.opendasharchive.openarchive.extensions.getMeasurments
 import net.opendasharchive.openarchive.features.core.BaseActivity
 import net.opendasharchive.openarchive.features.folders.AddFolderActivity
 import net.opendasharchive.openarchive.features.media.AddMediaDialogFragment
@@ -43,16 +42,14 @@ import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.ProofModeHelper
 import net.opendasharchive.openarchive.util.extensions.Position
 import net.opendasharchive.openarchive.util.extensions.cloak
-import net.opendasharchive.openarchive.util.extensions.disableAnimation
 import net.opendasharchive.openarchive.util.extensions.hide
-import net.opendasharchive.openarchive.util.extensions.isVisible
-import net.opendasharchive.openarchive.util.extensions.makeSnackBar
 import net.opendasharchive.openarchive.util.extensions.scaleAndTintDrawable
 import net.opendasharchive.openarchive.util.extensions.scaled
 import net.opendasharchive.openarchive.util.extensions.setDrawable
 import net.opendasharchive.openarchive.util.extensions.show
 import net.opendasharchive.openarchive.util.extensions.toggle
 import java.text.NumberFormat
+import kotlin.math.roundToInt
 
 class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener {
 
@@ -69,6 +66,8 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
 
     private var mLastItem: Int = 0
     private var mLastMediaItem: Int = 0
+    private var serverListOffset: Float = 0F
+    private var serverListCurOffset: Float = 0F
 
     private var mCurrentItem
         get() = mBinding.pager.currentItem
@@ -104,8 +103,8 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
         supportActionBar?.setDisplayHomeAsUpEnabled(false)
         supportActionBar?.title = null
 
-        mSnackBar = mBinding.root.makeSnackBar(getString(R.string.importing_media))
-        (mSnackBar?.view as? SnackbarLayout)?.addView(ProgressBar(this))
+//        mSnackBar = mBinding.root.makeSnackBar(getString(R.string.importing_media))
+//        (mSnackBar?.view as? SnackbarLayout)?.addView(ProgressBar(this))
 
         mBinding.uploadEditButton.setOnClickListener {
             startActivity(Intent(this, UploadManagerActivity::class.java))
@@ -134,19 +133,41 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
             override fun onPageScrollStateChanged(state: Int) {}
         })
 
-        mBinding.space.setOnClickListener {
-            mBinding.spacesCard.toggle()
-            mBinding.space.setDrawable(
-                if (mBinding.spacesCard.isVisible) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
-                Position.End,
-                0.75
-            )
+        mBinding.spaceName.setOnClickListener {
+            var newAlpha = 0F
+
+            if (serverListCurOffset != serverListOffset) {
+                serverListCurOffset = serverListOffset
+                mBinding.spaceName.setDrawable(R.drawable.ic_expand_more, Position.End, 0.75)
+            } else {
+                newAlpha = 1F
+                serverListCurOffset = 0F
+                mBinding.spaceName.setDrawable(R.drawable.ic_expand_less, Position.End, 0.75)
+            }
+
+            mBinding.spaces.visibility = View.VISIBLE
+            mBinding.currentSpaceName.visibility = View.VISIBLE
+            mBinding.newFolder.visibility = View.VISIBLE
+            mBinding.folders.visibility = View.VISIBLE
+
+            mBinding.spaces.animate().translationY(serverListCurOffset).alpha(newAlpha).withEndAction(
+                Runnable {
+                    run() {
+                        if (newAlpha == 0F) {
+                            mBinding.spaces.hide(false)
+                        }
+                    }
+                })
+            mBinding.currentSpaceName.animate().alpha(1 - newAlpha)
+            mBinding.newFolder.animate().alpha(1 - newAlpha)
+            mBinding.folders.animate().alpha(1 - newAlpha)
         }
-        mBinding.space.setDrawable(
-            if (mBinding.spacesCard.isVisible) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
-            Position.End,
-            0.75
-        )
+
+        mBinding.currentSpaceName.text = Space.current?.friendlyName
+        mBinding.currentSpaceName.setDrawable(Space.current?.getAvatar(applicationContext)?.scaled(32, applicationContext),
+            Position.Start, tint = false)
+        mBinding.currentSpaceName.compoundDrawablePadding =
+            applicationContext.resources.getDimension(R.dimen.padding_small).roundToInt()
 
         mSpaceAdapter = SpaceAdapter(this)
         mBinding.spaces.layoutManager = LinearLayoutManager(this)
@@ -209,10 +230,10 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
     override fun onStart() {
         super.onStart()
 
-        ProofModeHelper.init(this) {
-            // Check for any queued uploads and restart, only after ProofMode is correctly initialized.
-            UploadService.startUploadService(this)
-        }
+//        ProofModeHelper.init(this) {
+//            // Check for any queued uploads and restart, only after ProofMode is correctly initialized.
+//            UploadService.startUploadService(this)
+//        }
 
         requestNotificationPermission()
     }
@@ -224,11 +245,20 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
 
         mCurrentItem = mLastItem
 
-        if (Space.current?.host.isNullOrEmpty()) {
+        if (Space.current === null) {
             startActivity(Intent(this, Onboarding23Activity::class.java))
         }
 
         importSharedMedia(intent)
+
+        if (serverListOffset == 0F) {
+            val dims = mBinding.spaces.getMeasurments()
+            serverListOffset = -dims.second.toFloat()
+            serverListCurOffset = serverListOffset
+            mBinding.spaces.visibility = View.GONE
+            mBinding.spaces.animate().translationY(serverListOffset)
+            mBinding.spaceName.setDrawable(R.drawable.ic_expand_more, Position.End, 0.75)
+        }
     }
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(
@@ -294,18 +324,18 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
     }
 
     private fun refreshSpace() {
-        val currentSpace = Space.current
+//        val currentSpace = Space.current
 
-        if (currentSpace != null) {
-            mBinding.space.setDrawable(
-                currentSpace.getAvatar(this@MainActivity)
-                    ?.scaled(32, this@MainActivity), Position.Start, tint = false
-            )
-            mBinding.space.text = currentSpace.friendlyName
-        } else {
-            mBinding.space.setDrawable(R.drawable.avatar_default, Position.Start, tint = false)
-            mBinding.space.text = getString(R.string.app_name)
-        }
+//        if (currentSpace != null) {
+//            mBinding.space.setDrawable(
+//                currentSpace.getAvatar(this@MainActivity)
+//                    ?.scaled(32, this@MainActivity), Position.Start, tint = false
+//            )
+            mBinding.spaceName.text = "Servers" // currentSpace.friendlyName
+//        } else {
+//            mBinding.space.setDrawable(R.drawable.avatar_default, Position.Start, tint = false)
+//            mBinding.space.text = getString(R.string.app_name)
+//        }
 
         mSpaceAdapter.update(Space.getAll().asSequence().toList())
 
@@ -411,23 +441,23 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
         }
     }
 
-    private fun showAlertIcon() {
-        mBinding.alertIcon.show()
-        TooltipCompat.setTooltipText(
-            mBinding.alertIcon,
-            getString(R.string.unsecured_internet_connection)
-        )
-    }
+//    private fun showAlertIcon() {
+//        mBinding.alertIcon.show()
+//        TooltipCompat.setTooltipText(
+//            mBinding.alertIcon,
+//            getString(R.string.unsecured_internet_connection)
+//        )
+//    }
 
     @SuppressLint("NotifyDataSetChanged")
     override fun projectClicked(project: Project) {
         mCurrentItem = mPagerAdapter.projects.indexOf(project)
 
-        mBinding.root.closeDrawer(mBinding.folderBar)
+//        mBinding.root.closeDrawer(mBinding.folderBar)
 
-        mBinding.spacesCard.disableAnimation {
-            mBinding.spacesCard.hide()
-        }
+//        mBinding.spacesCard.disableAnimation {
+//            mBinding.spacesCard.hide()
+//        }
 
         // make sure that even when navigating to settings and picking a folder there
         // the dataset will get update correctly
@@ -445,17 +475,13 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
 
         mBinding.root.closeDrawer(mBinding.folderBar)
 
-        mBinding.spacesCard.disableAnimation {
-            mBinding.spacesCard.hide()
-        }
+//        mBinding.spacesCard.disableAnimation {
+//            mBinding.spacesCard.hide()
+//        }
     }
 
     override fun addSpaceClicked() {
         mBinding.root.closeDrawer(mBinding.folderBar)
-
-        mBinding.spacesCard.disableAnimation {
-            mBinding.spacesCard.hide()
-        }
 
         startActivity(Intent(this, SpaceSetupActivity::class.java))
     }

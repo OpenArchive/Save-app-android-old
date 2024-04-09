@@ -7,8 +7,6 @@ import android.view.ViewGroup
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
 import net.opendasharchive.openarchive.databinding.FragmentSpaceSetupBinding
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.util.extensions.hide
@@ -25,17 +23,6 @@ class SpaceSetupFragment : Fragment() {
 
         mBinding.webdav.setOnClickListener {
             setFragmentResult(RESULT_REQUEST_KEY, bundleOf(RESULT_BUNDLE_KEY to RESULT_VAL_WEBDAV))
-        }
-
-        if (Space.has(Space.Type.DROPBOX)) {
-            mBinding.dropbox.hide()
-        } else {
-            mBinding.dropbox.setOnClickListener {
-                setFragmentResult(
-                    RESULT_REQUEST_KEY,
-                    bundleOf(RESULT_BUNDLE_KEY to RESULT_VAL_DROPBOX)
-                )
-            }
         }
 
         if (Space.has(Space.Type.INTERNET_ARCHIVE)) {
@@ -64,8 +51,9 @@ class SpaceSetupFragment : Fragment() {
     }
 
     private fun playServicesAvailable(): Boolean {
-        return ConnectionResult.SUCCESS == GoogleApiAvailability.getInstance()
-            .isGooglePlayServicesAvailable(requireContext())
+        return true
+//        return ConnectionResult.SUCCESS == GoogleApiAvailability.getInstance()
+//            .isGooglePlayServicesAvailable(requireContext())
     }
 
     companion object {

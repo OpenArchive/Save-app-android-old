@@ -11,7 +11,6 @@ import com.github.abdularis.civ.AvatarImageView
 import com.orm.SugarRecord
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.features.onboarding.SpaceSetupActivity
-import net.opendasharchive.openarchive.services.dropbox.DropboxConduit
 import net.opendasharchive.openarchive.services.gdrive.GDriveConduit
 import net.opendasharchive.openarchive.services.internetarchive.IaConduit
 import net.opendasharchive.openarchive.util.Prefs
@@ -42,11 +41,6 @@ data class Space(
                 name = IaConduit.NAME
                 host = IaConduit.ARCHIVE_API_ENDPOINT
             }
-            Type.DROPBOX -> {
-                name = DropboxConduit.NAME
-                host = DropboxConduit.HOST
-                username = DropboxConduit.HOST
-            }
             Type.GDRIVE -> {
                 name = GDriveConduit.NAME
             }
@@ -56,8 +50,11 @@ data class Space(
     enum class Type(val id: Int, val friendlyName: String) {
         WEBDAV(0, "WebDAV"),
         INTERNET_ARCHIVE(1, IaConduit.NAME),
-        DROPBOX(3, DropboxConduit.NAME),
         GDRIVE(4, GDriveConduit.NAME),
+    }
+
+    enum class IconStyle {
+        SOLID, OUTLINE
     }
 
     companion object {
@@ -158,16 +155,14 @@ data class Space(
         return find(Project::class.java, "space_id = ? AND description = ?", id.toString(), description).size > 0
     }
 
-    fun getAvatar(context: Context): Drawable? {
+    fun getAvatar(context: Context, style: IconStyle = IconStyle.SOLID): Drawable? {
         val color = ContextCompat.getColor(context, R.color.colorOnBackground)
         return when (tType) {
             Type.WEBDAV -> ContextCompat.getDrawable(context, R.drawable.ic_private_server)?.tint(color)
 
             Type.INTERNET_ARCHIVE -> ContextCompat.getDrawable(context, R.drawable.ic_internet_archive)?.tint(color)
 
-            Type.DROPBOX -> ContextCompat.getDrawable(context, R.drawable.ic_dropbox23)?.tint(color)
-
-            Type.GDRIVE -> ContextCompat.getDrawable(context, R.drawable.logo_drive_2020q4_color_2x_web_64dp)
+            Type.GDRIVE -> ContextCompat.getDrawable(context, R.drawable.logo_gdrive_outline)
 
             else -> TextDrawable.builder().buildRound(initial, color)
         }
@@ -175,7 +170,7 @@ data class Space(
 
     fun setAvatar(view: ImageView) {
         when (tType) {
-            Type.INTERNET_ARCHIVE, Type.DROPBOX -> {
+            Type.INTERNET_ARCHIVE -> {
                 if (view is AvatarImageView) {
                     view.state = AvatarImageView.SHOW_IMAGE
                 }

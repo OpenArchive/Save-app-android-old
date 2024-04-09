@@ -4,6 +4,7 @@
     <!-- Activities -->
     <string name="app_name" translatable="false">Save</string>
     <string name="app_subtext">Archive Your Media\n<a href="#">learn more</a></string>
+    <string name="web_client_id">741316235729-ohg8quvto8ajl8qpil4r9rm1o3gfml3t.apps.googleusercontent.com</string>
 
     <string name="title_activity_login">Log in</string>
     <string name="title_activity_first_start">First Start</string>
@@ -146,7 +147,7 @@
     <string name="secret_key">Secret Key</string>
     <string name="info_archiveorg_keys"><b><i>Save</i></b> needs your Internet Archive account\'s API keys to be able to upload media.</string>
     <string name="action_acquire_keys">Acquire Keys</string>
-    <string name="new_folder">New Folder</string>
+    <string name="new_folder">ADD FOLDER</string>
     <string name="please_do_not_include_special_characters_in_the_name">Please do not include special characters in the name.</string>
     <string name="are_you_sure_you_want_to_remove_this_server_from_the_app">Are you sure you want to remove this server from the app?</string>
     <string name="folder_name_already_exists">Folder name already exists.</string>
@@ -174,7 +175,7 @@
     <!-- Clean Insights measurement -->
     <string name="server_name_optional">Server Name (Optional)</string>
     <string name="dropbox_id">Dropbox ID:</string>
-    <string name="add_another_account">Add Another Account</string>
+    <string name="add_another_account">Add Server</string>
     <string name="prefs_proofmode_key_encryption_title_all">Secure ProofMode Key with Biometrics or Device Passcode</string>
     <string name="prefs_proofmode_key_encryption_title_biometrics">Secure ProofMode Key with Biometrics</string>
     <string name="prefs_proofmode_key_encryption_title_passcode">Secure ProofMode Key with Device Passcode</string>

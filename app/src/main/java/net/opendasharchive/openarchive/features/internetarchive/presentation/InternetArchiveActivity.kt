@@ -29,7 +29,7 @@ class InternetArchiveActivity : AppCompatActivity() {
         when (result) {
             IAResult.Saved -> {
                 startActivity(Intent(this, MainActivity::class.java))
-                measureNewBackend(Space.Type.INTERNET_ARCHIVE)
+                // measureNewBackend(Space.Type.INTERNET_ARCHIVE)
             }
 
             IAResult.Deleted -> Space.navigate(this)
@@ -38,12 +38,12 @@ class InternetArchiveActivity : AppCompatActivity() {
     }
 }
 
-fun Activity.measureNewBackend(type: Space.Type) {
-    CleanInsightsManager.getConsent(this) {
-        CleanInsightsManager.measureEvent(
-            "backend",
-            "new",
-            type.friendlyName
-        )
-    }
-}
+//fun Activity.measureNewBackend(type: Space.Type) {
+//    CleanInsightsManager.getConsent(this) {
+//        CleanInsightsManager.measureEvent(
+//            "backend",
+//            "new",
+//            type.friendlyName
+//        )
+//    }
+//}

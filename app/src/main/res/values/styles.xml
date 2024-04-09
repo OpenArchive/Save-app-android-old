@@ -8,7 +8,7 @@
         <item name="colorOnPrimary">@color/colorOnPrimary</item>
         <item name="android:colorBackground">@color/colorBackground</item>
         <item name="android:textColor">@color/colorOnBackground</item>
-        <item name="android:statusBarColor">@color/colorBackground</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">@bool/dayMode</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">@bool/dayMode</item>
         <item name="navigationViewStyle">@style/NavigationViewStyle</item>
@@ -30,6 +30,7 @@
         <item name="android:colorBackground">@color/colorBackground</item>
         <item name="android:textColor">@color/colorOnBackground</item>
         <item name="android:statusBarColor">@color/colorBackground</item>
+        <item name="android:navigationBarColor">@color/colorBottomNavbar</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">@bool/dayMode</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">@bool/dayMode</item>
         <item name="navigationViewStyle">@style/NavigationViewStyle</item>

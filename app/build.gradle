@@ -2,12 +2,6 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'org.jetbrains.kotlin.android'
 
-def getDropboxKey() {
-    Properties properties = new Properties()
-    properties.load(project.rootProject.file('local.properties').newDataInputStream())
-    return properties.getProperty("dropbox_key")
-}
-
 android {
     compileOptions {
         sourceCompatibility 1.8
@@ -17,14 +11,14 @@ android {
     signingConfigs {
     }
 
-    compileSdkVersion 34
-    buildToolsVersion '34.0.0'
+    compileSdk 34
+//    buildToolsVersion '34.0.0'
     defaultConfig {
         applicationId "net.opendasharchive.openarchive"
         minSdkVersion 21
         targetSdkVersion 34
-        versionCode 20555
-        versionName '0.3.3'
+        versionCode 20563
+        versionName '0.5.0'
         archivesBaseName = "Save-$versionName"
         multiDexEnabled true
         vectorDrawables.useSupportLibrary = true
@@ -33,16 +27,9 @@ android {
 
     flavorDimensions += "free"
     buildTypes {
-        debug {
-            buildConfigField "String", "dropbox_key", getDropboxKey()
-            resValue 'string', "dropbox_key", getDropboxKey()
-        }
-
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            buildConfigField "String", "dropbox_key", getDropboxKey()
-            resValue 'string', "dropbox_key", getDropboxKey()
         }
     }
     packagingOptions {
@@ -94,10 +81,10 @@ dependencies {
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation "androidx.work:work-runtime-ktx:2.9.0"
 
-    implementation "androidx.compose.ui:ui:1.6.4"
+    implementation "androidx.compose.ui:ui:1.6.5"
     implementation "androidx.compose.material3:material3:1.2.1"
-    implementation 'androidx.compose.foundation:foundation:1.6.4'
-    implementation "androidx.compose.ui:ui-tooling-preview:1.6.4"
+    implementation 'androidx.compose.foundation:foundation:1.6.5'
+    implementation "androidx.compose.ui:ui-tooling-preview:1.6.5"
     implementation "androidx.activity:activity-compose:1.8.2"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0"
     implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0"
@@ -108,7 +95,7 @@ dependencies {
 
     implementation "com.github.satyan:sugar:1.5"
 
-    implementation "com.google.code.gson:gson:2.10"
+    implementation "com.google.code.gson:gson:2.10.1"
     implementation "com.squareup.okhttp3:okhttp:4.11.0"
     implementation "com.dropbox.core:dropbox-core-sdk:5.4.4"
 
@@ -116,7 +103,7 @@ dependencies {
     implementation "com.github.guardianproject:sardine-android:89f7eae512"
     
     implementation "com.google.android.material:material:1.11.0"
-    implementation "androidx.compose.material:material-icons-extended:1.6.4"
+    implementation "androidx.compose.material:material-icons-extended:1.6.5"
 
     implementation "com.github.bumptech.glide:glide:4.16.0"
     annotationProcessor "com.github.bumptech.glide:compiler:4.16.0"
@@ -162,10 +149,23 @@ dependencies {
     implementation 'com.jakewharton.timber:timber:5.0.1'
 
     // google drive api
+    // Credential Manager (API 19 and higher)
+//    implementation "androidx.credentials:credentials:1.2.2"
+//    implementation "androidx.credentials:credentials-play-services-auth:1.2.2"
+//    implementation "com.google.android.libraries.identity.googleid:googleid:1.1.0"
+
     implementation 'com.google.android.gms:play-services-auth:21.0.0'
     implementation 'com.google.http-client:google-http-client-gson:1.42.1'
-    implementation('com.google.api-client:google-api-client-android:1.26.0')
-    implementation('com.google.apis:google-api-services-drive:v3-rev136-1.25.0')
+    implementation('com.google.api-client:google-api-client-android:1.26.0') {
+        exclude group: 'org.apache.httpcomponents'
+    }
+    implementation('com.google.apis:google-api-services-drive:v3-rev136-1.25.0') {
+        exclude group: 'org.apache.httpcomponents'
+    }
+
+    // Tor
+//    implementation 'info.guardianproject:tor-android:0.4.8.7'
+//    implementation 'info.guardianproject:jtorctl:0.4.5.7'
 
     // Tests
     testImplementation 'junit:junit:4.13.2'

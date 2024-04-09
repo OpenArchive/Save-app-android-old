@@ -29,7 +29,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="32dp"
             android:textSize="22sp"
-            tools:text="Dropbox" />
+            tools:text="Space FPO" />
 
         <TextView
             android:id="@+id/bt_folders"

@@ -20,6 +20,39 @@ class UploadManagerActivity : BaseActivity() {
     var mFrag: UploadManagerFragment? = null
     private var mMenuEdit: MenuItem? = null
 
+    private val mMessageReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        private val handler = Handler(Looper.getMainLooper())
+
+        override fun onReceive(context: Context, intent: Intent) {
+            val action = BroadcastManager.getAction(intent)
+            val mediaId = action?.mediaId ?: return
+
+            if (mediaId > -1) {
+                val media = Media.get(mediaId)
+
+                if (action == BroadcastManager.Action.Delete || media?.sStatus == Media.Status.Uploaded) {
+                    handler.post { mFrag?.removeItem(mediaId) }
+                }
+                else {
+                    handler.post { mFrag?.updateItem(mediaId) }
+                }
+
+//                if (media?.sStatus == Media.Status.Error) {
+//                    CleanInsightsManager.getConsent(this@UploadManagerActivity) {
+//                        // TODO: Record metadata. See iOS implementation.
+//                        CleanInsightsManager.measureEvent("upload", "upload_failed")
+//                    }
+//                }
+            }
+
+            handler.post {
+                updateTitle()
+            }
+        }
+    }
+
+    private var mEditMode = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -46,39 +79,6 @@ class UploadManagerActivity : BaseActivity() {
 
         BroadcastManager.unregister(this, mMessageReceiver)
     }
-
-    private val mMessageReceiver: BroadcastReceiver = object : BroadcastReceiver() {
-        private val handler = Handler(Looper.getMainLooper())
-
-        override fun onReceive(context: Context, intent: Intent) {
-            val action = BroadcastManager.getAction(intent)
-            val mediaId = action?.mediaId ?: return
-
-            if (mediaId > -1) {
-                val media = Media.get(mediaId)
-
-                if (action == BroadcastManager.Action.Delete || media?.sStatus == Media.Status.Uploaded) {
-                    handler.post { mFrag?.removeItem(mediaId) }
-                }
-                else {
-                    handler.post { mFrag?.updateItem(mediaId) }
-                }
-
-                if (media?.sStatus == Media.Status.Error) {
-                    CleanInsightsManager.getConsent(this@UploadManagerActivity) {
-                        // TODO: Record metadata. See iOS implementation.
-                        CleanInsightsManager.measureEvent("upload", "upload_failed")
-                    }
-                }
-            }
-
-            handler.post {
-                updateTitle()
-            }
-        }
-    }
-
-    private var mEditMode = false
 
     private fun toggleEditMode() {
         mEditMode = !mEditMode

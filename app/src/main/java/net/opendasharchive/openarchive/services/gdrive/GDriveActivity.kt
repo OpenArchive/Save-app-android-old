@@ -44,8 +44,8 @@ class GDriveActivity : BaseActivity() {
                 space.delete()
 
                 // google logout
-                val googleSignInClient =
-                    GoogleSignIn.getClient(applicationContext, GoogleSignInOptions.DEFAULT_SIGN_IN)
+                val googleSignInClient = GoogleSignIn.getClient(applicationContext, GoogleSignInOptions.DEFAULT_SIGN_IN)
+
                 googleSignInClient.revokeAccess().addOnCompleteListener {
                     googleSignInClient.signOut()
                 }

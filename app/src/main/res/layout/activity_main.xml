@@ -232,73 +232,106 @@
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-    <!-- note: altering corner size is breaking with material3 design guidelines -->
-    <!-- did it to comply with the design from figma -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/folder_bar"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="end"
-        android:fitsSystemWindows="true"
-        app:drawerLayoutCornerSize="0dp"
-        tools:visibility="gone">
+        android:clipChildren="true"
+        android:fitsSystemWindows="true">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_marginTop="?attr/actionBarSize"
-            android:animateLayoutChanges="true">
-
-            <TextView
-                android:id="@+id/space"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginHorizontal="8dp"
-                android:drawablePadding="@dimen/padding_small"
-                android:gravity="center_vertical"
-                android:textSize="17sp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
-            <androidx.cardview.widget.CardView
-                android:id="@+id/spaces_card"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:visibility="gone"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/space">
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/spaces"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-
-            </androidx.cardview.widget.CardView>
+            android:animateLayoutChanges="false"
+            android:backgroundTint="@color/background">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/folders"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:layout_marginStart="24dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/spaces_card" />
+                app:layout_constraintTop_toBottomOf="@id/navigation_drawer_header" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/spaces"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:alpha="0"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/navigation_drawer_header" />
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/navigation_drawer_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:animateLayoutChanges="false"
+                android:background="@color/colorNavigationDrawerBackground"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <TextView
+                    android:id="@+id/space_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginHorizontal="12dp"
+                    android:drawablePadding="@dimen/padding_small"
+                    android:gravity="center_vertical"
+                    android:textSize="24sp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <View
+                    android:id="@+id/spaces_header_separator"
+                    android:layout_width="match_parent"
+                    android:layout_height="0.5dp"
+                    android:layout_marginVertical="10dp"
+                    android:alpha="0.5"
+                    android:background="@color/colorOnPrimary"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/space_name" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <TextView
-                android:id="@+id/new_folder"
+                android:id="@+id/current_space_name"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:layout_marginHorizontal="8dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginTop="12dp"
+                android:drawablePadding="@dimen/padding_small"
                 android:gravity="center_vertical"
+                android:textSize="20sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/navigation_drawer_header" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/new_folder"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:layout_margin="30dp"
                 android:text="@string/new_folder"
-                android:textSize="17sp"
-                app:drawableStartCompat="@drawable/ic_add"
+                android:textColor="@color/c23_teal_80"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:cornerRadius="10dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent" />
+                app:layout_constraintStart_toStartOf="parent"
+                app:strokeColor="@color/c23_teal_80"
+                app:strokeWidth="3dp" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 

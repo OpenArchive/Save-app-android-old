@@ -38,7 +38,7 @@ class InternetArchiveFragment : Fragment() {
         setFragmentResult(result.value, bundleOf())
 
         if (result == IAResult.Saved) {
-            activity?.measureNewBackend(Space.Type.INTERNET_ARCHIVE)
+            // activity?.measureNewBackend(Space.Type.INTERNET_ARCHIVE)
         }
     }
 

@@ -205,9 +205,9 @@ class WebDavFragment : Fragment() {
                 mSpace.save()
                 Space.current = mSpace
 
-                CleanInsightsManager.getConsent(requireActivity()) {
-                    CleanInsightsManager.measureEvent("backend", "new", Space.Type.WEBDAV.friendlyName)
-                }
+//                CleanInsightsManager.getConsent(requireActivity()) {
+//                    CleanInsightsManager.measureEvent("backend", "new", Space.Type.WEBDAV.friendlyName)
+//                }
 
                 setFragmentResult(RESP_SAVED, bundleOf())
             } catch (exception: IOException) {

@@ -1,1 +1,2 @@
 gem 'fastlane-plugin-android_version_manager'
+gem 'fastlane-plugin-increment_version_code'

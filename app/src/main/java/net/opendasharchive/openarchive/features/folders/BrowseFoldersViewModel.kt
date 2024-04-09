@@ -20,6 +20,7 @@ class BrowseFoldersViewModel : ViewModel() {
     data class Folder(val name: String, val modified: Date)
 
     private val mFolders = MutableLiveData<List<Folder>>()
+
     val folders: LiveData<List<Folder>>
         get() = mFolders
 
@@ -33,8 +34,6 @@ class BrowseFoldersViewModel : ViewModel() {
                 val value = withContext(Dispatchers.IO) {
                     when (space.tType) {
                         Space.Type.WEBDAV -> getWebDavFolders(context, space)
-
-                        Space.Type.DROPBOX -> getDropboxFolders(context, space)
 
                         Space.Type.GDRIVE -> getGDriveFolders(context, space)
 
@@ -67,12 +66,6 @@ class BrowseFoldersViewModel : ViewModel() {
                 null
             }
         } ?: emptyList()
-    }
-
-    private suspend fun getDropboxFolders(context: Context, space: Space): List<Folder> {
-        val result = SaveClient.getDropbox(context, space.password).files().listFolder("")
-
-        return result.entries.map { Folder(it.name, Date()) }
     }
 
     private fun getGDriveFolders(context: Context, space: Space): List<Folder> {

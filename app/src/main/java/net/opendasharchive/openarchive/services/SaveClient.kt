@@ -2,9 +2,6 @@ package net.opendasharchive.openarchive.services
 
 import android.content.Context
 import android.content.Intent
-import com.dropbox.core.DbxRequestConfig
-import com.dropbox.core.http.OkHttp3Requestor
-import com.dropbox.core.v2.DbxClientV2
 import com.thegrizzlylabs.sardineandroid.impl.OkHttpSardine
 import info.guardianproject.netcipher.client.StrongBuilder
 import info.guardianproject.netcipher.client.StrongBuilderBase
@@ -139,16 +136,6 @@ class SaveClient(context: Context) : StrongBuilderBase<SaveClient, OkHttpClient>
                     callback.onConnected(strongBuilder.build(Intent()))
                 }
             }
-        }
-
-        suspend fun getDropbox(context: Context, accessToken: String?): DbxClientV2 {
-            val client = get(context)
-
-            val requestConfig = DbxRequestConfig.newBuilder("dbc")
-                .withHttpRequestor(OkHttp3Requestor(client))
-                .build()
-
-            return DbxClientV2(requestConfig, accessToken)
         }
 
         suspend fun getSardine(context: Context, space: Space): OkHttpSardine {

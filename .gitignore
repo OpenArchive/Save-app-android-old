@@ -1,3 +1,4 @@
+private-*
 openarchive-release.keystore
 
 # Built application files
@@ -43,9 +44,11 @@ proguard/
 app/releaseflavor/*
 
 # fastlane
+fastlane/metadata/*
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots
 fastlane/test_output
 fastlane/README.md
 fastlane/.env
+.env.default
