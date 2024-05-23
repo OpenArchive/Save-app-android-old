@@ -36,7 +36,6 @@ abstract class Conduit(
 
     protected var mCancelled = false
 
-
     /**
      * Gives a SiteController a chance to add metadata to the intent resulting from the ChooseAccounts process
      * that gets passed to each SiteController during publishing
@@ -48,9 +47,7 @@ abstract class Conduit(
 
     open fun cancel() {
         mCancelled = true
-        mMedia.save()
     }
-
 
     fun getProof(): Array<out File> {
         if (!Prefs.useProofMode) return emptyArray()
@@ -90,7 +87,7 @@ abstract class Conduit(
      * result is a site specific unique id that we can use to fetch the data,
      * build an embed tag, etc. for some sites this might be a URL
      */
-     fun jobSucceeded() {
+    fun jobSucceeded() {
         mMedia.progress = mMedia.contentLength
         mMedia.sStatus = Media.Status.Uploaded
         mMedia.save()
@@ -98,7 +95,7 @@ abstract class Conduit(
         BroadcastManager.postChange(mContext, mMedia.collectionId, mMedia.id)
     }
 
-     fun jobFailed(exception: Throwable) {
+    fun jobFailed(exception: Throwable) {
         // If an upload was cancelled, ignore the error.
         if (mCancelled) return
 
@@ -112,10 +109,10 @@ abstract class Conduit(
         BroadcastManager.postChange(mContext, mMedia.collectionId, mMedia.id)
     }
 
-     fun jobProgress(uploadedBytes: Long) {
-         mMedia.progress = uploadedBytes
-         BroadcastManager.postProgress(mContext, mMedia.collectionId, mMedia.id, uploadedBytes)
-     }
+    fun jobProgress(uploadedBytes: Long) {
+        mMedia.progress = uploadedBytes
+        BroadcastManager.postProgress(mContext, mMedia.collectionId, mMedia.id, uploadedBytes)
+    }
 
     /**
      * workaround to deal with some quirks in our data model?

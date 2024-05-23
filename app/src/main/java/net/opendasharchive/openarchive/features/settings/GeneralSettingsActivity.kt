@@ -6,12 +6,10 @@ import android.view.MenuItem
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
-import info.guardianproject.netcipher.proxy.OrbotHelper
 import net.opendasharchive.openarchive.CleanInsightsManager
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.ActivitySettingsContainerBinding
 import net.opendasharchive.openarchive.features.core.BaseActivity
-import net.opendasharchive.openarchive.util.AlertHelper
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.Theme
 
@@ -24,28 +22,28 @@ class GeneralSettingsActivity: BaseActivity() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.prefs_general, rootKey)
 
-            findPreference<Preference>(Prefs.USE_TOR)?.setOnPreferenceChangeListener { _, newValue ->
-                val activity = activity ?: return@setOnPreferenceChangeListener true
-
-                if (newValue as Boolean) {
-                    if (!OrbotHelper.isOrbotInstalled(activity) && !OrbotHelper.isTorServicesInstalled(activity)) {
-                        AlertHelper.show(activity,
-                            R.string.prefs_install_tor_summary,
-                            R.string.prefs_use_tor_title,
-                            buttons = listOf(
-                                AlertHelper.positiveButton(R.string.action_install) { _, _ ->
-                                    activity.startActivity(
-                                        OrbotHelper.getOrbotInstallIntent(activity))
-                                },
-                                AlertHelper.negativeButton(R.string.action_cancel)
-                            ))
-
-                        return@setOnPreferenceChangeListener false
-                    }
-                }
-
-                true
-            }
+//            findPreference<Preference>(Prefs.USE_TOR)?.setOnPreferenceChangeListener { _, newValue ->
+//                val activity = activity ?: return@setOnPreferenceChangeListener true
+//
+//                if (newValue as Boolean) {
+//                    if (!OrbotHelper.isOrbotInstalled(activity) && !OrbotHelper.isTorServicesInstalled(activity)) {
+//                        AlertHelper.show(activity,
+//                            R.string.prefs_install_tor_summary,
+//                            R.string.prefs_use_tor_title,
+//                            buttons = listOf(
+//                                AlertHelper.positiveButton(R.string.action_install) { _, _ ->
+//                                    activity.startActivity(
+//                                        OrbotHelper.getOrbotInstallIntent(activity))
+//                                },
+//                                AlertHelper.negativeButton(R.string.action_cancel)
+//                            ))
+//
+//                        return@setOnPreferenceChangeListener false
+//                    }
+//                }
+//
+//                true
+//            }
 
             findPreference<Preference>("proof_mode")?.setOnPreferenceClickListener {
                 startActivity(Intent(context, ProofModeSettingsActivity::class.java))
@@ -69,18 +67,18 @@ class GeneralSettingsActivity: BaseActivity() {
                 true
             }
 
-            mCiConsentPref = findPreference("health_checks")
-
-            mCiConsentPref?.setOnPreferenceChangeListener { _, newValue ->
-                if (newValue as? Boolean == false) {
-                    CleanInsightsManager.deny()
-                }
-                else {
-                    startActivity(Intent(context, ConsentActivity::class.java))
-                }
-
-                true
-            }
+//            mCiConsentPref = findPreference("health_checks")
+//
+//            mCiConsentPref?.setOnPreferenceChangeListener { _, newValue ->
+//                if (newValue as? Boolean == false) {
+//                    CleanInsightsManager.deny()
+//                }
+//                else {
+//                    startActivity(Intent(context, ConsentActivity::class.java))
+//                }
+//
+//                true
+//            }
         }
 
         override fun onResume() {

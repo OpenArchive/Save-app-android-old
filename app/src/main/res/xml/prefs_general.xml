@@ -1,28 +1,47 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory app:title="@string/connectivity_data">
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:layout="@layout/prefs_title"
+        app:title="@string/connectivity_data">
 
         <SwitchPreferenceCompat
-            app:key="upload_wifi_only"
+            app:allowDividerAbove="false"
+            app:allowDividerBelow="false"
             app:defaultValue="false"
-            app:title="@string/only_upload_media_when_you_are_connected_to_wi_fi"
-            app:singleLineTitle="false" />
+            app:iconSpaceReserved="false"
+            app:key="upload_wifi_only"
+            app:singleLineTitle="false"
+            app:title="@string/only_upload_media_when_you_are_connected_to_wi_fi" />
 
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="@string/metadata">
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:layout="@layout/prefs_title"
+        app:title="@string/metadata">
 
         <Preference
+            app:allowDividerAbove="false"
+            app:allowDividerBelow="false"
+            app:iconSpaceReserved="false"
             app:key="proof_mode"
             app:title="@string/proofmode"
             app:singleLineTitle="false" />
 
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="@string/security">
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:layout="@layout/prefs_title"
+        app:title="@string/security">
 
         <SwitchPreferenceCompat
+            app:allowDividerAbove="false"
+            app:allowDividerBelow="false"
+            app:iconSpaceReserved="false"
             app:key="use_tor"
             app:defaultValue="false"
             app:title="@string/prefs_use_tor_title"
@@ -30,6 +49,9 @@
             app:summary="@string/prefs_use_tor_summary" />
 
         <SwitchPreferenceCompat
+            app:allowDividerAbove="false"
+            app:allowDividerBelow="false"
+            app:iconSpaceReserved="false"
             app:key="prohibit_screenshots"
             app:defaultValue="false"
             app:title="@string/prefs_prohibit_screenshots_title"
@@ -38,9 +60,15 @@
 
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="@string/prefs_user_interface_title">
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:layout="@layout/prefs_title"
+        app:title="@string/prefs_user_interface_title">
 
         <ListPreference
+            app:allowDividerAbove="false"
+            app:allowDividerBelow="false"
+            app:iconSpaceReserved="false"
             app:key="theme"
             app:defaultValue="@string/prefs_theme_val_system"
             app:entries="@array/ar_prefs_theme_labels"
@@ -51,14 +79,20 @@
 
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="@string/health_checks">
+<!--    <PreferenceCategory-->
+<!--        app:iconSpaceReserved="false"-->
+<!--        app:layout="@layout/prefs_title"-->
+<!--        app:title="@string/health_checks">-->
 
-        <SwitchPreferenceCompat
-            app:key="health_checks"
-            app:title="@string/health_checks"
-            app:singleLineTitle="false"
-            app:summary="@string/help_improve_the_app_by_running_health_checks_when_uploads_fail" />
+<!--        <SwitchPreferenceCompat-->
+<!--            app:allowDividerAbove="false"-->
+<!--            app:allowDividerBelow="false"-->
+<!--            app:iconSpaceReserved="false"-->
+<!--            app:key="health_checks"-->
+<!--            app:title="@string/health_checks"-->
+<!--            app:singleLineTitle="false"-->
+<!--            app:summary="@string/help_improve_the_app_by_running_health_checks_when_uploads_fail" />-->
 
-    </PreferenceCategory>
+<!--    </PreferenceCategory>-->
 
 </PreferenceScreen>

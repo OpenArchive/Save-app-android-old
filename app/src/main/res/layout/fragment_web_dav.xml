@@ -141,18 +141,6 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/sw_chunking"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/use_upload_chunking_nextcloud_only" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/c23_grey"
-                android:text="@string/chunking_explanation" />
-
             <TextView
                 android:id="@+id/bt_remove"
                 android:layout_width="wrap_content"

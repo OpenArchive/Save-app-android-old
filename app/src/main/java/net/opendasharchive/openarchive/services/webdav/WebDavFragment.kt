@@ -67,11 +67,11 @@ class WebDavFragment : Fragment() {
             mBinding.username.setText(mSpace.username)
             mBinding.password.setText(mSpace.password)
 
-            mBinding.swChunking.isChecked = mSpace.useChunking
-            mBinding.swChunking.setOnCheckedChangeListener { _, useChunking ->
-                mSpace.useChunking = useChunking
-                mSpace.save()
-            }
+//            mBinding.swChunking.isChecked = mSpace.useChunking
+//            mBinding.swChunking.setOnCheckedChangeListener { _, useChunking ->
+//                mSpace.useChunking = useChunking
+//                mSpace.save()
+//            }
 
             mBinding.name.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
@@ -168,7 +168,7 @@ class WebDavFragment : Fragment() {
         mSpace.username = mBinding.username.text?.toString() ?: ""
         mSpace.password = mBinding.password.text?.toString() ?: ""
 
-        mSpace.useChunking = mBinding.swChunking.isChecked
+//        mSpace.useChunking = mBinding.swChunking.isChecked
 
         if (mSpace.host.isEmpty()) {
             mBinding.server.error = getString(R.string.error_field_required)

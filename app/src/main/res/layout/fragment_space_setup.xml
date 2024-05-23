@@ -19,6 +19,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
+            android:layout_marginHorizontal="@dimen/activity_horizontal_margin"
             android:gravity="center"
             android:text="@string/to_get_started_connect_to_a_server_to_store_your_media"
             android:textSize="20sp"
@@ -256,6 +257,16 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
 
         </com.google.android.material.card.MaterialCardView>
+
+        <Button
+            android:id="@+id/skip_for_now_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/activity_horizontal_margin"
+            android:layout_marginTop="20dp"
+            android:background="@android:color/transparent"
+            android:text="Skip for now" />
+
 
     </LinearLayout>
 </ScrollView>

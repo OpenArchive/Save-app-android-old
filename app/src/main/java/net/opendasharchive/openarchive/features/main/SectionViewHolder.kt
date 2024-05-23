@@ -52,6 +52,6 @@ data class SectionViewHolder(
 
         val uploadDate = collection.uploadDate
 
-        timestamp.text = if (uploadDate != null) mDf.format(uploadDate) else ""
+        timestamp.text = if (uploadDate != null) mDf.format(uploadDate) else "Ready to upload"
     }
 }

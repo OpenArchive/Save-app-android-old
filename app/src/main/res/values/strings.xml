@@ -220,11 +220,8 @@
         Authenticate your media with a cryptographic verification sha256 hash and optional
         ProofMode. Add critical metadata like notes, people, and location with each upload.
     </string>
-    <string name="intro_text_encrypt"><![CDATA[
-        Automatically upload over TLS (Transport Layer Security) and use Orbot to protect your
-        media in transit over the Tor network.<br />
-        <br />
-        <a href="#">Install Orbot</a> to enable advanced network security.]]>
+    <string name="intro_text_encrypt">
+        Automatically upload over TLS (Transport Layer Security) and and use the Tor network to protect your media in transit.
     </string>
     <string name="next">Next</string>
     <string name="done">Done</string>
@@ -297,7 +294,7 @@
     <string name="label_email">Email</string>
     <string name="label_screen_name">Screen Name</string>
     <string name="label_login">Login</string>
-    <string name="label_create_login">Create Login</string>
+    <string name="label_create_login">Sign up</string>
     <string name="prompt_no_account">No account?</string>
     <string name="action_continue">Continue</string>
 

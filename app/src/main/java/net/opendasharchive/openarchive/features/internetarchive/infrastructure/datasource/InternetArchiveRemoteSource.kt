@@ -1,7 +1,6 @@
 package net.opendasharchive.openarchive.features.internetarchive.infrastructure.datasource
 
 import android.content.Context
-import com.google.gson.Gson
 import net.opendasharchive.openarchive.core.infrastructure.client.enqueueResult
 import net.opendasharchive.openarchive.features.internetarchive.InternetArchiveGson
 import net.opendasharchive.openarchive.features.internetarchive.domain.model.InternetArchive
@@ -23,7 +22,8 @@ class InternetArchiveRemoteSource(
             Request.Builder()
                 .url(LOGIN_URI)
                 .post(
-                    FormBody.Builder().add("email", request.email)
+                    FormBody.Builder()
+                        .add("email", request.email)
                         .add("password", request.password).build()
                 )
                 .build()

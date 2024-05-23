@@ -26,7 +26,6 @@ open class UploadManagerFragment : Fragment() {
 
     private lateinit var mBinding: FragmentUploadManagerBinding
 
-
     private lateinit var mItemTouchHelper: ItemTouchHelper
 
     override fun onCreateView(

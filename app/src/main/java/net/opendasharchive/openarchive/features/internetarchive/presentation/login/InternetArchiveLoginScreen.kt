@@ -17,10 +17,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -162,7 +160,7 @@ private fun InternetArchiveLoginContent(
             trailingIcon = {
                 IconButton(modifier = Modifier.sizeIn(ThemeDimensions.touchable), onClick = { showPassword = !showPassword }) {
                     Icon(
-                        imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        imageVector = if (showPassword) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                         contentDescription = "show password"
                     )
                 }

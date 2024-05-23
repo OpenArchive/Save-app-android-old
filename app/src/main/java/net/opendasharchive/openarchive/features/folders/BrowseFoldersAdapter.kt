@@ -1,6 +1,5 @@
 package net.opendasharchive.openarchive.features.folders
 
-import android.annotation.SuppressLint
 import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -51,9 +50,6 @@ class BrowseFoldersAdapter(
         private val onClick: (folder: BrowseFoldersViewModel.Folder) -> Unit
     ) : RecyclerView.ViewHolder(binding.root)
     {
-
-
-        @SuppressLint("NotifyDataSetChanged")
         fun onBindView(position: Int, selected: Boolean) {
             val color = if (selected) sHighlightColor else sOriginalColor
 

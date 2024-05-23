@@ -67,12 +67,11 @@ class GDriveConduit(media: Media, context: Context) : Conduit(media, context) {
 
     companion object {
         const val NAME = "Google Drive"
-
         var SCOPES =
             arrayOf(Scope(DriveScopes.DRIVE_FILE), Scope(Scopes.EMAIL))
 
         fun permissionsGranted(context: Context): Boolean {
-            Timber.v("Checking if GDrive permission granted")
+            Timber.v("GDriveConduit.permissionGranted()")
             return GoogleSignIn.hasPermissions(
                 GoogleSignIn.getLastSignedInAccount(context),
                 *SCOPES
@@ -88,9 +87,9 @@ class GDriveConduit(media: Media, context: Context) : Conduit(media, context) {
             credential.selectedAccount = GoogleSignIn.getLastSignedInAccount(context)?.account
 
             // in case we need to debug authentication:
-            Timber.v("GDriveConduit.getDrive(): credential $credential")
-            Timber.v("GDriveConduit.getDrive(): credential.selectedAccount ${credential.selectedAccount}")
-            Timber.v("GDriveConduit.getDrive(): credential.selectedAccount.name ${credential.selectedAccount?.name}")
+            // Timber.v("GDriveConduit.getDrive(): credential $credential")
+            // Timber.v("GDriveConduit.getDrive(): credential.selectedAccount ${credential.selectedAccount}")
+            // Timber.v("GDriveConduit.getDrive(): credential.selectedAccount.name ${credential.selectedAccount?.name}")
 
             val transport: HttpTransport = if (Prefs.useTor) {
                 // initialization code copied from: ApacheHttpTransport.newDefaultHttpParams()

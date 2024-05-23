@@ -167,7 +167,6 @@ class MediaAdapter(
         return true
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     fun updateData(media: List<Media>) {
         this.media = ArrayList(media)
 

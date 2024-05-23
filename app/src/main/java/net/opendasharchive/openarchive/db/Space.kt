@@ -14,10 +14,9 @@ import net.opendasharchive.openarchive.features.onboarding.SpaceSetupActivity
 import net.opendasharchive.openarchive.services.gdrive.GDriveConduit
 import net.opendasharchive.openarchive.services.internetarchive.IaConduit
 import net.opendasharchive.openarchive.util.Prefs
-import net.opendasharchive.openarchive.util.extensions.tint
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import java.util.*
+import java.util.Locale
 
 
 data class Space(
@@ -29,7 +28,7 @@ data class Space(
     var host: String = "",
     var metaData: String = "",
     private var licenseUrl: String? = null,
-    private var chunking: Boolean? = null
+    // private var chunking: Boolean? = null
 ) : SugarRecord() {
 
     constructor(type: Type) : this() {
@@ -137,12 +136,12 @@ data class Space(
             }
         }
 
-    var useChunking: Boolean
-        // Fallback to old preferences setting.
-        get() = chunking ?: Prefs.useNextcloudChunking
-        set(value) {
-            chunking = value
-        }
+//    var useChunking: Boolean
+//        // Fallback to old preferences setting.
+//        get() = chunking ?: Prefs.useNextcloudChunking
+//        set(value) {
+//            chunking = value
+//        }
 
     val projects: List<Project>
         get() = find(Project::class.java, "space_id = ? AND NOT archived", arrayOf(id.toString()), null, "id DESC", null)
@@ -157,12 +156,13 @@ data class Space(
 
     fun getAvatar(context: Context, style: IconStyle = IconStyle.SOLID): Drawable? {
         val color = ContextCompat.getColor(context, R.color.colorOnBackground)
+
         return when (tType) {
-            Type.WEBDAV -> ContextCompat.getDrawable(context, R.drawable.ic_private_server)?.tint(color)
+            Type.WEBDAV -> ContextCompat.getDrawable(context, R.drawable.ic_private_server) // ?.tint(color)
 
-            Type.INTERNET_ARCHIVE -> ContextCompat.getDrawable(context, R.drawable.ic_internet_archive)?.tint(color)
+            Type.INTERNET_ARCHIVE -> ContextCompat.getDrawable(context, R.drawable.ic_internet_archive) // ?.tint(color)
 
-            Type.GDRIVE -> ContextCompat.getDrawable(context, R.drawable.logo_gdrive_outline)
+            Type.GDRIVE -> ContextCompat.getDrawable(context, R.drawable.logo_gdrive_outline) // ?.tint(color)
 
             else -> TextDrawable.builder().buildRound(initial, color)
         }

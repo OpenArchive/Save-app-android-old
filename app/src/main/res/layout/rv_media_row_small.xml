@@ -46,6 +46,7 @@
                 android:layout_height="48dp"
                 android:indeterminate="true"
                 android:indeterminateBehavior="cycle"
+                android:indeterminateTint="@color/colorPrimary"
                 android:max="100"
                 app:indicatorColor="@color/colorPrimary"
                 app:indicatorSize="48dp"

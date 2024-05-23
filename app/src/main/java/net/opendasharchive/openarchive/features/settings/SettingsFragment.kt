@@ -10,8 +10,8 @@ import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.FragmentSettingsBinding
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.features.core.BaseActivity
-import net.opendasharchive.openarchive.services.gdrive.GDriveActivity
 import net.opendasharchive.openarchive.features.internetarchive.presentation.InternetArchiveActivity
+import net.opendasharchive.openarchive.services.gdrive.GDriveActivity
 import net.opendasharchive.openarchive.services.webdav.WebDavActivity
 import net.opendasharchive.openarchive.util.extensions.Position
 import net.opendasharchive.openarchive.util.extensions.getVersionName
@@ -89,12 +89,18 @@ class SettingsFragment : Fragment() {
 
     private fun updateSpace() {
         val context = context ?: return
-        val space = Space.current ?: return
+        val space = Space.current
 
-        mBinding.btSpace.text = space.friendlyName
+        if (space != null) {
+            mBinding.btSpace.text = space.friendlyName
 
-        mBinding.btSpace.setDrawable(space.getAvatar(context)?.scaled(32, context),
-            Position.Start, tint = false)
+            mBinding.btSpace.setDrawable(
+                space.getAvatar(context)?.scaled(24, context),
+                Position.Start, tint = true
+            )
+        } else {
+            mBinding.btSpace.visibility = View.GONE
+        }
     }
 
     private fun startSpaceAuthActivity() {

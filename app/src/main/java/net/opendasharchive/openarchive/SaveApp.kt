@@ -14,6 +14,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import timber.log.Timber
 
+
 class SaveApp : SugarApp() {
 
     override fun attachBaseContext(base: Context?) {
@@ -44,7 +45,7 @@ class SaveApp : SugarApp() {
         CleanInsightsManager.init(this)
 
         // enable timber logging library for debug builds
-        if(BuildConfig.DEBUG){
+        if (BuildConfig.DEBUG){
             Timber.plant(Timber.DebugTree())
             Timber.tag("SAVE")
         }
@@ -58,6 +59,6 @@ class SaveApp : SugarApp() {
             oh.skipOrbotValidation()
         }
 
-        oh.init()
+//        oh.init()
     }
 }

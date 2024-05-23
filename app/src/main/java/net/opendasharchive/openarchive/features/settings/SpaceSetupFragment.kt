@@ -1,5 +1,6 @@
 package net.opendasharchive.openarchive.features.settings
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -9,6 +10,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
 import net.opendasharchive.openarchive.databinding.FragmentSpaceSetupBinding
 import net.opendasharchive.openarchive.db.Space
+import net.opendasharchive.openarchive.features.main.MainActivity
 import net.opendasharchive.openarchive.util.extensions.hide
 
 class SpaceSetupFragment : Fragment() {
@@ -47,7 +49,15 @@ class SpaceSetupFragment : Fragment() {
             }
         }
 
+        mBinding.skipForNowButton.setOnClickListener {
+            skipSpaceConfig()
+        }
+
         return mBinding.root
+    }
+
+    private fun skipSpaceConfig() {
+        startActivity(Intent(context, MainActivity::class.java))
     }
 
     private fun playServicesAvailable(): Boolean {

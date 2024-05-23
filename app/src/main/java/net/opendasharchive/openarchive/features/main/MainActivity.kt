@@ -1,7 +1,6 @@
 package net.opendasharchive.openarchive.features.main
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -11,6 +10,7 @@ import android.view.MenuItem
 import android.view.View
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -19,6 +19,7 @@ import com.esafirm.imagepicker.features.ImagePickerLauncher
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.FolderAdapter
 import net.opendasharchive.openarchive.FolderAdapterListener
 import net.opendasharchive.openarchive.R
@@ -35,7 +36,6 @@ import net.opendasharchive.openarchive.features.media.Picker
 import net.opendasharchive.openarchive.features.media.PreviewActivity
 import net.opendasharchive.openarchive.features.onboarding.Onboarding23Activity
 import net.opendasharchive.openarchive.features.onboarding.SpaceSetupActivity
-import net.opendasharchive.openarchive.upload.UploadManagerActivity
 import net.opendasharchive.openarchive.upload.UploadService
 import net.opendasharchive.openarchive.util.AlertHelper
 import net.opendasharchive.openarchive.util.Prefs
@@ -47,9 +47,15 @@ import net.opendasharchive.openarchive.util.extensions.scaleAndTintDrawable
 import net.opendasharchive.openarchive.util.extensions.scaled
 import net.opendasharchive.openarchive.util.extensions.setDrawable
 import net.opendasharchive.openarchive.util.extensions.show
-import net.opendasharchive.openarchive.util.extensions.toggle
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import timber.log.Timber
+import java.net.InetSocketAddress
+import java.net.Proxy
 import java.text.NumberFormat
+import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
+
 
 class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener {
 
@@ -106,9 +112,9 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
 //        mSnackBar = mBinding.root.makeSnackBar(getString(R.string.importing_media))
 //        (mSnackBar?.view as? SnackbarLayout)?.addView(ProgressBar(this))
 
-        mBinding.uploadEditButton.setOnClickListener {
-            startActivity(Intent(this, UploadManagerActivity::class.java))
-        }
+//        mBinding.uploadEditButton.setOnClickListener {
+//            startActivity(Intent(this, UploadManagerActivity::class.java))
+//        }
 
         mPagerAdapter = ProjectAdapter(supportFragmentManager, lifecycle)
         mBinding.pager.adapter = mPagerAdapter
@@ -127,6 +133,7 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
                 }
 
                 updateBottomNavbar(position)
+
                 refreshCurrentProject()
             }
 
@@ -165,7 +172,7 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
 
         mBinding.currentSpaceName.text = Space.current?.friendlyName
         mBinding.currentSpaceName.setDrawable(Space.current?.getAvatar(applicationContext)?.scaled(32, applicationContext),
-            Position.Start, tint = false)
+            Position.Start, tint = true)
         mBinding.currentSpaceName.compoundDrawablePadding =
             applicationContext.resources.getDimension(R.dimen.padding_small).roundToInt()
 
@@ -227,15 +234,116 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onStart() {
         super.onStart()
 
-//        ProofModeHelper.init(this) {
-//            // Check for any queued uploads and restart, only after ProofMode is correctly initialized.
-//            UploadService.startUploadService(this)
+        ProofModeHelper.init(this) {
+            // Check for any queued uploads and restart, only after ProofMode is correctly initialized.
+            UploadService.startUploadService(this)
+        }
+
+        // requestNotificationPermission()
+
+//        registerReceiver(object : BroadcastReceiver() {
+//            override fun onReceive(context: Context, intent: Intent) {
+//                val status = intent.getStringExtra(TorService.EXTRA_STATUS)
+//
+//                Toast.makeText(context, status, Toast.LENGTH_SHORT).show()
+//
+////                if (status == TorService.STATUS_ON) {
+////                    CoroutineScope(Dispatchers.IO).launch {
+////                        connectToRestEndpoint()
+////                    }
+////                }
+//            }
+//        }, IntentFilter(TorService.ACTION_STATUS), RECEIVER_NOT_EXPORTED)
+
+//        class StartTor(val appContext: Context, workerParams: WorkerParameters) : Worker(appContext, workerParams) {
+//
+//            override fun doWork(): Result {
+//                Timber.d("StartTor")
+//                bindService(Intent(appContext, TorService::class.java), object : ServiceConnection {
+//                    override fun onServiceConnected(name: ComponentName, service: IBinder) {
+//                        val torService: TorService = (service as TorService.LocalBinder).service
+//
+//                        while (torService.torControlConnection == null) {
+//                            try {
+//                                Timber.d("Sleeping")
+//                                Thread.sleep(500)
+//                            } catch (e: InterruptedException) {
+//                                e.printStackTrace()
+//                            }
+//                        }
+//
+//                        Toast.makeText(
+//                            this@MainActivity,
+//                            "Got Tor control connection",
+//                            Toast.LENGTH_LONG
+//                        )
+//                            .show()
+//                    }
+//
+//                    override fun onServiceDisconnected(name: ComponentName) {
+//                        // Things...
+//                    }
+//                }, BIND_AUTO_CREATE)
+//
+//                return Result.success()
+//            }
 //        }
 
-        requestNotificationPermission()
+//        class UploadMedia(appContext: Context, workerParams: WorkerParameters) : Worker(appContext, workerParams) {
+//            override fun doWork(): Result {
+//                Timber.d("UploadMedia")
+//                val imageUriInput =
+//                    inputData.getString("IMAGE_URI") ?: return Result.failure()
+//
+//                return Result.success()
+//            }
+//        }
+//
+//        val startTorRequest = OneTimeWorkRequestBuilder<StartTor>()
+//            .build()
+//
+//        val uploadMediaRequest = OneTimeWorkRequestBuilder<UploadMedia>()
+//            .addTag("media_upload")
+//            .setInputData(workDataOf(
+//                "IMAGE_URI" to "http://..."
+//            ))
+//            .build()
+//
+//        WorkManager.getInstance(this)
+//            .enqueue(uploadMediaRequest)
+    }
+
+    suspend fun connectToRestEndpoint() {
+        val proxy = Proxy(Proxy.Type.SOCKS, InetSocketAddress("localhost", 9050))
+
+        val client = OkHttpClient.Builder()
+            .connectTimeout(3000L, TimeUnit.MILLISECONDS)
+            .proxy(proxy)
+            .build()
+
+        val request = Request.Builder()
+            .url("https://jsonplaceholder.typicode.com/todos/1")
+            .build()
+
+        try {
+            val response = withContext(Dispatchers.IO) {
+                client.newCall(request).execute()
+            }
+
+            val result = if (response.isSuccessful) {
+                response.body?.string()
+            } else {
+                null
+            }
+
+            Timber.d("result: $result")
+        } catch (e: Exception) {
+            Timber.e(e)
+        }
     }
 
     override fun onResume() {
@@ -245,7 +353,7 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
 
         mCurrentItem = mLastItem
 
-        if (Space.current === null) {
+        if (!Prefs.didCompleteOnboarding) {
             startActivity(Intent(this, Onboarding23Activity::class.java))
         }
 
@@ -271,21 +379,19 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
     }
 
     private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                //  ask for the permission
-                requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            //  ask for the permission
+            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-
-        importSharedMedia(intent)
-    }
+//    override fun onNewIntent(intent: Intent?) {
+//        super.onNewIntent(intent)
+//
+//        importSharedMedia(intent)
+//    }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
@@ -386,10 +492,10 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
                     .reduceOrNull { acc, count -> acc + count } ?: 0)
             mBinding.currentFolderCount.show()
 
-            mBinding.uploadEditButton.toggle(project.isUploading)
+//            mBinding.uploadEditButton.toggle(project.isUploading)
         } else {
             mBinding.currentFolderCount.cloak()
-            mBinding.uploadEditButton.hide()
+//            mBinding.uploadEditButton.hide()
         }
     }
 
@@ -449,7 +555,6 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
 //        )
 //    }
 
-    @SuppressLint("NotifyDataSetChanged")
     override fun projectClicked(project: Project) {
         mCurrentItem = mPagerAdapter.projects.indexOf(project)
 
@@ -521,10 +626,10 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
 
     private fun updateBottomNavbar(position: Int) {
         if (position == mPagerAdapter.settingsIndex) {
-            mBinding.myMediaButton.setIconResource(R.drawable.ic_home)
+            mBinding.myMediaButton.setIconResource(R.drawable.outline_perm_media_24)
             mBinding.settingsButton.setIconResource(R.drawable.ic_settings_filled)
         } else {
-            mBinding.myMediaButton.setIconResource(R.drawable.ic_home_filled)
+            mBinding.myMediaButton.setIconResource(R.drawable.perm_media_24px)
             mBinding.settingsButton.setIconResource(R.drawable.ic_settings)
         }
     }

@@ -6,8 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+<!--    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />-->
+<!--    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />-->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -17,6 +17,7 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RUN_USER_INITIATED_JOBS" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
     <uses-permission android:name="android.permission.INTERNET" />
 
     <queries>
@@ -43,6 +44,7 @@
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:requestLegacyExternalStorage="true"
@@ -50,7 +52,7 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/AppTheme.NoActionBar"
         tools:replace="android:icon,android:allowBackup"
-        tools:ignore="UnusedAttribute">
+        tools:ignore="UnusedAttribute,LockedOrientationActivity">
         <!-- task affinity lets us define within which 'task' does a activity belong to.
         By default, the activity has the same task affinity as its root
         Trail of bits ticket: https://github.com/OpenArchive/OA-Trail-of-Bits/issues/23
@@ -72,7 +74,6 @@
         <activity
             android:name=".features.main.MainActivity"
             android:exported="true"
-            android:theme="@style/MainTheme.NoActionBar"
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -109,30 +110,9 @@
         <activity android:name=".features.internetarchive.presentation.InternetArchiveActivity"
             android:label="@string/title_activity_login"
             android:taskAffinity="" />
-        <activity
-            android:name=".services.dropbox.DropboxActivity" />
 
         <activity
             android:name=".services.gdrive.GDriveActivity" />
-
-        <activity
-            android:name="com.dropbox.core.android.AuthActivity"
-            android:configChanges="orientation|keyboard"
-            android:exported="true"
-            android:launchMode="singleTask">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.BROWSABLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-
-                <data android:scheme="db-gd5sputfo57s1l1" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
 
         <activity
             android:name=".features.settings.FoldersActivity"
@@ -225,6 +205,11 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
+
+        <provider
+            android:name=".provider.TorStatusContentProvider"
+            android:authorities="org.opendasharchive.safe.provider.tor"
+            android:exported="false" />
 
         <service
             android:name=".upload.UploadService"

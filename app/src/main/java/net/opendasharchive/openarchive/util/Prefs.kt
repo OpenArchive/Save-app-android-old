@@ -9,15 +9,15 @@ import org.witness.proofmode.ProofMode
 import org.witness.proofmode.ProofModeConstants
 
 object Prefs {
-
+    private const val DID_COMPLETE_ONBOARDING = "did_complete_onboarding"
     private const val UPLOAD_WIFI_ONLY = "upload_wifi_only"
     private const val NEARBY_USE_BLUETOOTH = "nearby_use_bluetooth"
     private const val NEARBY_USE_WIFI = "nearby_use_wifi"
-    const val USE_TOR = "use_tor"
+    private const val USE_TOR = "use_tor"
     const val PROHIBIT_SCREENSHOTS = "prohibit_screenshots"
     const val USE_PROOFMODE = "use_proofmode"
     const val USE_PROOFMODE_KEY_ENCRYPTION = "proofmode_key_encryption"
-    private const val USE_NEXTCLOUD_CHUNKING = "upload_nextcloud_chunks"
+    // private const val USE_NEXTCLOUD_CHUNKING = "upload_nextcloud_chunks"
     const val THEME = "theme"
     private const val CURRENT_SPACE_ID = "current_space"
     private const val FLAG_HINT_SHOWN = "ft.flag"
@@ -39,8 +39,14 @@ object Prefs {
         prefs?.edit()?.commit()
     }
 
-    val useNextcloudChunking: Boolean
-        get() = prefs?.getBoolean(USE_NEXTCLOUD_CHUNKING, false) ?: false
+//    val useNextcloudChunking: Boolean
+//        get() = prefs?.getBoolean(USE_NEXTCLOUD_CHUNKING, false) ?: false
+
+    var didCompleteOnboarding: Boolean
+        get() = prefs?.getBoolean(DID_COMPLETE_ONBOARDING, false) ?: false
+        set(value) {
+            prefs?.edit()?.putBoolean(DID_COMPLETE_ONBOARDING, value)?.apply()
+        }
 
     var uploadWifiOnly: Boolean
         get() = prefs?.getBoolean(UPLOAD_WIFI_ONLY, false) ?: false

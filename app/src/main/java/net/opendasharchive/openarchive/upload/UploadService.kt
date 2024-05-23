@@ -11,8 +11,8 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.Configuration
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +30,39 @@ import timber.log.Timber
 import java.io.IOException
 import java.util.*
 
+//class StartTor(val appContext: Context, workerParams: WorkerParameters) : Worker(appContext, workerParams) {
+//
+//    override fun doWork(): Result {
+//        Timber.d("StartTor")
+//        bindService(Intent(appContext, TorService::class.java), object : ServiceConnection {
+//            override fun onServiceConnected(name: ComponentName, service: IBinder) {
+//                val torService: TorService = (service as TorService.LocalBinder).service
+//
+//                while (torService.torControlConnection == null) {
+//                    try {
+//                        Timber.d("Sleeping")
+//                        Thread.sleep(500)
+//                    } catch (e: InterruptedException) {
+//                        e.printStackTrace()
+//                    }
+//                }
+//
+////                Toast.makeText(
+////                    this@MainActivity,
+////                    "Got Tor control connection",
+////                    Toast.LENGTH_LONG
+//            }
+////                ).show()
+//
+//            override fun onServiceDisconnected(name: ComponentName) {
+//                // Things...
+//            }
+//        }, BIND_AUTO_CREATE)
+//
+//        return Result.success()
+//    }
+//}
+
 class UploadService : JobService() {
 
     companion object {
@@ -39,19 +72,23 @@ class UploadService : JobService() {
         fun startUploadService(activity: Activity) {
             val jobScheduler =
                 ContextCompat.getSystemService(activity, JobScheduler::class.java) ?: return
+
             var jobBuilder = JobInfo.Builder(
                 MY_BACKGROUND_JOB,
                 ComponentName(activity, UploadService::class.java)
             ).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 jobBuilder = jobBuilder.setUserInitiated(true)
             }
+
             jobScheduler.schedule(jobBuilder.build())
         }
 
         fun stopUploadService(context: Context) {
             val jobScheduler =
                 ContextCompat.getSystemService(context, JobScheduler::class.java) ?: return
+
             jobScheduler.cancel(MY_BACKGROUND_JOB)
         }
     }
@@ -59,11 +96,35 @@ class UploadService : JobService() {
     private var mRunning = false
     private var mKeepUploading = true
     private val mConduits = ArrayList<Conduit>()
+    private lateinit var notification: Notification
+
+//    private val constraints = Constraints.Builder()
 
     override fun onCreate() {
         super.onCreate()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) createNotificationChannel()
+        createNotificationChannel()
+        notification = prepNotification()
         Configuration.Builder().setJobSchedulerJobIdRange(0, Integer.MAX_VALUE).build()
+
+        with (NotificationManagerCompat.from(this)) {
+            try {
+                notify(23, notification)
+            } catch(e: SecurityException) {
+                Timber.d(e)
+            }
+        }
+
+//        val contentUri = Uri.parse("content://org.opendasharchive.safe.provider.tor/status")
+//        constraints.addContentUriTrigger(contentUri, true)
+//
+//        val myConstraints = constraints.build()
+//
+//        val workRequest = OneTimeWorkRequestBuilder<StartTor>()
+//            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+//            .setConstraints(myConstraints)
+//            .build()
+//
+//        WorkManager.getInstance(this).enqueue(workRequest)
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -159,8 +220,7 @@ class UploadService : JobService() {
     @Throws(IOException::class)
     private suspend fun upload(media: Media): Boolean {
 
-        val conduit = Conduit.get(media, this)
-            ?: return false
+        val conduit = Conduit.get(media, this) ?: return false
 
         media.sStatus = Media.Status.Uploading
         media.save()
@@ -169,6 +229,7 @@ class UploadService : JobService() {
         CleanInsightsManager.measureEvent("upload", "try_upload", media.space?.tType?.friendlyName)
 
         mConduits.add(conduit)
+
         scope.launch {
             conduit.upload()
             mConduits.remove(conduit)
@@ -185,8 +246,13 @@ class UploadService : JobService() {
 
         if (isNetworkAvailable(requireUnmetered)) return true
 
-        val type =
-            if (requireUnmetered) JobInfo.NETWORK_TYPE_UNMETERED else JobInfo.NETWORK_TYPE_ANY
+        if (Prefs.useTor && isTorAvailable()) return true
+
+        val type = if (requireUnmetered) {
+            JobInfo.NETWORK_TYPE_UNMETERED
+        } else {
+            JobInfo.NETWORK_TYPE_ANY
+        }
 
         // Try again when there is a network.
         val job = JobInfo.Builder(
@@ -202,44 +268,36 @@ class UploadService : JobService() {
         return false
     }
 
-    private fun isNetworkAvailable(requireUnmetered: Boolean): Boolean {
-        val cm =
-            getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val cap = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
-
-            when {
-                cap.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> {
-                    return true
-                }
-
-                cap.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> {
-                    return !requireUnmetered
-                }
-
-                cap.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> {
-                    return true
-                }
-            }
-
-            return false
-        } else {
-            @Suppress("DEPRECATION")
-            val info = cm.activeNetworkInfo
-
-            @Suppress("DEPRECATION")
-            return info?.isConnected == true && (!requireUnmetered
-                    || info.type == ConnectivityManager.TYPE_WIFI
-                    || info.type == ConnectivityManager.TYPE_ETHERNET)
-        }
+    private fun isTorAvailable(): Boolean {
+        return false
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
+    private fun isNetworkAvailable(requireUnmetered: Boolean): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+
+        val cap = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+
+        when {
+            cap.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> {
+                return true
+            }
+
+            cap.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> {
+                return !requireUnmetered
+            }
+
+            cap.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> {
+                return true
+            }
+        }
+
+        return false
+    }
+
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             NOTIFICATION_CHANNEL_ID, getString(R.string.uploads),
-            NotificationManager.IMPORTANCE_LOW
+            NotificationManager.IMPORTANCE_DEFAULT
         )
 
         channel.description = getString(R.string.uploads_notification_descriptions)
@@ -248,18 +306,16 @@ class UploadService : JobService() {
         channel.setShowBadge(false)
         channel.lockscreenVisibility = Notification.VISIBILITY_SECRET
 
-        (getSystemService(NOTIFICATION_SERVICE) as? NotificationManager)
-            ?.createNotificationChannel(channel)
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        notificationManager.createNotificationChannel(channel)
     }
 
     private fun prepNotification(): Notification {
-        val flag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_IMMUTABLE
-        } else 0
-
         val pendingIntent = PendingIntent.getActivity(
             this, 0,
-            Intent(this, MainActivity::class.java), flag
+            Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
         )
 
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
