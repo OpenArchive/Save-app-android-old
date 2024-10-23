@@ -2,6 +2,10 @@
 
     <!-- themes -->
 
+    <style name="OASwitchPreferenceStyle" parent="@style/Preference.SwitchPreferenceCompat.Material">
+        <item name="android:textSize">12sp</item>
+    </style>
+
     <style name="AppTheme.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
@@ -20,9 +24,17 @@
         <item name="bottomSheetDialogTheme">@style/AppBottomSheetTheme</item>
         <item name="alertDialogTheme">@style/AlertDialogTheme</item>
         <item name="materialAlertDialogTheme">@style/AlertMaterialDialogTheme</item>
-        <item name="switchPreferenceCompatStyle">@style/Foo</item>
+        <item name="preferenceTheme">@style/OAPreferenceStyle</item>
+        <item name="switchPreferenceCompatStyle">@style/OASwitchPreferenceStyle</item>
     </style>
 
+
+    <style name="OAPreferenceStyle" parent="PreferenceThemeOverlay">
+        <item name="android:textSize">16sp</item>
+        <item name="android:listDivider">@drawable/save_list_item_spacing_small</item>
+        <item name="android:divider">@drawable/save_list_item_spacing_small</item>
+        <item name="android:dividerHeight">1dp</item>
+    </style>
 
 <!--    <style name="MainTheme.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">-->
 <!--        <item name="colorPrimary">@color/colorPrimary</item>-->
@@ -55,13 +67,6 @@
     </style>
 
     <!-- widgets / dialogs / alerts -->
-
-    <style name="Foo" parent="Preference.SwitchPreferenceCompat">
-        <item name="android:textAppearance">@null</item>
-        <item name="android:textColor">@color/red</item>
-        <item name="android:textColorSecondary">@color/red</item>
-        <item name="android:textSize">12sp</item>
-    </style>
 
     <style name="AppBarStyle" parent="Widget.Material3.AppBarLayout">
         <item name="android:background">@color/colorBackground</item>

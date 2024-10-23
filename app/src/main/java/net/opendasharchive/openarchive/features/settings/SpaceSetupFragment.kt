@@ -27,31 +27,31 @@ class SpaceSetupFragment : Fragment() {
             setFragmentResult(RESULT_REQUEST_KEY, bundleOf(RESULT_BUNDLE_KEY to RESULT_VAL_WEBDAV))
         }
 
-        if (Space.has(Space.Type.INTERNET_ARCHIVE)) {
-            mBinding.internetArchive.hide()
-        } else {
-            mBinding.internetArchive.setOnClickListener {
-                setFragmentResult(
-                    RESULT_REQUEST_KEY,
-                    bundleOf(RESULT_BUNDLE_KEY to RESULT_VAL_INTERNET_ARCHIVE)
-                )
-            }
-        }
+//        if (Space.has(Space.Type.INTERNET_ARCHIVE)) {
+//            mBinding.internetArchive.hide()
+//        } else {
+//            mBinding.internetArchive.setOnClickListener {
+//                setFragmentResult(
+//                    RESULT_REQUEST_KEY,
+//                    bundleOf(RESULT_BUNDLE_KEY to RESULT_VAL_INTERNET_ARCHIVE)
+//                )
+//            }
+//        }
 
-        if (Space.has(Space.Type.GDRIVE) || !playServicesAvailable()) {
-            mBinding.gdrive.hide()
-        } else {
-            mBinding.gdrive.setOnClickListener {
-                setFragmentResult(
-                    RESULT_REQUEST_KEY,
-                    bundleOf(RESULT_BUNDLE_KEY to RESULT_VAL_GDRIVE)
-                )
-            }
-        }
+//        if (Space.has(Space.Type.GDRIVE) || !playServicesAvailable()) {
+//            mBinding.gdrive.hide()
+//        } else {
+//            mBinding.gdrive.setOnClickListener {
+//                setFragmentResult(
+//                    RESULT_REQUEST_KEY,
+//                    bundleOf(RESULT_BUNDLE_KEY to RESULT_VAL_GDRIVE)
+//                )
+//            }
+//        }
 
-        mBinding.skipForNowButton.setOnClickListener {
-            skipSpaceConfig()
-        }
+//        mBinding.skipForNowButton.setOnClickListener {
+//            skipSpaceConfig()
+//        }
 
         return mBinding.root
     }

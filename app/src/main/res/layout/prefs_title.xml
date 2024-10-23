@@ -9,7 +9,7 @@
         android:id="@android:id/title"
         android:layout_weight="1"
         android:layout_width="0dp"
-        android:textColor="#201f1f"
+        android:textColor="@color/c23_teal"
         android:layout_height="wrap_content"
         android:textSize="18sp" />
 </LinearLayout>
