@@ -2,23 +2,36 @@ package net.opendasharchive.openarchive.db
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.amulyakhare.textdrawable.TextDrawable
 import com.github.abdularis.civ.AvatarImageView
 import com.orm.SugarRecord
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.features.onboarding.SpaceSetupActivity
 import net.opendasharchive.openarchive.services.gdrive.GDriveConduit
 import net.opendasharchive.openarchive.services.internetarchive.IaConduit
+import net.opendasharchive.openarchive.util.DrawableUtil
 import net.opendasharchive.openarchive.util.Prefs
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.Locale
 
-
+/**
+ * Space - Account to connect to.
+ *
+ * @property type
+ * @property name   Server given name
+ * @property username   username for server
+ * @property displayname    not in use
+ * @property password   password for login
+ * @property host   server url
+ * @property metaData
+ * @property licenseUrl
+ * @constructor Create empty Space
+ */
 data class Space(
     var type: Int = 0,
     var name: String = "",
@@ -164,7 +177,11 @@ data class Space(
 
             Type.GDRIVE -> ContextCompat.getDrawable(context, R.drawable.logo_gdrive_outline) // ?.tint(color)
 
-            else -> TextDrawable.builder().buildRound(initial, color)
+            else -> {
+                // Replace the original TextDrawable code with the custom drawable function
+                val initial = "A" // Replace with actual initial if available
+                BitmapDrawable(context.resources, DrawableUtil.createCircularTextDrawable(initial, color))
+            }
         }
     }
 
