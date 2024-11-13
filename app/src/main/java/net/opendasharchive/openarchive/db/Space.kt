@@ -177,11 +177,8 @@ data class Space(
 
             Type.GDRIVE -> ContextCompat.getDrawable(context, R.drawable.logo_gdrive_outline) // ?.tint(color)
 
-            else -> {
-                // Replace the original TextDrawable code with the custom drawable function
-                val initial = "A" // Replace with actual initial if available
-                BitmapDrawable(context.resources, DrawableUtil.createCircularTextDrawable(initial, color))
-            }
+            else -> BitmapDrawable(context.resources, DrawableUtil.createCircularTextDrawable(initial, color))
+
         }
     }
 

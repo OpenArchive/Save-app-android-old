@@ -8,10 +8,13 @@ import com.orm.SugarApp
 import info.guardianproject.netcipher.proxy.OrbotHelper
 import net.opendasharchive.openarchive.core.di.coreModule
 import net.opendasharchive.openarchive.core.di.featuresModule
+import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.Theme
 import org.koin.android.ext.koin.androidContext
+import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
+import org.koin.core.logger.Level
 import timber.log.Timber
 
 
@@ -25,8 +28,13 @@ class SaveApp : SugarApp() {
         super.onCreate()
 
         startKoin {
+            androidLogger(Level.DEBUG)
             androidContext(this@SaveApp)
             modules(coreModule, featuresModule)
+        }
+
+        if(BuildConfig.DEBUG) {
+            AppLogger.init(applicationContext, initDebugger = true)
         }
 
         val config = ImagePipelineConfig.newBuilder(this)
@@ -43,12 +51,6 @@ class SaveApp : SugarApp() {
         Theme.set(Prefs.theme)
 
         CleanInsightsManager.init(this)
-
-        // enable timber logging library for debug builds
-        if (BuildConfig.DEBUG){
-            Timber.plant(Timber.DebugTree())
-            Timber.tag("SAVE")
-        }
     }
 
     private fun initNetCipher() {

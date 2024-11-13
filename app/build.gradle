@@ -175,6 +175,9 @@ dependencies {
     testImplementation "org.robolectric:robolectric:4.7.3"
     androidTestImplementation "androidx.test.ext:junit:1.1.5"
     androidTestImplementation "androidx.test:runner:1.5.2"
+
+    // Pretty Logging
+    implementation "com.orhanobut:logger:2.2.0"
 }
 
 configurations {

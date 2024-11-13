@@ -468,7 +468,9 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
         val project = getSelectedProject()
 
         if (project != null) {
-            mPagerAdapter.notifyProjectChanged(project)
+            mBinding.pager.post {
+                mPagerAdapter.notifyProjectChanged(project)
+            }
 
             project.space?.setAvatar(mBinding.currentFolderIcon)
             mBinding.currentFolderIcon.show()
