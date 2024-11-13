@@ -1,6 +1,7 @@
 package net.opendasharchive.openarchive.features.media
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -17,6 +18,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
 import com.esafirm.imagepicker.features.ImagePickerConfig
 import com.esafirm.imagepicker.features.ImagePickerLauncher
 import com.esafirm.imagepicker.features.ImagePickerMode
@@ -24,34 +27,37 @@ import com.esafirm.imagepicker.features.ImagePickerSavePath
 import com.esafirm.imagepicker.features.ReturnMode
 import com.esafirm.imagepicker.features.registerImagePicker
 import com.google.android.material.snackbar.Snackbar
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.R
+import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.db.Media
 import net.opendasharchive.openarchive.db.Project
 import net.opendasharchive.openarchive.util.Utility
 import net.opendasharchive.openarchive.util.extensions.makeSnackBar
 import org.witness.proofmode.crypto.HashUtils
-//import org.witness.proofmode.crypto.HashUtils
 import java.io.File
 import java.util.Date
 
 object Picker {
 
-    fun register(activity: ComponentActivity, root: View, project: () -> Project?, completed: (List<Media>) -> Unit): Pair<ImagePickerLauncher, ActivityResultLauncher<Intent>> {
-        val mpl = activity.registerImagePicker { result ->
-            val bar = root.makeSnackBar(activity.getString(R.string.importing_media))
-            (bar.view as? Snackbar.SnackbarLayout)?.addView(ProgressBar(activity))
-            bar.show()
+    private var currentPhotoUri: Uri? = null
 
-            CoroutineScope(Dispatchers.IO).launch {
+    fun register(
+        activity: ComponentActivity,
+        root: View, project: () -> Project?,
+        completed: (List<Media>) -> Unit
+    ): MediaLaunchers {
+
+        val mpl = activity.registerImagePicker { result ->
+
+            val snackbar = showProgressSnackBar(activity, root, activity.getString(R.string.importing_media))
+
+            activity.lifecycleScope.launch(Dispatchers.IO) {
                 val media = import(activity, project(), result.map { it.uri })
 
-                MainScope().launch {
-                    bar.dismiss()
-
+                activity.lifecycleScope.launch(Dispatchers.Main) {
+                    snackbar.dismiss()
                     completed(media)
                 }
             }
@@ -62,22 +68,41 @@ object Picker {
 
             val uri = result.data?.data ?: return@registerForActivityResult
 
-            val bar = root.makeSnackBar(activity.getString(R.string.importing_media))
-            (bar.view as? Snackbar.SnackbarLayout)?.addView(ProgressBar(activity))
-            bar.show()
+            val snackbar = showProgressSnackBar(activity, root, activity.getString(R.string.importing_media))
 
-            CoroutineScope(Dispatchers.IO).launch {
+            activity.lifecycleScope.launch(Dispatchers.IO) {
                 val files = import(activity, project(), listOf(uri))
 
-                MainScope().launch {
-                    bar.dismiss()
-
+                activity.lifecycleScope.launch(Dispatchers.Main) {
+                    snackbar.dismiss()
                     completed(files)
                 }
             }
         }
 
-        return Pair(mpl, fpl)
+        val cpl = activity.registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success) {
+                currentPhotoUri?.let { uri ->
+
+                    val snackbar = showProgressSnackBar(activity, root, activity.getString(R.string.importing_media))
+
+                    activity.lifecycleScope.launch(Dispatchers.IO) {
+                        val media = import(activity, project(), listOf(uri))
+
+                        activity.lifecycleScope.launch(Dispatchers.Main) {
+                            snackbar.dismiss()
+                            completed(media)
+                        }
+                    }
+                }
+            }
+        }
+
+        return MediaLaunchers(
+            imagePickerLauncher = mpl,
+            filePickerLauncher = fpl,
+            cameraLauncher = cpl
+        )
     }
 
     fun pickMedia(activity: Activity, launcher: ImagePickerLauncher) {
@@ -141,8 +166,12 @@ object Picker {
         val result = ArrayList<Media>()
 
         for (uri in uris) {
-            val media = import(context, project, uri)
-            if (media != null) result.add(media)
+            try {
+                val media = import(context, project, uri)
+                if (media != null) result.add(media)
+            } catch (e: Exception) {
+                AppLogger.e(e, "Error importing media")
+            }
         }
 
         return result
@@ -189,5 +218,26 @@ object Picker {
         media.save()
 
         return media
+    }
+
+    fun takePhoto(context: Context, launcher: ActivityResultLauncher<Uri>) {
+        val file = Utility.getOutputMediaFileByCache(context, "IMG_${System.currentTimeMillis()}.jpg")
+
+        file?.let {
+            val uri = FileProvider.getUriForFile(
+                context, "${context.packageName}.provider",
+                it
+            )
+            currentPhotoUri = uri
+            launcher.launch(uri)
+        }
+    }
+
+    @SuppressLint("RestrictedApi")
+    private fun showProgressSnackBar(activity: Activity, root: View, message: String): Snackbar {
+        val bar = root.makeSnackBar(message)
+        (bar.view as? Snackbar.SnackbarLayout)?.addView(ProgressBar(activity))
+        bar.show()
+        return bar
     }
 }

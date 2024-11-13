@@ -33,6 +33,11 @@ class AddMediaDialogFragment : DialogFragment() {
     ): View {
         mBinding = FragmentAddMediaDialogBinding.inflate(inflater)
 
+        mBinding.photoCamera.setOnClickListener {
+            setFragmentResult(RESP_TAKE_PHOTO, bundleOf())
+            dismiss()
+        }
+
         mBinding.photoGallery.setOnClickListener {
             setFragmentResult(RESP_PHOTO_GALLERY, bundleOf())
             dismiss()
@@ -46,6 +51,7 @@ class AddMediaDialogFragment : DialogFragment() {
     }
 
     companion object {
+        const val RESP_TAKE_PHOTO = "add_media_dialog_fragment_take_photo_resp"
         const val RESP_PHOTO_GALLERY = "add_media_dialog_fragment_photo_gallery_resp"
         const val RESP_FILES = "add_media_dialog_fragment_files_resp"
     }
