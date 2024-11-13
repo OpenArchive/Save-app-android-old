@@ -10,9 +10,9 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.ImageView
 import com.bumptech.glide.Glide
+import com.facebook.drawee.view.SimpleDraweeView
 import com.github.derlio.waveform.SimpleWaveformView
 import com.squareup.picasso.Picasso
-import com.stfalcon.frescoimageviewer.ImageViewer
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.ActivityReviewBinding
 import net.opendasharchive.openarchive.db.Media
@@ -168,9 +168,8 @@ class ReviewActivity : BaseActivity(), View.OnClickListener {
         when (view) {
             mBinding.waveform, mBinding.image -> {
                 if (mMedia?.mimeType?.startsWith("image") == true) {
-                    ImageViewer.Builder(this, listOf(mMedia?.fileUri))
-                        .setStartPosition(0)
-                        .show()
+                    val draweeView = SimpleDraweeView(this)
+                    draweeView.setImageURI(mMedia?.fileUri)
                 }
             }
             mBinding.btFlag -> {
