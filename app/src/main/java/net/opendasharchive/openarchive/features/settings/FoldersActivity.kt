@@ -49,20 +49,6 @@ class FoldersActivity: BaseActivity(), FolderAdapterListener {
 
             startActivity(i)
         }
-
-        if (mArchived) {
-            mBinding.cc.root.hide()
-        }
-        else {
-            mBinding.cc.tvCc.setText(R.string.set_the_same_creative_commons_license_for_all_folders_on_this_server)
-
-            CcSelector.init(mBinding.cc, Space.current?.license) {
-                val space = Space.current ?: return@init
-
-                space.license = it
-                space.save()
-            }
-        }
     }
 
     override fun onResume() {

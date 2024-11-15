@@ -31,6 +31,7 @@
     <color name="blue_semi_transparent_pressed">#80738ffe</color>
 
     <color name="oablue">#00c8b7</color>
+    <color name="eigengrau">#16161D</color>
 
     <color name="intro1bg">#34c5ff</color>
     <color name="intro2bg">#34c5ff</color>
@@ -59,15 +60,30 @@
     <color name="c23_teal_10">#ff001b19</color> <!-- v=10.6 -->
     <color name="c23_powder_blue">#ffaae6e1</color>
 
+    <color name="c24_cream_100">#fffbf0</color>
+    <color name="c24_cream_95">#f2eee4</color>
+    <color name="c24_cream_90">#e5e2d8</color>
+    <color name="c24_cream_80">#ccc9c0</color>
+    <color name="c24_cream_70">#b3afa8</color>
+    <color name="c24_cream_60">#999690</color>
+    <color name="c24_cream_50">#807d78</color>
+    <color name="c24_cream_40">#666460</color>
+    <color name="c24_cream_30">#4d4b48</color>
+    <color name="c24_cream_20">#333230</color>
+    <color name="c24_cream_10">#1a1918</color>
+
     <!-- theme day colors -->
 
     <color name="colorBackground">@color/white</color>
     <color name="colorOnBackground">@color/black</color>
     <color name="colorOnBackgroundTonedDown">@color/c23_grey</color>
+    <color name="colorOnBackgroundLowContrast">@color/c23_grey</color>
     <color name="colorOnPrimary">@color/white</color>
+    <color name="colorOnPrimaryTonedDown">#ffffff</color>
     <color name="colorPrimary">@color/c23_teal</color>
     <color name="colorPrimaryDark">@color/c23_teal_40</color>
     <color name="colorPrimaryBright">@color/c23_powder_blue</color>
+    <color name="colorText">@color/c23_dark_grey</color>
 
     <!-- custom day colors -->
 
@@ -80,7 +96,13 @@
     <color name="colorSpaceSetupProgressOn">@color/black</color>
     <color name="colorSpaceSetupProgressOff">@color/c23_grey</color>
     <color name="colorBackgroundSpaceIcon">@color/c23_light_grey</color>
-
+    <color name="colorButtonOnBackground">@color/white</color>
+    <color name="colorTextViewHint">@color/colorPrimary</color>
+    <color name="colorSectionHeader">#00B4A6</color>
+    <color name="colorBackendButton">@color/white</color>
+    <color name="colorBackendButtonInactive">@color/c24_cream_70</color>
+    <color name="colorBackendButtonBorder">@color/c23_grey</color>
+    <color name="colorSkipButton">@color/c24_cream_95</color>
     <!--
 
       custom colors
@@ -90,8 +112,9 @@
       aren't mapped to the materials color system.
 
      -->
-
+    <color name="colorIcon">@color/white</color>
     <color name="colorPill">#E3E3E4</color>
+    <color name="dragHandle">@color/c24_cream_70</color>
     <color name="colorMediaOverlayIcon">@color/white</color>
     <color name="colorDanger">@color/red</color>
     <color name="colorDivider">@color/light_grey</color>
@@ -101,5 +124,10 @@
     <color name="colorMediaTitleText">@color/light_grey</color>
     <color name="colorWaveformIndicator">#aa0000</color>
     <color name="colorWaveform">#999999</color>
+    <color name="splashBackground">#e5e5e5</color>
+    <color name="tabBarMenuButton">@color/eigengrau</color>
+    <color name="swipeBackground">@color/c24_cream_80</color>
+    <color name="colorRipple">#bbe3e3e4</color>
+    <color name="bottomSheetBackground">@color/c24_cream_100</color>
 
 </resources>

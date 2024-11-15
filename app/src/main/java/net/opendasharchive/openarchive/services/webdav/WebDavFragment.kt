@@ -2,8 +2,6 @@ package net.opendasharchive.openarchive.services.webdav
 
 import android.net.Uri
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,13 +13,14 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import net.opendasharchive.openarchive.CleanInsightsManager
+import net.opendasharchive.openarchive.BuildConfig
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.FragmentWebDavBinding
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.services.SaveClient
 import net.opendasharchive.openarchive.services.internetarchive.Util
 import net.opendasharchive.openarchive.util.AlertHelper
+import net.opendasharchive.openarchive.util.Utility
 import net.opendasharchive.openarchive.util.extensions.makeSnackBar
 import okhttp3.Call
 import okhttp3.Callback
@@ -35,37 +34,37 @@ class WebDavFragment : Fragment() {
     private lateinit var mSpace: Space
 
     private lateinit var mSnackbar: Snackbar
-    private lateinit var mBinding: FragmentWebDavBinding
+    private lateinit var binding: FragmentWebDavBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        mSpaceId = arguments?.getLong(ARG_SPACE) ?: ARG_VAL_NEW_SPACE
+        mSpaceId = arguments?.getLong(ARG_SPACE_ID) ?: ARG_VAL_NEW_SPACE
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         // Inflate the layout for this fragment
-        mBinding = FragmentWebDavBinding.inflate(inflater)
+        binding = FragmentWebDavBinding.inflate(inflater)
 
-        mSpaceId = arguments?.getLong(ARG_SPACE) ?: ARG_VAL_NEW_SPACE
+        mSpaceId = arguments?.getLong(ARG_SPACE_ID) ?: ARG_VAL_NEW_SPACE
 
         if (ARG_VAL_NEW_SPACE != mSpaceId) {
             // setup views for editing and existing space
 
             mSpace = Space.get(mSpaceId!!) ?: Space(Space.Type.WEBDAV)
 
-            mBinding.header.visibility = View.GONE
-            mBinding.buttonBar.visibility = View.GONE
+            binding.header.visibility = View.GONE
+            binding.buttonBar.visibility = View.GONE
+            binding.buttonBarEdit.visibility = View.VISIBLE
 
-            mBinding.server.isEnabled = false
-            mBinding.username.isEnabled = false
-            mBinding.password.isEnabled = false
+            binding.server.isEnabled = false
+            binding.username.isEnabled = false
+            binding.password.isEnabled = false
 
-            mBinding.server.setText(mSpace.host)
-            mBinding.name.setText(mSpace.name)
-            mBinding.username.setText(mSpace.username)
-            mBinding.password.setText(mSpace.password)
+            binding.server.setText(mSpace.host)
+            binding.username.setText(mSpace.username)
+            binding.password.setText(mSpace.password)
 
 //            mBinding.swChunking.isChecked = mSpace.useChunking
 //            mBinding.swChunking.setOnCheckedChangeListener { _, useChunking ->
@@ -73,45 +72,39 @@ class WebDavFragment : Fragment() {
 //                mSpace.save()
 //            }
 
-            mBinding.name.addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-                }
 
-                override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-                }
 
-                override fun afterTextChanged(name: Editable?) {
-                    if (name == null) return
-
-                    mSpace.name = name.toString()
-                    mSpace.save()
-                }
-            })
-
-            mBinding.btRemove.setOnClickListener {
+            binding.btRemove.setOnClickListener {
                 removeProject()
             }
 
+            // swap webDavFragment with Creative Commons License Fragment
+            binding.btLicense.setOnClickListener {
+                setFragmentResult(RESP_LICENSE, bundleOf())
+            }
+
+
         } else {
             // setup views for creating a new space
-
             mSpace = Space(Space.Type.WEBDAV)
-            mBinding.btRemove.visibility = View.GONE
+            binding.btRemove.visibility = View.GONE
+            binding.buttonBar.visibility = View.VISIBLE
+            binding.buttonBarEdit.visibility = View.GONE
         }
 
-        mBinding.btAuthenticate.setOnClickListener { attemptLogin() }
+        binding.btAuthenticate.setOnClickListener { attemptLogin() }
 
-        mBinding.btCancel.setOnClickListener {
+        binding.btCancel.setOnClickListener {
             setFragmentResult(RESP_CANCEL, bundleOf())
         }
 
-        mBinding.server.setOnFocusChangeListener { _, hasFocus ->
+        binding.server.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) {
-                mBinding.server.setText(fixSpaceUrl(mBinding.server.text)?.toString())
+                binding.server.setText(fixSpaceUrl(binding.server.text)?.toString())
             }
         }
 
-        mBinding.password.setOnEditorActionListener { _, actionId, _ ->
+        binding.password.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_NULL) {
                 attemptLogin()
             }
@@ -119,12 +112,12 @@ class WebDavFragment : Fragment() {
             false
         }
 
-        return mBinding.root
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        mSnackbar = mBinding.root.makeSnackBar(getString(R.string.login_activity_logging_message))
+        mSnackbar = binding.root.makeSnackBar(getString(R.string.login_activity_logging_message))
     }
 
     private fun fixSpaceUrl(url: CharSequence?): Uri? {
@@ -154,31 +147,29 @@ class WebDavFragment : Fragment() {
      */
     private fun attemptLogin() {
         // Reset errors.
-        mBinding.username.error = null
-        mBinding.password.error = null
+        binding.username.error = null
+        binding.password.error = null
 
         // Store values at the time of the login attempt.
         var errorView: View? = null
 
-        mSpace.name = mBinding.name.text?.toString() ?: ""
+        mSpace.host = fixSpaceUrl(binding.server.text)?.toString() ?: ""
+        binding.server.setText(mSpace.host)
 
-        mSpace.host = fixSpaceUrl(mBinding.server.text)?.toString() ?: ""
-        mBinding.server.setText(mSpace.host)
-
-        mSpace.username = mBinding.username.text?.toString() ?: ""
-        mSpace.password = mBinding.password.text?.toString() ?: ""
+        mSpace.username = binding.username.text?.toString() ?: ""
+        mSpace.password = binding.password.text?.toString() ?: ""
 
 //        mSpace.useChunking = mBinding.swChunking.isChecked
 
         if (mSpace.host.isEmpty()) {
-            mBinding.server.error = getString(R.string.error_field_required)
-            errorView = mBinding.server
+            binding.server.error = getString(R.string.error_field_required)
+            errorView = binding.server
         } else if (mSpace.username.isEmpty()) {
-            mBinding.username.error = getString(R.string.error_field_required)
-            errorView = mBinding.username
+            binding.username.error = getString(R.string.error_field_required)
+            errorView = binding.username
         } else if (mSpace.password.isEmpty()) {
-            mBinding.password.error = getString(R.string.error_field_required)
-            errorView = mBinding.password
+            binding.password.error = getString(R.string.error_field_required)
+            errorView = binding.password
         }
 
         if (errorView != null) {
@@ -209,7 +200,7 @@ class WebDavFragment : Fragment() {
 //                    CleanInsightsManager.measureEvent("backend", "new", Space.Type.WEBDAV.friendlyName)
 //                }
 
-                setFragmentResult(RESP_SAVED, bundleOf())
+                navigate(mSpace.id)
             } catch (exception: IOException) {
                 if (exception.message?.startsWith("401") == true) {
                     showError(getString(R.string.error_incorrect_username_or_password), true)
@@ -217,6 +208,16 @@ class WebDavFragment : Fragment() {
                     showError(exception.localizedMessage ?: getString(R.string.error))
                 }
             }
+        }
+    }
+
+    private fun navigate(spaceId: Long) {
+        Utility.showMaterialMessage(
+            context = requireContext(),
+            title = "Success",
+            message = "You have successfully authenticated! Now let's continue setting up your media server."
+        ) {
+            setFragmentResult(RESP_SAVED, bundleOf(ARG_SPACE_ID to spaceId))
         }
     }
 
@@ -256,13 +257,13 @@ class WebDavFragment : Fragment() {
             mSnackbar.dismiss()
 
             if (onForm) {
-                mBinding.password.error = text
-                mBinding.password.requestFocus()
+                binding.password.error = text
+                binding.password.requestFocus()
             } else {
-                mSnackbar = mBinding.root.makeSnackBar(text, Snackbar.LENGTH_LONG)
+                mSnackbar = binding.root.makeSnackBar(text, Snackbar.LENGTH_LONG)
                 mSnackbar.show()
 
-                mBinding.server.requestFocus()
+                binding.server.requestFocus()
             }
         }
     }
@@ -295,9 +296,10 @@ class WebDavFragment : Fragment() {
         const val RESP_SAVED = "web_dav_fragment_resp_saved"
         const val RESP_DELETED = "web_dav_fragment_resp_deleted"
         const val RESP_CANCEL = "web_dav_fragment_resp_cancel"
+        const val RESP_LICENSE = "web_dav_fragment_resp_license"
 
         // factory method parameters (bundle args)
-        const val ARG_SPACE = "space"
+        const val ARG_SPACE_ID = "space"
         const val ARG_VAL_NEW_SPACE = -1L
 
         // other internal constants
@@ -306,7 +308,7 @@ class WebDavFragment : Fragment() {
         @JvmStatic
         fun newInstance(spaceId: Long) = WebDavFragment().apply {
             arguments = Bundle().apply {
-                putLong(ARG_SPACE, spaceId)
+                putLong(ARG_SPACE_ID, spaceId)
             }
         }
 

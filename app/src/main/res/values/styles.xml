@@ -1,4 +1,4 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
 
     <!-- themes -->
 
@@ -13,8 +13,8 @@
         <item name="android:colorBackground">@color/colorBackground</item>
         <item name="android:textColor">@color/colorOnBackground</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">@bool/dayMode</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">@bool/dayMode</item>
+        <item name="android:windowLightStatusBar" >@bool/dayMode</item>
+        <item name="android:windowLightNavigationBar" >@bool/dayMode</item>
         <item name="navigationViewStyle">@style/NavigationViewStyle</item>
         <item name="appBarLayoutStyle">@style/AppBarStyle</item>
         <item name="android:textViewStyle">@style/OATextViewStyle</item>
@@ -107,9 +107,31 @@
         <item name="android:textAllCaps">false</item>
     </style>
 
+    <style name="OAMaterialSignInButtonStyle" parent="Widget.MaterialComponents.Button">
+        <item name="android:background">@drawable/button</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:paddingBottom">0dp</item>
+        <item name="android:paddingEnd">0dp</item>
+        <item name="android:paddingStart">0dp</item>
+        <item name="android:paddingTop">0dp</item>
+        <item name="android:minWidth">24dp</item>
+        <item name="backgroundTint">@null</item>
+    </style>
+
     <style name="OAButtonStyle" parent="Widget.AppCompat.Button">
         <item name="android:textColor">@color/black</item>
         <item name="android:background">@drawable/button</item>
         <item name="android:textAllCaps">false</item>
+    </style>
+
+    <style name="OATextInputLayoutStyle" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/c23_teal</item>
+        <item name="boxBackgroundColor">@color/colorButtonOnBackground</item>
+        <item name="boxCornerRadiusBottomEnd">@dimen/cornerRadius</item>
+        <item name="boxCornerRadiusTopEnd">@dimen/cornerRadius</item>
+        <item name="boxCornerRadiusBottomStart">@dimen/cornerRadius</item>
+        <item name="boxCornerRadiusTopStart">@dimen/cornerRadius</item>
+        <item name="hintTextColor">@color/c23_teal</item>
+        <item name="cursorColor">@color/c23_teal</item>
     </style>
 </resources>

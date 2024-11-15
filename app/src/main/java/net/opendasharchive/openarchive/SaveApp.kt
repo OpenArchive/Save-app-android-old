@@ -15,8 +15,6 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 import org.koin.core.logger.Level
-import timber.log.Timber
-
 
 class SaveApp : SugarApp() {
 
@@ -54,7 +52,7 @@ class SaveApp : SugarApp() {
     }
 
     private fun initNetCipher() {
-        Timber.d( "Initializing NetCipher client")
+        AppLogger.d( "Initializing NetCipher client")
         val oh = OrbotHelper.get(this)
 
         if (BuildConfig.DEBUG) {
