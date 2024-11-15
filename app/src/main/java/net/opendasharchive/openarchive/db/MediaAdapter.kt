@@ -3,12 +3,11 @@ package net.opendasharchive.openarchive.db
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
-import android.view.*
+import android.view.View
+import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
-import com.google.api.client.googleapis.media.MediaHttpUploader.UploadState
-import net.opendasharchive.openarchive.CleanInsightsManager
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.features.media.PreviewActivity
