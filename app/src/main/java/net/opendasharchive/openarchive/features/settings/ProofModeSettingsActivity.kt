@@ -120,10 +120,6 @@ class ProofModeSettingsActivity: BaseActivity() {
 
         private fun enableProofModeKeyEncryption(pkePreference: SwitchPreferenceCompat) {
 
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-                return
-            }
-
             val key = Hbks.loadKey() ?: Hbks.createKey()
 
             if (key != null && Prefs.proofModeEncryptedPassphrase == null) {
@@ -192,7 +188,6 @@ class ProofModeSettingsActivity: BaseActivity() {
             }
         }
 
-        @RequiresApi(Build.VERSION_CODES.M)
         private fun createPassphrase(key: SecretKey, activity: FragmentActivity?, completed: (passphrase: String?) -> Unit) {
             val passphrase = UUID.randomUUID().toString()
 
