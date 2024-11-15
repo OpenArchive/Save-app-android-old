@@ -170,7 +170,7 @@ object Picker {
                 val media = import(context, project, uri)
                 if (media != null) result.add(media)
             } catch (e: Exception) {
-                AppLogger.e(e, "Error importing media")
+                AppLogger.e( "Error importing media", e)
             }
         }
 

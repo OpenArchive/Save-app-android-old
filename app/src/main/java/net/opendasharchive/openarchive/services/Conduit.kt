@@ -91,8 +91,12 @@ abstract class Conduit(
         mMedia.progress = mMedia.contentLength
         mMedia.sStatus = Media.Status.Uploaded
         mMedia.save()
-
-        BroadcastManager.postChange(mContext, mMedia.collectionId, mMedia.id)
+        AppLogger.i("media item ${mMedia.id} is uploaded and saved")
+        BroadcastManager.postSuccess(
+            context = mContext,
+            collectionId = mMedia.collectionId,
+            mediaId = mMedia.id
+        )
     }
 
     fun jobFailed(exception: Throwable) {
@@ -109,12 +113,28 @@ abstract class Conduit(
 
         AppLogger.e(exception)
 
-        BroadcastManager.postChange(mContext, mMedia.collectionId, mMedia.id)
+        BroadcastManager.postChange(
+            context = mContext,
+            collectionId = mMedia.collectionId,
+            mediaId = mMedia.id
+        )
     }
+
+    private var lastReportedProgress: Int? = null
 
     fun jobProgress(uploadedBytes: Long) {
         mMedia.progress = uploadedBytes
-        BroadcastManager.postProgress(mContext, mMedia.collectionId, mMedia.id, uploadedBytes)
+        val progress = if (uploadedBytes > 0) (uploadedBytes.toFloat() / mMedia.contentLength * 100).toInt() else 0
+        if (progress > (lastReportedProgress ?: 0) + 1) {
+            lastReportedProgress = progress
+            AppLogger.i("Media Item ${mMedia.id} progress: $progress/100")
+            BroadcastManager.postProgress(
+                context = mContext,
+                collectionId = mMedia.collectionId,
+                mediaId = mMedia.id,
+                progress = progress,
+            )
+        }
     }
 
     /**

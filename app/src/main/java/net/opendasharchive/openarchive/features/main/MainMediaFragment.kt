@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.R
+import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.databinding.FragmentMainMediaBinding
 import net.opendasharchive.openarchive.databinding.ViewSectionBinding
 import net.opendasharchive.openarchive.db.Collection
@@ -60,7 +61,12 @@ class MainMediaFragment : Fragment() {
             when (action) {
                 BroadcastManager.Action.Change -> {
                     handler.post {
-                        updateItem(action.collectionId, action.mediaId, action.progress)
+                        updateProjectItem(
+                            collectionId = action.collectionId,
+                            mediaId = action.mediaId,
+                            progress = action.progress,
+                            isUploaded = action.isUploaded
+                        )
                     }
                 }
 
@@ -125,11 +131,15 @@ class MainMediaFragment : Fragment() {
         refresh()
     }
 
-    fun updateItem(collectionId: Long, mediaId: Long, progress: Long) {
+    fun updateProjectItem(collectionId: Long, mediaId: Long, progress: Int, isUploaded: Boolean) {
+        AppLogger.i("Current progress for $collectionId: ", progress)
         mAdapters[collectionId]?.apply {
-            updateItem(mediaId, progress)
-            if (progress == -1L) {
-                updateHeader(collectionId, media)
+
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                updateItem(mediaId, progress, isUploaded)
+                if (progress == -1) {
+                    updateHeader(collectionId, media)
+                }
             }
         }
     }

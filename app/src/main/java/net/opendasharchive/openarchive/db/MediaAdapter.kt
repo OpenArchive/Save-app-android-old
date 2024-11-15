@@ -4,10 +4,13 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.view.*
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
+import com.google.api.client.googleapis.media.MediaHttpUploader.UploadState
 import net.opendasharchive.openarchive.CleanInsightsManager
 import net.opendasharchive.openarchive.R
+import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.features.media.PreviewActivity
 import net.opendasharchive.openarchive.upload.BroadcastManager
 import net.opendasharchive.openarchive.upload.UploadManagerActivity
@@ -22,7 +25,11 @@ class MediaAdapter(
     private val generator: (parent: ViewGroup) -> MediaViewHolder,
     data: List<Media>,
     private val recyclerView: RecyclerView,
-    private val supportedStatuses: List<Media.Status> = listOf(Media.Status.Local, Media.Status.Uploading, Media.Status.Error),
+    private val supportedStatuses: List<Media.Status> = listOf(
+        Media.Status.Local,
+        Media.Status.Uploading,
+        Media.Status.Error
+    ),
     private val checkSelecting: (() -> Unit)? = null
 ) : RecyclerView.Adapter<MediaViewHolder>() {
 
@@ -38,6 +45,10 @@ class MediaAdapter(
 
     private var mActivity = WeakReference(activity)
 
+    init {
+        setHasStableIds(true)
+    }
+
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder {
         val mvh = generator(parent)
@@ -45,8 +56,7 @@ class MediaAdapter(
         mvh.itemView.setOnClickListener { v ->
             if (selecting && checkSelecting != null) {
                 selectView(v)
-            }
-            else {
+            } else {
                 val pos = recyclerView.getChildLayoutPosition(v)
 
                 when (media[pos].sStatus) {
@@ -132,24 +142,51 @@ class MediaAdapter(
 
     override fun getItemCount(): Int = media.size
 
+    override fun getItemId(position: Int): Long {
+        return media[position].id
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onBindViewHolder(holder: MediaViewHolder, position: Int) {
+        AppLogger.i("onBindViewHolder called for position $position")
         holder.bind(media[position], selecting, doImageFade)
-
         holder.handle?.toggle(isEditMode)
     }
 
-    fun updateItem(mediaId: Long, progress: Long): Boolean {
+    override fun onBindViewHolder(holder: MediaViewHolder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.isNotEmpty()) {
+            val payload = payloads[0]
+            when (payload) {
+                "progress" -> {
+                    holder.updateProgress(media[position].uploadPercentage ?: 0)
+                }
+                "full" -> {
+                    holder.bind(media[position], selecting, doImageFade)
+                    holder.handle?.toggle(isEditMode)
+                }
+            }
+        } else {
+            holder.bind(media[position], selecting, doImageFade)
+            holder.handle?.toggle(isEditMode)
+        }
+    }
+
+    fun updateItem(mediaId: Long, progress: Int, isUploaded: Boolean = false): Boolean {
         val idx = media.indexOfFirst { it.id == mediaId }
+        AppLogger.i("updateItem: mediaId=$mediaId idx=$idx")
         if (idx < 0) return false
 
-        if (progress >= 0) {
-            media[idx].progress = progress
-        } else {
-            val item = Media.get(mediaId) ?: return false
-            media[idx] = item
+        val item = media[idx]
+
+        if (isUploaded) {
+            item.status = Media.Status.Uploaded.id
+            AppLogger.i("Media item $mediaId uploaded, notifying item changed at position $idx")
+            notifyItemChanged(idx, "full")
+        } else if (progress >= 0) {
+            item.uploadPercentage = progress
+            item.status = Media.Status.Uploading.id
+            notifyItemChanged(idx, "progress")
         }
-        notifyItemChanged(idx)
 
         return true
     }
@@ -167,10 +204,14 @@ class MediaAdapter(
         return true
     }
 
-    fun updateData(media: List<Media>) {
-        this.media = ArrayList(media)
+    fun updateData(newMediaList: List<Media>) {
+        val diffCallback = MediaDiffCallback(this.media, newMediaList)
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
 
-        notifyDataSetChanged()
+        this.media.clear()
+        this.media.addAll(newMediaList)
+
+        diffResult.dispatchUpdatesTo(this)
     }
 
     private fun showFirstTimeFlag() {
@@ -217,7 +258,8 @@ class MediaAdapter(
         val item = media[pos]
         var undone = false
 
-        val snackbar = Snackbar.make(recyclerView, R.string.confirm_remove_media, Snackbar.LENGTH_LONG)
+        val snackbar =
+            Snackbar.make(recyclerView, R.string.confirm_remove_media, Snackbar.LENGTH_LONG)
         snackbar.setAction(R.string.undo) { _ ->
             undone = true
             media.add(pos, item)
@@ -274,5 +316,31 @@ class MediaAdapter(
         checkSelecting?.invoke()
 
         return hasDeleted
+    }
+}
+
+class MediaDiffCallback(
+    private val oldList: List<Media>,
+    private val newList: List<Media>
+) : DiffUtil.Callback() {
+
+    override fun getOldListSize() = oldList.size
+
+    override fun getNewListSize() = newList.size
+
+    override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+        return oldList[oldItemPosition].id == newList[newItemPosition].id
+    }
+
+    override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+        // Compare only the fields that affect the UI
+
+        val oldItem = oldList[oldItemPosition]
+        val newItem = newList[newItemPosition]
+
+        return oldItem.status == newItem.status &&
+                oldItem.uploadPercentage == newItem.uploadPercentage &&
+                oldItem.selected == newItem.selected &&
+                oldItem.title == newItem.title
     }
 }
