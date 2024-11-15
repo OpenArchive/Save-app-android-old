@@ -9,11 +9,9 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.TextView
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.GridLayoutManager
-import com.esafirm.imagepicker.features.ImagePickerLauncher
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.ActivityPreviewBinding
 import net.opendasharchive.openarchive.db.Media
@@ -39,8 +37,8 @@ class PreviewActivity : BaseActivity(), View.OnClickListener, PreviewAdapter.Lis
     }
 
     private lateinit var mBinding: ActivityPreviewBinding
-    private lateinit var mMediaPickerLauncher: ImagePickerLauncher
-    private lateinit var mFilesPickerLauncher: ActivityResultLauncher<Intent>
+
+    private lateinit var mediaLaunchers: MediaLaunchers
 
     private val mLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -70,11 +68,9 @@ class PreviewActivity : BaseActivity(), View.OnClickListener, PreviewAdapter.Lis
 
         mProject = Project.getById(intent.getLongExtra(PROJECT_ID_EXTRA, -1))
 
-        val launchers = Picker.register(this, mBinding.root, { mProject }, {
+        mediaLaunchers = Picker.register(this, mBinding.root, { mProject }, {
             refresh()
         })
-        mMediaPickerLauncher = launchers.first
-        mFilesPickerLauncher = launchers.second
 
         setSupportActionBar(mBinding.toolbar)
         supportActionBar?.title = getString(R.string.preview_media)
@@ -106,8 +102,12 @@ class PreviewActivity : BaseActivity(), View.OnClickListener, PreviewAdapter.Lis
                         onClick(mBinding.btAddMore)
                     }
 
+                    R.id.action_upload_camera -> {
+                        Picker.takePhoto(this@PreviewActivity, mediaLaunchers.cameraLauncher)
+                    }
+
                     R.id.action_upload_files -> {
-                        Picker.pickFiles(mFilesPickerLauncher)
+                        Picker.pickFiles(mediaLaunchers.filePickerLauncher)
                     }
                 }
 
@@ -155,7 +155,7 @@ class PreviewActivity : BaseActivity(), View.OnClickListener, PreviewAdapter.Lis
                 if (Prefs.dontShowUploadHint) {
                     queue()
                 } else {
-                    var dontShowAgain = false
+                    var doNotShowAgain = false
 
                     val d = AlertDialog.Builder(ContextThemeWrapper(this, R.style.AlertDialogTheme))
                         .setTitle(R.string.once_uploaded_you_will_not_be_able_to_edit_media)
@@ -163,7 +163,7 @@ class PreviewActivity : BaseActivity(), View.OnClickListener, PreviewAdapter.Lis
                         .setPositiveButton(
                             R.string.got_it
                         ) { _: DialogInterface, _: Int ->
-                            Prefs.dontShowUploadHint = dontShowAgain
+                            Prefs.dontShowUploadHint = doNotShowAgain
                             queue()
                         }
                         .setNegativeButton(R.string.lbl_Cancel) { dialog: DialogInterface, _: Int -> dialog.dismiss() }
@@ -172,7 +172,7 @@ class PreviewActivity : BaseActivity(), View.OnClickListener, PreviewAdapter.Lis
                             booleanArrayOf(false)
                         )
                         { _, _, isChecked ->
-                            dontShowAgain = isChecked
+                            doNotShowAgain = isChecked
                         }.show()
 
                     // hack for making sure this dialog always shows all lines of the pretty long title, even on small screens
@@ -189,7 +189,7 @@ class PreviewActivity : BaseActivity(), View.OnClickListener, PreviewAdapter.Lis
     override fun onClick(view: View?) {
         when (view) {
             mBinding.btAddMore -> {
-                Picker.pickMedia(this, mMediaPickerLauncher)
+                Picker.pickMedia(this, mediaLaunchers.imagePickerLauncher)
             }
 
             mBinding.btBatchEdit -> {

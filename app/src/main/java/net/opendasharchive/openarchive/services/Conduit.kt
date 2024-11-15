@@ -8,6 +8,7 @@ import android.webkit.MimeTypeMap
 import com.google.common.net.UrlEscapers
 import com.google.gson.GsonBuilder
 import net.opendasharchive.openarchive.R
+import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.db.Media
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.services.gdrive.GDriveConduit
@@ -18,7 +19,6 @@ import net.opendasharchive.openarchive.util.Prefs
 import okhttp3.HttpUrl
 import org.witness.proofmode.ProofMode
 import org.witness.proofmode.crypto.HashUtils
-import timber.log.Timber
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -73,11 +73,11 @@ abstract class Conduit(
 
             return ProofMode.getProofDir(mContext, hash).listFiles() ?: emptyArray()
         } catch (exception: FileNotFoundException) {
-            Timber.e(exception)
+            AppLogger.e(exception)
 
             return emptyArray()
         } catch (exception: SecurityException) {
-            Timber.e(exception)
+            AppLogger.e(exception)
 
             return emptyArray()
         }
@@ -97,14 +97,17 @@ abstract class Conduit(
 
     fun jobFailed(exception: Throwable) {
         // If an upload was cancelled, ignore the error.
-        if (mCancelled) return
+        if (mCancelled) {
+            AppLogger.i("Upload cancelled", exception)
+            return
+        }
 
         mMedia.statusMessage =
             exception.localizedMessage ?: exception.message ?: exception.toString()
         mMedia.sStatus = Media.Status.Error
         mMedia.save()
 
-        Timber.d(exception)
+        AppLogger.e(exception)
 
         BroadcastManager.postChange(mContext, mMedia.collectionId, mMedia.id)
     }

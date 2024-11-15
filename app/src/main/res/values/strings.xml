@@ -29,6 +29,9 @@
 
     <!--<string name="sign_up_btn">Don\'t have a virtual library card?\n<a href="https://archive.org/account/login.createaccount.php">Register for free.</a></string>-->
 
+    <!-- MainActivity -->
+    <string name="servers">Servers</string>
+
     <!-- MainFragment -->
 
     <!-- ViewMediaActivity -->
@@ -251,6 +254,7 @@
     <string name="add_a_location_optional">Add a location (optional)</string>
     <string name="add_notes_optional">Add notes (optional)</string>
     <string name="skip">Skip</string>
+    <string name="add_camera">Add Images from Camera</string>
     <string name="add_images_or_video">Add Images or Video</string>
     <string name="add_files">Add Files</string>
 
@@ -266,6 +270,7 @@
     <string name="edit_media">Edit Media</string>
     <string name="uploading_is_paused">Uploading is paused</string>
     <string name="add_media_using">Add Media using:</string>
+    <string name="camera">Camera</string>
     <string name="photo_gallery">Photo Gallery</string>
     <string name="files">Files</string>
     <string name="health_checks">Health Checks</string>
