@@ -51,7 +51,7 @@ class MainMediaFragment : Fragment() {
     private var mProjectId = -1L
     private var mCollections = mutableMapOf<Long, Collection>()
 
-    private lateinit var mBinding: FragmentMainMediaBinding
+    private lateinit var binding: FragmentMainMediaBinding
 
     private val mMessageReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         private val handler = Handler(Looper.getMainLooper())
@@ -120,9 +120,9 @@ class MainMediaFragment : Fragment() {
     ): View {
         mProjectId = arguments?.getLong(ARG_PROJECT_ID, -1) ?: -1
 
-        mBinding = FragmentMainMediaBinding.inflate(inflater, container, false)
+        binding = FragmentMainMediaBinding.inflate(inflater, container, false)
 
-        return mBinding.root
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -181,7 +181,7 @@ class MainMediaFragment : Fragment() {
             } else if (media.isNotEmpty()) {
                 val view = createMediaList(collection, media)
 
-                mBinding.mediaContainer.addView(view, 0)
+                binding.mediaContainer.addView(view, 0)
             }
         }
 
@@ -189,7 +189,7 @@ class MainMediaFragment : Fragment() {
         // while adding images.
         deleteCollections(toDelete, false)
 
-        mBinding.addMediaHint.toggle(mCollections.isEmpty())
+        binding.addMediaHint.toggle(mCollections.isEmpty())
     }
 
     fun deleteSelected() {
