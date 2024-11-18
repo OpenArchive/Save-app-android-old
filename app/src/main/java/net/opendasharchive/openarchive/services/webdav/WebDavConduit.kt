@@ -65,11 +65,11 @@ class WebDavConduit(media: Media, context: Context) : Conduit(media, context) {
                             jobProgress(bytes)
                             lastBytes = bytes
                         }
-                        AppLogger.i("Bytes transferred for for $path", "$bytes")
+                        AppLogger.i("Bytes transferred for for ${mMedia.id}: ", "$bytes")
                     }
 
                     override fun continueUpload(): Boolean {
-                        AppLogger.i("Should continue upload for $path?", "$mCancelled")
+                        AppLogger.i("Should continue upload for ${mMedia.id}?", "$mCancelled")
                         return !mCancelled
                     }
                 })

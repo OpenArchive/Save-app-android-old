@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.R
+import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.databinding.RvMediaBoxBinding
 import net.opendasharchive.openarchive.databinding.RvMediaRowBigBinding
 import net.opendasharchive.openarchive.databinding.RvMediaRowSmallBinding
@@ -29,11 +30,11 @@ import net.opendasharchive.openarchive.util.extensions.hide
 import net.opendasharchive.openarchive.util.extensions.show
 import timber.log.Timber
 import java.io.InputStream
-import kotlin.math.roundToInt
 
-abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView.ViewHolder(binding.root) {
+abstract class MediaViewHolder(protected val binding: ViewBinding) :
+    RecyclerView.ViewHolder(binding.root) {
 
-    class Box(parent: ViewGroup): MediaViewHolder(
+    class Box(parent: ViewGroup) : MediaViewHolder(
         RvMediaBoxBinding.inflate(LayoutInflater.from(parent.context), parent, false)
     ) {
         override val image: ImageView
@@ -82,7 +83,7 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
             get() = null
     }
 
-    class BigRow(parent: ViewGroup): MediaViewHolder(
+    class BigRow(parent: ViewGroup) : MediaViewHolder(
         RvMediaRowBigBinding.inflate(LayoutInflater.from(parent.context), parent, false)
     ) {
         override val image: ImageView
@@ -131,7 +132,7 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
             get() = null
     }
 
-    class SmallRow(parent: ViewGroup): MediaViewHolder(
+    class SmallRow(parent: ViewGroup) : MediaViewHolder(
         RvMediaRowSmallBinding.inflate(LayoutInflater.from(parent.context), parent, false)
     ) {
         override val image: ImageView
@@ -211,13 +212,13 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
 
     @SuppressLint("SetTextI18n")
     fun bind(media: Media? = null, batchMode: Boolean = false, doImageFade: Boolean = true) {
+        AppLogger.i("Binding media item ${media?.id} with status ${media?.sStatus} and progress ${media?.uploadPercentage}")
         itemView.tag = media?.id
 
         if (batchMode && media?.selected == true) {
             itemView.setBackgroundResource(R.color.colorPrimary)
             selectedIndicator?.show()
-        }
-        else {
+        } else {
             itemView.setBackgroundResource(R.color.transparent)
             selectedIndicator?.hide()
         }
@@ -239,8 +240,7 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
             image.show()
             waveform.hide()
             videoIndicator?.hide()
-        }
-        else if (media?.mimeType?.startsWith("video") == true) {
+        } else if (media?.mimeType?.startsWith("video") == true) {
             mPicasso.load(VideoRequestHandler.SCHEME_VIDEO + ":" + media.originalFilePath)
                 .fit()
                 .centerCrop()
@@ -249,8 +249,7 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
             image.show()
             waveform.hide()
             videoIndicator?.show()
-        }
-        else if (media?.mimeType?.startsWith("audio") == true) {
+        } else if (media?.mimeType?.startsWith("audio") == true) {
             videoIndicator?.hide()
 
             val soundFile = soundCache[media.originalFilePath]
@@ -259,8 +258,7 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
                 image.hide()
                 waveform.setAudioFile(soundFile)
                 waveform.show()
-            }
-            else {
+            } else {
                 image.setImageDrawable(ContextCompat.getDrawable(mContext, R.drawable.no_thumbnail))
                 image.show()
                 waveform.hide()
@@ -271,8 +269,7 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
                         SoundFile.create(media.originalFilePath) {
                             return@create true
                         }
-                    }
-                    catch (e: Throwable) {
+                    } catch (e: Throwable) {
                         Timber.d(e)
 
                         null
@@ -289,8 +286,7 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
                     }
                 }
             }
-        }
-        else {
+        } else {
             image.setImageDrawable(ContextCompat.getDrawable(mContext, R.drawable.no_thumbnail))
             image.show()
             waveform.hide()
@@ -312,8 +308,7 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
                             media.contentLength = iStream.available().toLong()
                             media.save()
                         }
-                    }
-                    catch (e: Throwable) {
+                    } catch (e: Throwable) {
                         Timber.e(e)
                     } finally {
                         iStream?.close()
@@ -328,14 +323,14 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
             }
 
             fileInfo?.show()
-        }
-        else {
+        } else {
             fileInfo?.hide()
         }
 
         val sbTitle = StringBuffer()
 
         if (media?.sStatus == Media.Status.Error) {
+            AppLogger.i("Media Item ${media.id} is error")
             sbTitle.append(mContext.getString(R.string.error))
 
             overlayContainer?.show()
@@ -347,17 +342,20 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
                 fileInfo?.text = media.statusMessage
                 fileInfo?.show()
             }
-        }
-        else if (media?.sStatus == Media.Status.Queued) {
+        } else if (media?.sStatus == Media.Status.Queued) {
+            AppLogger.i("Media Item ${media.id} is queued")
             overlayContainer?.show()
+            progress?.isIndeterminate = true
             progress?.show()
             progressText?.hide()
             error?.hide()
-        }
-        else if (media?.sStatus == Media.Status.Uploading) {
-            val progressValue = if (media.contentLength > 0) {
-                (media.progress.toFloat() / media.contentLength.toFloat() * 100f).roundToInt()
-            } else 0
+        } else if (media?.sStatus == Media.Status.Uploading) {
+//            val progressValue = if (media.contentLength > 0) {
+//                (media.progress.toFloat() / media.contentLength.toFloat() * 100f).roundToInt()
+//            } else 0
+            progress?.isIndeterminate = false
+            val progressValue = media.uploadPercentage ?: 0
+            AppLogger.i("Media Item ${media.id} is uploading")
 
             overlayContainer?.show()
             progress?.show()
@@ -365,16 +363,16 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
 
             // Make sure to keep spinning until the upload has made some noteworthy progress.
             if (progressValue > 2) {
-                progress?.setProgressCompat(progressValue , true)
+                progress?.setProgressCompat(progressValue, true)
             }
-            else {
-                progress?.isIndeterminate = true
-            }
+//            else {
+//                progress?.isIndeterminate = true
+//            }
+
             progressText?.text = "${progressValue}%"
 
             error?.hide()
-        }
-        else {
+        } else {
             overlayContainer?.hide()
             progress?.hide()
             progressText?.hide()
@@ -387,25 +385,45 @@ abstract class MediaViewHolder(protected val binding: ViewBinding): RecyclerView
         if (sbTitle.isNotBlank()) {
             title?.text = sbTitle.toString()
             title?.show()
-        }
-        else {
+        } else {
             title?.hide()
         }
 
         locationIndicator?.setImageResource(
             if (media?.location.isNullOrBlank()) R.drawable.ic_location_unselected
-            else R.drawable.ic_location_selected)
+            else R.drawable.ic_location_selected
+        )
 
         tagsIndicator?.setImageResource(
             if (media?.tags.isNullOrBlank()) R.drawable.ic_tag_unselected
-            else R.drawable.ic_tag_selected)
+            else R.drawable.ic_tag_selected
+        )
 
         descIndicator?.setImageResource(
             if (media?.description.isNullOrBlank()) R.drawable.ic_edit_unselected
-            else R.drawable.ic_edit_selected)
+            else R.drawable.ic_edit_selected
+        )
 
         flagIndicator?.setImageResource(
             if (media?.flag == true) R.drawable.ic_flag_selected
-            else R.drawable.ic_flag_unselected)
+            else R.drawable.ic_flag_unselected
+        )
+    }
+
+    fun updateProgress(progressValue: Int) {
+        if (progressValue > 2) {
+            progress?.isIndeterminate = false
+            progress?.setProgressCompat(progressValue, true)
+        } else {
+            progress?.isIndeterminate = true
+        }
+
+        AppLogger.i("Updating progressText to $progressValue%")
+        if (progressText == null) {
+            AppLogger.e("progressText is null")
+        } else {
+            progressText?.show(animate = true)
+            progressText?.text = "$progressValue%"
+        }
     }
 }

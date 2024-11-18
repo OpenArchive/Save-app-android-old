@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.R
+import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.databinding.FragmentMainMediaBinding
 import net.opendasharchive.openarchive.databinding.ViewSectionBinding
 import net.opendasharchive.openarchive.db.Collection
@@ -50,7 +51,7 @@ class MainMediaFragment : Fragment() {
     private var mProjectId = -1L
     private var mCollections = mutableMapOf<Long, Collection>()
 
-    private lateinit var mBinding: FragmentMainMediaBinding
+    private lateinit var binding: FragmentMainMediaBinding
 
     private val mMessageReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         private val handler = Handler(Looper.getMainLooper())
@@ -60,7 +61,12 @@ class MainMediaFragment : Fragment() {
             when (action) {
                 BroadcastManager.Action.Change -> {
                     handler.post {
-                        updateItem(action.collectionId, action.mediaId, action.progress)
+                        updateProjectItem(
+                            collectionId = action.collectionId,
+                            mediaId = action.mediaId,
+                            progress = action.progress,
+                            isUploaded = action.isUploaded
+                        )
                     }
                 }
 
@@ -114,9 +120,9 @@ class MainMediaFragment : Fragment() {
     ): View {
         mProjectId = arguments?.getLong(ARG_PROJECT_ID, -1) ?: -1
 
-        mBinding = FragmentMainMediaBinding.inflate(inflater, container, false)
+        binding = FragmentMainMediaBinding.inflate(inflater, container, false)
 
-        return mBinding.root
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -125,11 +131,15 @@ class MainMediaFragment : Fragment() {
         refresh()
     }
 
-    fun updateItem(collectionId: Long, mediaId: Long, progress: Long) {
+    fun updateProjectItem(collectionId: Long, mediaId: Long, progress: Int, isUploaded: Boolean) {
+        AppLogger.i("Current progress for $collectionId: ", progress)
         mAdapters[collectionId]?.apply {
-            updateItem(mediaId, progress)
-            if (progress == -1L) {
-                updateHeader(collectionId, media)
+
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                updateItem(mediaId, progress, isUploaded)
+                if (progress == -1) {
+                    updateHeader(collectionId, media)
+                }
             }
         }
     }
@@ -171,7 +181,7 @@ class MainMediaFragment : Fragment() {
             } else if (media.isNotEmpty()) {
                 val view = createMediaList(collection, media)
 
-                mBinding.mediaContainer.addView(view, 0)
+                binding.mediaContainer.addView(view, 0)
             }
         }
 
@@ -179,7 +189,7 @@ class MainMediaFragment : Fragment() {
         // while adding images.
         deleteCollections(toDelete, false)
 
-        mBinding.addMediaHint.toggle(mCollections.isEmpty())
+        binding.addMediaHint.toggle(mCollections.isEmpty())
     }
 
     fun deleteSelected() {

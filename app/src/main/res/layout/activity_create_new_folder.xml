@@ -48,7 +48,9 @@
 
     </com.google.android.material.textfield.TextInputLayout>
 
+<!--    This is hidden since we are gonna set Creative Commons License in folder level-->
     <RelativeLayout
+        android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginVertical="@dimen/activity_vertical_margin"

@@ -90,9 +90,13 @@ class FolderAdapter(listener: FolderAdapterListener?) : ListAdapter<Project, Fol
         }
     }
 
-    private val mListener: WeakReference<FolderAdapterListener> = WeakReference(listener)
+    private val mListener: WeakReference<FolderAdapterListener>?
 
     private var mLastSelected: Project? = null
+
+    init {
+        mListener = WeakReference(listener)
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(RvSimpleRowBinding.inflate(LayoutInflater.from(parent.context),
@@ -107,6 +111,7 @@ class FolderAdapter(listener: FolderAdapterListener?) : ListAdapter<Project, Fol
 
     fun update(projects: List<Project>) {
         notifyItemChanged(getIndex(mLastSelected))
+
         submitList(projects)
     }
 
@@ -114,16 +119,16 @@ class FolderAdapter(listener: FolderAdapterListener?) : ListAdapter<Project, Fol
         notifyItemChanged(getIndex(getSelectedProject()))
         notifyItemChanged(getIndex(project))
 
-        mListener.get()?.projectClicked(project)
+        mListener?.get()?.projectClicked(project)
     }
 
     override fun getSelectedProject(): Project? {
-        mLastSelected = mListener.get()?.getSelectedProject()
+        mLastSelected = mListener?.get()?.getSelectedProject()
 
         return mLastSelected
     }
 
-    fun getIndex(project: Project?): Int {
+    private fun getIndex(project: Project?): Int {
         return if (project == null) {
             -1
         }

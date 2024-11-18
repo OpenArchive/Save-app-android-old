@@ -135,4 +135,8 @@ data class Media(
         set(value) {
             tags = value.joinToString(";")
         }
+
+
+    @Transient
+    var uploadPercentage: Int? = null
 }

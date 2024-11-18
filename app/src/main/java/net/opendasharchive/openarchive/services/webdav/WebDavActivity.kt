@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
 import androidx.fragment.app.commit
+import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.ActivityWebdavBinding
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.features.core.BaseActivity
@@ -11,6 +12,10 @@ import net.opendasharchive.openarchive.features.main.MainActivity
 import kotlin.properties.Delegates
 
 class WebDavActivity : BaseActivity() {
+
+    companion object {
+        const val FRAGMENT_TAG = "webdav_fragment"
+    }
 
     private lateinit var mBinding: ActivityWebdavBinding
     private var mSpaceId by Delegates.notNull<Long>()
@@ -36,8 +41,23 @@ class WebDavActivity : BaseActivity() {
             finishAffinity()
             startActivity(Intent(this, MainActivity::class.java))
         }
+
         supportFragmentManager.setFragmentResultListener(WebDavFragment.RESP_DELETED, this) { _, _ ->
             Space.navigate(this)
+        }
+
+        supportFragmentManager.setFragmentResultListener(WebDavFragment.RESP_LICENSE, this) { _, _ ->
+            // Navigate to license fragment
+            // also update title with server name if available - like breadcrumb
+            supportFragmentManager
+                .beginTransaction()
+                .setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
+                .replace(
+                    mBinding.webDavFragment.id,
+                    WebDavSetupLicenseFragment.newInstance(spaceId = mSpaceId, isEditing = true),
+                    FRAGMENT_TAG,
+                )
+                .commit()
         }
     }
 

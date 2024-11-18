@@ -10,9 +10,8 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingLeft="@dimen/activity_horizontal_margin"
-        android:paddingTop="@dimen/activity_vertical_margin"
-        android:paddingRight="@dimen/activity_horizontal_margin"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="8dp"
         android:paddingBottom="@dimen/activity_vertical_margin">
 
         <LinearLayout
@@ -85,21 +84,6 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/name"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="@string/server_name_optional"
-                    android:inputType="textNoSuggestions"
-                    android:maxLines="1"
-                    android:singleLine="true" />
-
-            </com.google.android.material.textfield.TextInputLayout>
-
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -141,22 +125,44 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
-            <TextView
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/button_bar_edit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingTop="@dimen/activity_vertical_margin"
+            android:weightSum="2"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <Button
                 android:id="@+id/bt_remove"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginVertical="40dp"
-                android:gravity="center"
-                android:text="@string/remove_from_app"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="0dp"
                 android:textColor="@color/colorDanger"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                app:drawableStartCompat="@drawable/ic_delete_danger_24dp" />
+                android:layout_height="wrap_content"
+                android:drawableStart="@drawable/ic_delete_danger_24dp"
+                android:layout_marginHorizontal="@dimen/activity_horizontal_margin"
+                android:layout_weight="1"
+                android:text="@string/remove_from_app" />
+
+            <Button
+                android:id="@+id/bt_license"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="@dimen/activity_horizontal_margin"
+                android:layout_weight="1"
+                android:text="Licenses"
+                style="?android:attr/buttonBarButtonStyle"
+                tools:ignore="ButtonStyle" />
 
         </LinearLayout>
 
         <LinearLayout
+            android:visibility="gone"
             android:id="@+id/button_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -183,6 +189,7 @@
                 android:layout_marginHorizontal="@dimen/activity_horizontal_margin"
                 android:layout_weight="1"
                 android:text="@string/action_next"
+                style="@style/OAMaterialSignInButtonStyle"
                 tools:ignore="ButtonStyle" />
 
         </LinearLayout>

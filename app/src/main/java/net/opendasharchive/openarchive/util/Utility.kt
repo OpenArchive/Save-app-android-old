@@ -3,7 +3,10 @@ package net.opendasharchive.openarchive.util
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.provider.OpenableColumns
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import timber.log.Timber
 import java.io.File
 import java.io.FileNotFoundException
@@ -113,5 +116,17 @@ object Utility {
                 or Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
         context.startActivity(i)
+    }
+
+    fun showMaterialMessage(context: Context, title: String = "Oops", message: String? = null, positiveButtonText: String = "Ok", completion: (() -> Unit)? = null) {
+        Handler(Looper.getMainLooper()).post {
+            MaterialAlertDialogBuilder(context)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton(positiveButtonText) { _, _ ->
+                    completion?.invoke()
+                }
+                .show()
+        }
     }
 }

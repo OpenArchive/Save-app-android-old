@@ -50,7 +50,9 @@
 
     </com.google.android.material.textfield.TextInputLayout>
 
+<!--    Hiding Creative Commons Licensing section from Folder Edit-->
     <RelativeLayout
+        android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginVertical="@dimen/activity_vertical_margin"

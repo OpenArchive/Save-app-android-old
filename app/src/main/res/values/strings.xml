@@ -162,6 +162,7 @@
     <string name="popup_flag_title">Flag Significant Content</string>
     <string name="popup_flag_desc">When you flag an item, it is routed into a subfolder within the chosen project folder on the private server.</string>
 
+    <string name="set_creative_commons_license_for_all_folders_on_this_server">Set creative commons licenses for folders on this server.</string>
     <string name="set_the_same_creative_commons_license_for_all_folders_on_this_server">Set the same Creative Commons license for ALL folders on this server.</string>
     <string name="set_unique_creative_commons_licenses_for_each_individual_folder_on_this_server">Set unique Creative Commons licenses for EACH INDIVIDUAL folder on this server.</string>
 
