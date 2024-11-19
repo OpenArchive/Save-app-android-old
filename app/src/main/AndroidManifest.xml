@@ -105,6 +105,7 @@
         <activity
             android:name=".services.webdav.WebDavActivity"
             android:label="@string/title_activity_login"
+            android:windowSoftInputMode="adjustPan"
             android:taskAffinity="" />
 
         <activity android:name=".features.internetarchive.presentation.InternetArchiveActivity"
@@ -144,6 +145,7 @@
         <activity
             android:name=".features.onboarding.SpaceSetupActivity"
             android:label="@string/title_activity_first_start"
+            android:windowSoftInputMode="adjustPan"
             android:exported="false"
             android:taskAffinity="" />
 
