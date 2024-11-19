@@ -45,7 +45,8 @@ object Picker {
 
     fun register(
         activity: ComponentActivity,
-        root: View, project: () -> Project?,
+        root: View,
+        project: () -> Project?,
         completed: (List<Media>) -> Unit
     ): MediaLaunchers {
 
