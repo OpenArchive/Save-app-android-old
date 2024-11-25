@@ -9,6 +9,18 @@ android {
     }
 
     signingConfigs {
+        debug {
+            def props = new Properties()
+            def localPropsFile = rootProject.file('local.properties')
+            if (localPropsFile.exists()) {
+                localPropsFile.withInputStream { props.load(it) }
+            }
+
+            storeFile = file(props['storeFile'] ?: "")
+            storePassword = props['storePassword'] ?: ""
+            keyAlias = props['keyAlias'] ?: ""
+            keyPassword = props['keyPassword'] ?: ""
+        }
     }
 
     compileSdk 34
@@ -17,7 +29,7 @@ android {
         minSdkVersion 29
         //noinspection OldTargetApi
         targetSdkVersion 34
-        versionCode 30001
+        versionCode 30004
         versionName "0.7.4"
         archivesBaseName = "Save-$versionName"
         multiDexEnabled true
@@ -28,8 +40,14 @@ android {
     flavorDimensions += "free"
     buildTypes {
         release {
+            signingConfig signingConfigs.debug
             minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+        }
+
+        debug {
+            signingConfig signingConfigs.debug
         }
     }
     packagingOptions {

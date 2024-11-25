@@ -21,7 +21,7 @@
 
     <!-- FirstStartActivity -->
     <string name="internet_archive">Internet Archive</string>
-    <string name="internet_archive_description">Upload your media to a public server.</string>
+    <string name="internet_archive_description">Upload your media to a free public or paid private account on the Internet Archive.</string>
     <string name="gdrive" translatable="false">Google Drive</string>
     <string name="gdrive_tm" translatable="false">Google Drive™</string>
     <string name="upload_to_gdrive">Upload to Google Drive</string>
@@ -300,7 +300,7 @@
     <string name="label_email">Email</string>
     <string name="label_screen_name">Screen Name</string>
     <string name="label_login">Login</string>
-    <string name="label_create_login">Sign up</string>
+    <string name="label_create_login">Create one</string>
     <string name="prompt_no_account">No account?</string>
     <string name="action_continue">Continue</string>
 
