@@ -29,8 +29,8 @@ android {
         minSdkVersion 29
         //noinspection OldTargetApi
         targetSdkVersion 34
-        versionCode 30004
-        versionName "0.7.4"
+        versionCode 30005
+        versionName "0.7.7"
         archivesBaseName = "Save-$versionName"
         multiDexEnabled true
         vectorDrawables.useSupportLibrary = true
@@ -129,7 +129,7 @@ dependencies {
     annotationProcessor "com.github.bumptech.glide:compiler:4.16.0"
     implementation "com.github.derlio:audio-waveform:v1.0.1"
     implementation "com.github.esafirm:android-image-picker:3.0.0"
-    implementation "com.facebook.fresco:fresco:2.6.0"
+    implementation "com.facebook.fresco:fresco:3.5.0"
     implementation "com.squareup.picasso:picasso:2.5.2"
 
     implementation "com.github.abdularis:circularimageview:1.4"
@@ -138,7 +138,7 @@ dependencies {
     implementation "info.guardianproject.netcipher:netcipher:2.2.0-alpha"
 
     //from here: https://github.com/guardianproject/proofmode
-    implementation("org.proofmode:android-libproofmode:1.0.26") {
+    implementation("org.proofmode:android-libproofmode:1.0.27") {
 
         transitive = false
 
