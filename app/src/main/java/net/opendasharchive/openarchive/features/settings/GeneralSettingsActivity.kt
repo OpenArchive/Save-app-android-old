@@ -1,26 +1,84 @@
 package net.opendasharchive.openarchive.features.settings
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
-import net.opendasharchive.openarchive.CleanInsightsManager
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.ActivitySettingsContainerBinding
 import net.opendasharchive.openarchive.features.core.BaseActivity
+import net.opendasharchive.openarchive.features.settings.passcode.PasscodeRepository
+import net.opendasharchive.openarchive.features.settings.passcode.passcode_setup.PasscodeSetupActivity
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.Theme
+import org.koin.android.ext.android.inject
+
 
 class GeneralSettingsActivity: BaseActivity() {
 
     class Fragment: PreferenceFragmentCompat() {
 
-        private var mCiConsentPref: SwitchPreferenceCompat? = null
+        private val passcodeRepository by inject<PasscodeRepository>()
+
+//        private var mCiConsentPref: SwitchPreferenceCompat? = null
+
+        private var passcodePreference: SwitchPreferenceCompat? = null
+
+        private val activityResultLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val passcodeEnabled = result.data?.getBooleanExtra("passcode_enabled", false) ?: false
+                passcodePreference?.isChecked = passcodeEnabled
+            } else {
+                passcodePreference?.isChecked = false
+            }
+        }
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.prefs_general, rootKey)
+
+            passcodePreference = findPreference(Prefs.PASSCODE_ENABLED)
+
+//            findPreference<Preference>(Prefs.PASSCODE_ENABLED)?.setOnPreferenceChangeListener { _, newValue ->
+//                //Prefs.lockWithPasscode = newValue as Boolean
+//                if (newValue as? Boolean == true) {
+//
+//                    val intent = Intent(context, PasscodeSetupActivity::class.java)
+//                    activityResultLauncher.launch(intent)
+//                }
+//                false
+//            }
+
+
+            passcodePreference?.setOnPreferenceChangeListener { _, newValue ->
+                val enabled = newValue as Boolean
+                if (enabled) {
+                    // Launch PasscodeSetupActivity
+                    val intent = Intent(context, PasscodeSetupActivity::class.java)
+                    activityResultLauncher.launch(intent)
+                } else {
+                    // Show confirmation dialog
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("Disable Passcode")
+                        .setMessage("Are you sure you want to disable the passcode?")
+                        .setPositiveButton("Yes") { _, _ ->
+                            passcodeRepository.clearPasscode()
+                            passcodePreference?.isChecked = false
+                        }
+                        .setNegativeButton("No") { _, _ ->
+                            passcodePreference?.isChecked = true
+                        }
+                        .show()
+                }
+                // Prevent automatic toggle change
+                false
+            }
 
 //            findPreference<Preference>(Prefs.USE_TOR)?.setOnPreferenceChangeListener { _, newValue ->
 //                val activity = activity ?: return@setOnPreferenceChangeListener true
@@ -81,11 +139,11 @@ class GeneralSettingsActivity: BaseActivity() {
 //            }
         }
 
-        override fun onResume() {
-            super.onResume()
-
-            mCiConsentPref?.isChecked = CleanInsightsManager.hasConsent()
-        }
+//        override fun onResume() {
+//            super.onResume()
+//
+//            mCiConsentPref?.isChecked = CleanInsightsManager.hasConsent()
+//        }
     }
 
 

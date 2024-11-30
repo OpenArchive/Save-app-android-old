@@ -9,6 +9,7 @@ import info.guardianproject.netcipher.proxy.OrbotHelper
 import net.opendasharchive.openarchive.core.di.coreModule
 import net.opendasharchive.openarchive.core.di.featuresModule
 import net.opendasharchive.openarchive.core.logger.AppLogger
+import net.opendasharchive.openarchive.features.settings.passcode.PasscodeManager
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.Theme
 import org.koin.android.ext.koin.androidContext
@@ -24,16 +25,14 @@ class SaveApp : SugarApp() {
 
     override fun onCreate() {
         super.onCreate()
-
+        AppLogger.init(applicationContext, initDebugger = true)
+        registerActivityLifecycleCallbacks(PasscodeManager())
         startKoin {
             androidLogger(Level.DEBUG)
             androidContext(this@SaveApp)
             modules(coreModule, featuresModule)
         }
 
-        if(BuildConfig.DEBUG) {
-            AppLogger.init(applicationContext, initDebugger = true)
-        }
 
         val config = ImagePipelineConfig.newBuilder(this)
             .setProgressiveJpegConfig(SimpleProgressiveJpegConfig())
