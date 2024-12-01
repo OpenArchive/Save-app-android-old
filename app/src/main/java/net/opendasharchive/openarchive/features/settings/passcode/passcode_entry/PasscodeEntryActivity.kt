@@ -6,8 +6,8 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import net.opendasharchive.openarchive.core.presentation.theme.Theme
 import net.opendasharchive.openarchive.features.core.BaseActivity
-import net.opendasharchive.openarchive.features.settings.passcode.components.DefaultScaffold
 import net.opendasharchive.openarchive.features.settings.passcode.PasscodeRepository
+import net.opendasharchive.openarchive.features.settings.passcode.components.DefaultScaffold
 import org.koin.android.ext.android.inject
 
 class PasscodeEntryActivity : BaseActivity() {
@@ -42,12 +42,12 @@ class PasscodeEntryActivity : BaseActivity() {
         setContent {
             Theme {
                 DefaultScaffold {
-                    PasscodeEntryScreenContent(
+                    PasscodeEntryScreen(
                         onPasscodeSuccess = {
                             finish()
                         },
                         onExit = {
-                            finishAndRemoveTask()
+                            finishAffinity()
                         }
                     )
                 }

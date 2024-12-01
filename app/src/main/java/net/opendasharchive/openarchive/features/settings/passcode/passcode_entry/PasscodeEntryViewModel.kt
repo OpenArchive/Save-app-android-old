@@ -3,6 +3,7 @@ package net.opendasharchive.openarchive.features.settings.passcode.passcode_entr
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,11 +30,15 @@ class PasscodeEntryViewModel(
         get() = config.passcodeLength
 
     fun onNumberClick(number: String) {
-        if (_isCheckingPasscode.value || _passcode.value.length >= config.passcodeLength) return
+
+        if (_isCheckingPasscode.value) return
+
+        if (_passcode.value.length >= config.passcodeLength) return
 
         _passcode.value += number
 
         if (_passcode.value.length == config.passcodeLength) {
+            _isCheckingPasscode.value = true
             checkPasscode()
         }
     }
@@ -43,35 +48,35 @@ class PasscodeEntryViewModel(
         _passcode.value = _passcode.value.dropLast(1)
     }
 
-    private fun checkPasscode() {
-        _isCheckingPasscode.value = true
-        viewModelScope.launch {
-            val (passcodeHash, passcodeSalt) = repository.getPasscodeHashAndSalt()
+    private fun checkPasscode() = viewModelScope.launch {
+        val currentPasscode = _passcode.value
+        delay(200)
+        val (passcodeHash, passcodeSalt) = repository.getPasscodeHashAndSalt()
 
-            if (passcodeHash != null && passcodeSalt != null) {
-                val hash = repository.hashPasscode(_passcode.value, passcodeSalt)
-                if (hash.contentEquals(passcodeHash)) {
-                    repository.resetFailedAttempts()
-                    _uiEvent.send(PasscodeEntryUiEvent.Success)
-                } else {
-                    repository.recordFailedAttempt()
-                    val remainingAttempts: Int? = if (config.maxRetryLimitEnabled) {
-                        repository.getRemainingAttempts()
-                    } else null
-
-                    if (repository.isLockedOut()) {
-                        _uiEvent.send(PasscodeEntryUiEvent.LockedOut)
-                    } else {
-                        _uiEvent.send(PasscodeEntryUiEvent.IncorrectPasscode(remainingAttempts))
-                    }
-                }
+        if (passcodeHash != null && passcodeSalt != null) {
+            val hash = repository.hashPasscode(currentPasscode, passcodeSalt)
+            if (hash.contentEquals(passcodeHash)) {
+                repository.resetFailedAttempts()
+                _uiEvent.send(PasscodeEntryUiEvent.Success)
             } else {
-                _uiEvent.send(PasscodeEntryUiEvent.PasscodeNotSet)
-            }
+                repository.recordFailedAttempt()
+                val remainingAttempts: Int? = if (config.maxRetryLimitEnabled) {
+                    repository.getRemainingAttempts()
+                } else null
 
-            _passcode.value = ""
-            _isCheckingPasscode.value = false
+                if (repository.isLockedOut()) {
+                    _uiEvent.send(PasscodeEntryUiEvent.LockedOut)
+                } else {
+                    _uiEvent.send(PasscodeEntryUiEvent.IncorrectPasscode(remainingAttempts))
+                }
+            }
+        } else {
+            _uiEvent.send(PasscodeEntryUiEvent.PasscodeNotSet)
         }
+
+        _passcode.value = ""
+        _isCheckingPasscode.value = false
+
     }
 }
 

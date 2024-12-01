@@ -76,7 +76,7 @@ class GeneralSettingsActivity: BaseActivity() {
                         }
                         .show()
                 }
-                // Prevent automatic toggle change
+                // Return false to avoid the preference updating immediately
                 false
             }
 

@@ -1,25 +1,59 @@
 package net.opendasharchive.openarchive.features.settings.passcode.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 
 @Composable
 fun PasscodeDots(
     passcodeLength: Int,
-    currentPasscodeLength: Int
+    currentPasscodeLength: Int,
+    shouldShake: Boolean = false
 ) {
+
+    val shakeOffset = remember { Animatable(0f) }
+
+    LaunchedEffect(shouldShake) {
+        if (shouldShake) {
+            val offsets = listOf(25f, 15f, 10f)
+            for (offset in offsets) {
+                shakeOffset.animateTo(
+                    targetValue = offset, // Move right
+                    animationSpec = tween(durationMillis = 100)
+                )
+                shakeOffset.animateTo(
+                    targetValue = -offset, // Move left
+                    animationSpec = tween(durationMillis = 100)
+                )
+            }
+            shakeOffset.animateTo(
+                targetValue = 0f, // Reset to original position
+                animationSpec = tween(durationMillis = 50)
+            )
+        }
+    }
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.offset {
+            IntOffset(shakeOffset.value.roundToInt(), 0)
+        }
     ) {
         repeat(passcodeLength) { index ->
             Box(

@@ -32,7 +32,7 @@ class PasscodeSetupActivity : BaseActivity() {
         setContent {
             Theme {
                 DefaultScaffold {
-                    PasscodeSetupScreenContent(
+                    PasscodeSetupScreen(
                         onPasscodeSet = {
                             // Passcode successfully set
                             setResult(RESULT_OK, Intent().apply {

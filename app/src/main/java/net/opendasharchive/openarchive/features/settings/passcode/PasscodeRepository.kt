@@ -6,20 +6,73 @@ import android.util.Base64
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import net.opendasharchive.openarchive.util.Prefs
+import org.bouncycastle.crypto.generators.SCrypt
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
-class PasscodeRepository(
-    context: Context,
-    private val config: AppConfig
-) {
+interface HashingStrategy {
+    suspend fun hash(passcode: String, salt: ByteArray): ByteArray
+    suspend fun generateSalt(): ByteArray
+    val saltLength: Int
+}
+
+// PBKDF2HashingStrategy.kt
+class PBKDF2HashingStrategy : HashingStrategy {
 
     companion object {
-        private const val SALT_LENGTH = 16
         private const val ITERATIONS = 65536
         private const val KEY_LENGTH = 256
         private const val HASH_ALGORITHM = "PBKDF2WithHmacSHA256"
+        private const val SALT_LENGTH = 16
+    }
+
+    override val saltLength: Int
+        get() = SALT_LENGTH
+
+    override suspend fun generateSalt(): ByteArray {
+        val random = SecureRandom()
+        return ByteArray(SALT_LENGTH).also { random.nextBytes(it) }
+    }
+
+    override suspend fun hash(passcode: String, salt: ByteArray): ByteArray {
+        val spec = PBEKeySpec(passcode.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
+        val skf = SecretKeyFactory.getInstance(HASH_ALGORITHM)
+        return skf.generateSecret(spec).encoded
+    }
+}
+
+// ScryptHashingStrategy.kt
+class ScryptHashingStrategy : HashingStrategy {
+
+    companion object {
+        private const val N = 16384  // CPU/Memory cost parameter
+        private const val r = 8      // Block size
+        private const val p = 1      // Parallelization parameter
+        private const val KEY_LENGTH = 32 // 256 bits
+        private const val SALT_LENGTH = 16
+    }
+
+    override val saltLength: Int
+        get() = SALT_LENGTH
+
+    override suspend fun generateSalt(): ByteArray {
+        val random = SecureRandom()
+        return ByteArray(SALT_LENGTH).also { random.nextBytes(it) }
+    }
+
+    override suspend fun hash(passcode: String, salt: ByteArray): ByteArray {
+        return SCrypt.generate(passcode.toByteArray(), salt, N, r, p, KEY_LENGTH)
+    }
+}
+
+class PasscodeRepository(
+    context: Context,
+    private val config: AppConfig,
+    private val hashingStrategy: HashingStrategy
+) {
+
+    companion object {
         private const val SECURE_PREF_NAME = "secret_shared_prefs"
         private const val KEY_PASSCODE_HASH = "passcode_hash"
         private const val KEY_PASSCODE_SALT = "passcode_salt"
@@ -41,15 +94,12 @@ class PasscodeRepository(
         )
     }
 
-    fun generateSalt(): ByteArray {
-        val random = SecureRandom()
-        return ByteArray(SALT_LENGTH).also { random.nextBytes(it) }
+    suspend fun generateSalt(): ByteArray {
+        return hashingStrategy.generateSalt()
     }
 
-    fun hashPasscode(passcode: String, salt: ByteArray): ByteArray {
-        val spec = PBEKeySpec(passcode.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
-        val skf = SecretKeyFactory.getInstance(HASH_ALGORITHM)
-        return skf.generateSecret(spec).encoded
+    suspend fun hashPasscode(passcode: String, salt: ByteArray): ByteArray {
+        return hashingStrategy.hash(passcode, salt)
     }
 
     fun storePasscodeHashAndSalt(hash: ByteArray, salt: ByteArray) {

@@ -10,12 +10,17 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,51 +30,92 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import net.opendasharchive.openarchive.core.presentation.theme.Theme
 import net.opendasharchive.openarchive.features.settings.passcode.AppHapticFeedbackType
 import net.opendasharchive.openarchive.features.settings.passcode.HapticManager
+import org.koin.compose.koinInject
+
+private val keys = listOf(
+    "1", "2", "3",
+    "4", "5", "6",
+    "7", "8", "9",
+    "", "0"
+)
 
 @Composable
 fun NumericKeypad(
-    modifier: Modifier = Modifier,
-    numbers: List<List<String>> = listOf(
-        listOf("1", "2", "3"),
-        listOf("4", "5", "6"),
-        listOf("7", "8", "9"),
-        listOf("", "0", "⌫")
-    ),
     isEnabled: Boolean = true,
     onNumberClick: (String) -> Unit,
-    onBackspaceClick: () -> Unit,
 ) {
-    Column(modifier = modifier) {
-        numbers.forEach { row ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                row.forEach { label ->
+
+    Box(
+        modifier = Modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier
+                .padding(horizontal = 32.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(keys, key = { it }) { label ->
+                Box(
+                    modifier = Modifier
+                        .size(72.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     if (label.isNotEmpty()) {
                         NumberButton(
                             label = label,
                             enabled = isEnabled,
                             onClick = {
-                                if (label == "⌫") {
-                                    onBackspaceClick()
-                                } else {
-                                    onNumberClick(label)
-                                }
-                            },
+                                onNumberClick(label)
+                            }
                         )
                     } else {
                         Spacer(modifier = Modifier.size(72.dp))
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun NumericKeypadPreview() {
+    Theme {
+        Scaffold {
+            Box(
+                modifier = Modifier.padding(it),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                    verticalArrangement = Arrangement.SpaceAround,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
 
 
+                    // Custom numeric keypad
+                    NumericKeypad(
+                        isEnabled = true,
+                        onNumberClick = { number ->
+
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+
+                }
+            }
         }
     }
 }
@@ -79,30 +125,31 @@ private fun NumberButton(
     label: String,
     enabled: Boolean = true,
     onClick: () -> Unit,
+    hapticManager: HapticManager = koinInject()
 ) {
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val backgroundColor by animateColorAsState(
-        targetValue = if (isPressed) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent,
+        targetValue = if (isPressed) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else Color.Transparent,
         animationSpec = spring(),
         label = ""
     )
 
     Box(
         modifier = Modifier
-            .size(72.dp)
             .background(color = backgroundColor, shape = CircleShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 enabled = enabled,
                 onClick = {
-                    HapticManager.performHapticFeedback(AppHapticFeedbackType.KeyPress)
+                    hapticManager.performHapticFeedback(AppHapticFeedbackType.KeyPress)
                     onClick()
                 }
             )
-            .border(width = 2.dp, color = MaterialTheme.colorScheme.primary, shape = CircleShape),
+            .border(width = 2.dp, color = MaterialTheme.colorScheme.primary, shape = CircleShape)
+            .size(72.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(

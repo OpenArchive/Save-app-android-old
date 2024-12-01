@@ -3,6 +3,7 @@ package net.opendasharchive.openarchive.features.settings.passcode.passcode_setu
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,12 +36,18 @@ class PasscodeSetupViewModel(
     val uiEvent = _uiEvent.receiveAsFlow()
 
     fun onNumberClick(number: String) {
-        if (_passcode.value.length >= passcodeLength || _isProcessing.value) return
+
+        if (_isProcessing.value) return // Block input during processing
+
+        if (_passcode.value.length >= passcodeLength) return
+
         _passcode.value += number
 
         if (_passcode.value.length == config.passcodeLength) {
+            _isProcessing.value = true
             processPasscodeEntry()
         }
+
     }
 
     fun onBackspaceClick() {
@@ -48,28 +55,27 @@ class PasscodeSetupViewModel(
         _passcode.value = _passcode.value.dropLast(1)
     }
 
-    private fun processPasscodeEntry() {
-        _isProcessing.value = true
-        viewModelScope.launch {
-            if (_isConfirming.value) {
-                // Confirmation step
-                val passcode = _passcode.value
-                val confirmPasscode = _confirmPasscode.value
-                if (passcode == confirmPasscode) {
-                    val salt = repository.generateSalt()
-                    val hash = repository.hashPasscode(passcode, salt)
-                    repository.storePasscodeHashAndSalt(hash, salt)
-                    _uiEvent.send(PasscodeSetupUiEvent.PasscodeSet)
-                } else {
-                    _uiEvent.send(PasscodeSetupUiEvent.PasscodeDoNotMatch)
-                    reset()
-                }
+    private fun processPasscodeEntry() = viewModelScope.launch {
+        if (_isConfirming.value) {
+            // Confirmation step
+            val passcode = _passcode.value
+            delay(100)
+            val confirmPasscode = _confirmPasscode.value
+            if (passcode == confirmPasscode) {
+                val salt = repository.generateSalt()
+                val hash = repository.hashPasscode(passcode, salt)
+                repository.storePasscodeHashAndSalt(hash, salt)
+                _uiEvent.send(PasscodeSetupUiEvent.PasscodeSet)
             } else {
-                _confirmPasscode.value = _passcode.value
-                _passcode.value = ""
-                _isConfirming.value = true
-                _isProcessing.value = false
+                _uiEvent.send(PasscodeSetupUiEvent.PasscodeDoNotMatch)
+                delay(500) // Allow time for shake animation to complete
+                reset()
             }
+        } else {
+            _confirmPasscode.value = _passcode.value
+            _passcode.value = ""
+            _isConfirming.value = true
+            _isProcessing.value = false
         }
     }
 
