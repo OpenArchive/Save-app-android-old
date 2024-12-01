@@ -70,6 +70,9 @@ class GeneralSettingsActivity: BaseActivity() {
                         .setPositiveButton("Yes") { _, _ ->
                             passcodeRepository.clearPasscode()
                             passcodePreference?.isChecked = false
+
+                            // Update the FLAG_SECURE dynamically
+                            (activity as? BaseActivity)?.updateScreenshotPrevention()
                         }
                         .setNegativeButton("No") { _, _ ->
                             passcodePreference?.isChecked = true
