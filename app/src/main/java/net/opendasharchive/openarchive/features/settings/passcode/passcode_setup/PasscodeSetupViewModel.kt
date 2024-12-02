@@ -70,7 +70,7 @@ class PasscodeSetupViewModel(
 
         _uiState.update { state ->
             // Remove the last digit from the passcode if not confirming or empty
-            if (state.isProcessing || state.isConfirming || state.passcode.isEmpty()) state
+            if (state.isProcessing || state.passcode.isEmpty()) state
             else state.copy(passcode = state.passcode.dropLast(1))
         }
     }

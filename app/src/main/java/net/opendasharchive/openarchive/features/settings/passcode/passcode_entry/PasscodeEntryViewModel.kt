@@ -50,13 +50,13 @@ class PasscodeEntryViewModel(
 //        _passcode.value += number
 
         _uiState.update { state ->
-            if (state.isCheckingPasscode || state.passcode.length >= config.passcodeLength) state
+            if (state.isProcessing || state.passcode.length >= config.passcodeLength) state
             else state.copy(passcode = state.passcode + number)
         }
 
         if (uiState.value.passcode.length == config.passcodeLength) {
 //            _isCheckingPasscode.value = true
-            _uiState.update { it.copy(isCheckingPasscode = true) }
+            _uiState.update { it.copy(isProcessing = true) }
             checkPasscode()
         }
 
@@ -66,7 +66,7 @@ class PasscodeEntryViewModel(
 //        if (_isCheckingPasscode.value || _passcode.value.isEmpty()) return
 //        _passcode.value = _passcode.value.dropLast(1)
         _uiState.update { state ->
-            if (state.isCheckingPasscode || state.passcode.isEmpty()) state
+            if (state.isProcessing || state.passcode.isEmpty()) state
             else state.copy(passcode = state.passcode.dropLast(1))
         }
     }
@@ -107,7 +107,7 @@ class PasscodeEntryViewModel(
         _uiState.update {
             it.copy(
                 passcode = "",
-                isCheckingPasscode = false
+                isProcessing = false
             )
         }
 //        _passcode.value = ""
@@ -119,7 +119,7 @@ class PasscodeEntryViewModel(
 data class PasscodeEntryScreenState(
     val passcode: String = "",
     val passcodeLength: Int,
-    val isCheckingPasscode: Boolean = false,
+    val isProcessing: Boolean = false,
     val shouldShake: Boolean = false
 )
 
