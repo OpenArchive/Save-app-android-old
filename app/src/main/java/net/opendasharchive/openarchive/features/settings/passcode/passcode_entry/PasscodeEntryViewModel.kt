@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.features.settings.passcode.AppConfig
 import net.opendasharchive.openarchive.features.settings.passcode.PasscodeRepository
@@ -17,39 +18,62 @@ class PasscodeEntryViewModel(
     private val config: AppConfig
 ) : ViewModel() {
 
-    private val _passcode = MutableStateFlow("")
-    val passcode: StateFlow<String> = _passcode.asStateFlow()
+//    private val _passcode = MutableStateFlow("")
+//    val passcode: StateFlow<String> = _passcode.asStateFlow()
 
-    private val _isCheckingPasscode = MutableStateFlow(false)
-    val isCheckingPasscode: StateFlow<Boolean> = _isCheckingPasscode.asStateFlow()
+//    private val _isCheckingPasscode = MutableStateFlow(false)
+//    val isCheckingPasscode: StateFlow<Boolean> = _isCheckingPasscode.asStateFlow()
+
+    private val _uiState =
+        MutableStateFlow(PasscodeEntryScreenState(passcodeLength = config.passcodeLength))
+    val uiState: StateFlow<PasscodeEntryScreenState> = _uiState.asStateFlow()
 
     private val _uiEvent = Channel<PasscodeEntryUiEvent>()
     val uiEvent = _uiEvent.receiveAsFlow()
 
-    val passcodeLength: Int
-        get() = config.passcodeLength
+//    val passcodeLength: Int
+//        get() = config.passcodeLength
 
-    fun onNumberClick(number: String) {
-
-        if (_isCheckingPasscode.value) return
-
-        if (_passcode.value.length >= config.passcodeLength) return
-
-        _passcode.value += number
-
-        if (_passcode.value.length == config.passcodeLength) {
-            _isCheckingPasscode.value = true
-            checkPasscode()
+    fun onAction(action: PasscodeEntryScreenAction) {
+        when (action) {
+            is PasscodeEntryScreenAction.OnNumberClick -> onNumberClick(action.number)
+            PasscodeEntryScreenAction.OnBackspaceClick -> onBackspaceClick()
         }
     }
 
-    fun onBackspaceClick() {
-        if (_isCheckingPasscode.value || _passcode.value.isEmpty()) return
-        _passcode.value = _passcode.value.dropLast(1)
+    private fun onNumberClick(number: String) {
+
+//        if (_isCheckingPasscode.value) return
+//
+//        if (_passcode.value.length >= config.passcodeLength) return
+//
+//        _passcode.value += number
+
+        _uiState.update { state ->
+            if (state.isCheckingPasscode || state.passcode.length >= config.passcodeLength) state
+            else state.copy(passcode = state.passcode + number)
+        }
+
+        if (uiState.value.passcode.length == config.passcodeLength) {
+//            _isCheckingPasscode.value = true
+            _uiState.update { it.copy(isCheckingPasscode = true) }
+            checkPasscode()
+        }
+
+    }
+
+    private fun onBackspaceClick() {
+//        if (_isCheckingPasscode.value || _passcode.value.isEmpty()) return
+//        _passcode.value = _passcode.value.dropLast(1)
+        _uiState.update { state ->
+            if (state.isCheckingPasscode || state.passcode.isEmpty()) state
+            else state.copy(passcode = state.passcode.dropLast(1))
+        }
     }
 
     private fun checkPasscode() = viewModelScope.launch {
-        val currentPasscode = _passcode.value
+        val currentState = uiState.value
+        val currentPasscode = currentState.passcode
         delay(200)
         val (passcodeHash, passcodeSalt) = repository.getPasscodeHashAndSalt()
 
@@ -69,15 +93,39 @@ class PasscodeEntryViewModel(
                 } else {
                     _uiEvent.send(PasscodeEntryUiEvent.IncorrectPasscode(remainingAttempts))
                 }
+                _uiState.update { it.copy(shouldShake = true) }
+                delay(500)
+                _uiState.update { it.copy(shouldShake = false) }
             }
         } else {
             _uiEvent.send(PasscodeEntryUiEvent.PasscodeNotSet)
+            _uiState.update { it.copy(shouldShake = true) }
+            delay(500)
+            _uiState.update { it.copy(shouldShake = false) }
         }
 
-        _passcode.value = ""
-        _isCheckingPasscode.value = false
+        _uiState.update {
+            it.copy(
+                passcode = "",
+                isCheckingPasscode = false
+            )
+        }
+//        _passcode.value = ""
+//        _isCheckingPasscode.value = false
 
     }
+}
+
+data class PasscodeEntryScreenState(
+    val passcode: String = "",
+    val passcodeLength: Int,
+    val isCheckingPasscode: Boolean = false,
+    val shouldShake: Boolean = false
+)
+
+sealed class PasscodeEntryScreenAction {
+    data class OnNumberClick(val number: String) : PasscodeEntryScreenAction()
+    data object OnBackspaceClick : PasscodeEntryScreenAction()
 }
 
 sealed class PasscodeEntryUiEvent {

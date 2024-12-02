@@ -53,9 +53,8 @@ fun PasscodeEntryScreen(
     hapticManager: HapticManager = koinInject()
 ) {
 
-    val passcode by viewModel.passcode.collectAsStateWithLifecycle()
-    val isCheckingPasscode by viewModel.isCheckingPasscode.collectAsStateWithLifecycle()
-    var shouldShake by remember { mutableStateOf(false) }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
 
     val hapticFeedback = LocalHapticFeedback.current
 
@@ -75,14 +74,12 @@ fun PasscodeEntryScreen(
 
                 is PasscodeEntryUiEvent.IncorrectPasscode -> {
                     hapticManager.performHapticFeedback(AppHapticFeedbackType.Error)
-                    shouldShake = true
 
                     event.remainingAttempts?.let {
                         val message = "Incorrect passcode. $it attempts remaining."
                         MessageManager.showMessage(message)
                     }
-                    delay(500) // Allow animation to complete
-                    shouldShake = false
+
                 }
 
                 PasscodeEntryUiEvent.LockedOut -> {
@@ -94,41 +91,18 @@ fun PasscodeEntryScreen(
     }
 
     PasscodeEntryScreenContent(
-        passcode = passcode,
-        passcodeLength = viewModel.passcodeLength,
-        isCheckingPasscode = isCheckingPasscode,
-        shouldShake = shouldShake,
+        state = state,
+        onAction = viewModel::onAction,
         onExit = onExit,
-        onNumberClick = {
-            viewModel.onNumberClick(it)
-            shouldShake = false
-        },
-        onBackspaceClick = viewModel::onBackspaceClick
     )
 }
 
-data class PasscodeEntryScreenState(
-    val passcode: String = "",
-    val passcodeLength: Int,
-    val isCheckingPasscode: Boolean = false,
-    val shouldShake: Boolean = false
-)
-
-sealed class PasscodeEntryScreenAction {
-    data class OnNumberClick(val number: String) : PasscodeEntryScreenAction()
-    data object OnBackspaceClick : PasscodeEntryScreenAction()
-    data object OnExit : PasscodeEntryScreenAction()
-}
 
 @Composable
 fun PasscodeEntryScreenContent(
-    passcode: String,
-    passcodeLength: Int,
-    isCheckingPasscode: Boolean,
-    shouldShake: Boolean,
+    state: PasscodeEntryScreenState,
+    onAction: (PasscodeEntryScreenAction) -> Unit,
     onExit: () -> Unit,
-    onNumberClick: (String) -> Unit,
-    onBackspaceClick: () -> Unit
 ) {
 
     Column(
@@ -177,18 +151,18 @@ fun PasscodeEntryScreenContent(
 
             // Passcode dots display
             PasscodeDots(
-                passcodeLength = passcodeLength,
-                currentPasscodeLength = passcode.length,
-                shouldShake = shouldShake
+                passcodeLength = state.passcodeLength,
+                currentPasscodeLength = state.passcode.length,
+                shouldShake = state.shouldShake
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Custom numeric keypad
             NumericKeypad(
-                isEnabled = !isCheckingPasscode,
+                isEnabled = !state.isCheckingPasscode,
                 onNumberClick = { number ->
-                    onNumberClick(number)
+                    onAction(PasscodeEntryScreenAction.OnNumberClick(number))
                 }
             )
 
@@ -214,9 +188,9 @@ fun PasscodeEntryScreenContent(
                 }
 
                 TextButton(
-                    enabled = passcode.isNotEmpty(),
+                    enabled = state.passcode.isNotEmpty(),
                     onClick = {
-                        onBackspaceClick()
+                        onAction(PasscodeEntryScreenAction.OnBackspaceClick)
                     }
                 ) {
                     Text(
@@ -245,13 +219,11 @@ private fun PasscodeEntryScreenPreview() {
 
     Theme {
         PasscodeEntryScreenContent(
-            passcode = "123",
-            passcodeLength = 6,
-            isCheckingPasscode = false,
-            shouldShake = false,
+            state = PasscodeEntryScreenState(
+                passcodeLength = 6
+            ),
+            onAction = {},
             onExit = {},
-            onNumberClick = {},
-            onBackspaceClick = {}
         )
     }
 }

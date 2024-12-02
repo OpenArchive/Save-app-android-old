@@ -3,7 +3,6 @@ package net.opendasharchive.openarchive.features.settings.passcode.passcode_setu
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,9 +18,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -34,7 +30,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.core.presentation.theme.Theme
@@ -54,10 +49,8 @@ fun PasscodeSetupScreen(
     hapticManager: HapticManager = koinInject()
 ) {
 
-    val passcode by viewModel.passcode.collectAsStateWithLifecycle()
-    val isConfirming by viewModel.isConfirming.collectAsStateWithLifecycle()
-    val isProcessing by viewModel.isProcessing.collectAsStateWithLifecycle()
-    var shouldShake by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
     val hapticFeedback = LocalHapticFeedback.current
 
     LaunchedEffect(Unit) {
@@ -71,38 +64,25 @@ fun PasscodeSetupScreen(
                 PasscodeSetupUiEvent.PasscodeSet -> onPasscodeSet()
                 PasscodeSetupUiEvent.PasscodeDoNotMatch -> {
                     hapticManager.performHapticFeedback(AppHapticFeedbackType.Error)
-                    shouldShake = true
                     MessageManager.showMessage("Passcodes do not match. Try again.")
-                    delay(500)
-                    shouldShake = false
                 }
+
+                PasscodeSetupUiEvent.PasscodeCancelled -> onCancel()
             }
         }
     }
 
 
     PasscodeSetupScreenContent(
-        passcode = passcode,
-        passcodeLength = viewModel.passcodeLength,
-        isConfirming = isConfirming,
-        isProcessing = isProcessing,
-        shouldShake = shouldShake,
-        onCancel = onCancel,
-        onNumberClick = viewModel::onNumberClick,
-        onBackspaceClick = viewModel::onBackspaceClick
+        state = uiState,
+        onAction = viewModel::onAction,
     )
 }
 
 @Composable
 private fun PasscodeSetupScreenContent(
-    passcode: String,
-    passcodeLength: Int,
-    isConfirming: Boolean,
-    isProcessing: Boolean,
-    shouldShake: Boolean,
-    onCancel: () -> Unit,
-    onNumberClick: (String) -> Unit,
-    onBackspaceClick: () -> Unit
+    state: PasscodeSetupUiState,
+    onAction: (PasscodeSetupUiAction) -> Unit
 ) {
 
 
@@ -150,7 +130,7 @@ private fun PasscodeSetupScreenContent(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = if (isConfirming) "Confirm Your Passcode" else "Set Your Passcode",
+                text = if (state.isConfirming) "Confirm Your Passcode" else "Set Your Passcode",
                 style = TextStyle(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
@@ -163,18 +143,18 @@ private fun PasscodeSetupScreenContent(
 
             // Passcode dots display
             PasscodeDots(
-                passcodeLength = passcodeLength,
-                currentPasscodeLength = passcode.length,
-                shouldShake = shouldShake
+                passcodeLength = state.passcodeLength,
+                currentPasscodeLength = state.passcode.length,
+                shouldShake = state.shouldShake
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Custom numeric keypad
             NumericKeypad(
-                isEnabled = !isProcessing,
+                isEnabled = !state.isProcessing,
                 onNumberClick = { number ->
-                    onNumberClick(number)
+                    onAction(PasscodeSetupUiAction.OnNumberClick(number))
                 }
             )
 
@@ -188,7 +168,7 @@ private fun PasscodeSetupScreenContent(
             ) {
                 TextButton(
                     onClick = {
-                        onCancel()
+                        onAction(PasscodeSetupUiAction.OnCancel)
                     }
                 ) {
                     Text(
@@ -202,9 +182,9 @@ private fun PasscodeSetupScreenContent(
                 }
 
                 TextButton(
-                    enabled = passcode.isNotEmpty(),
+                    enabled = state.passcode.isNotEmpty(),
                     onClick = {
-                        onBackspaceClick()
+                        onAction(PasscodeSetupUiAction.OnBackspaceClick)
                     }
                 ) {
                     Text(
@@ -229,14 +209,10 @@ private fun PasscodeSetupScreenContent(
 private fun PasscodeSetupScreenPreview() {
     Theme {
         PasscodeSetupScreenContent(
-            passcode = "123",
-            passcodeLength = 6,
-            isConfirming = false,
-            isProcessing = false,
-            shouldShake = false,
-            onCancel = { },
-            onNumberClick = { },
-            onBackspaceClick = { }
+            state = PasscodeSetupUiState(
+                passcodeLength = 6
+            ),
+            onAction = {}
         )
     }
 }
