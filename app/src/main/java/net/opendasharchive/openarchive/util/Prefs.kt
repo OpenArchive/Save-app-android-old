@@ -9,6 +9,7 @@ import org.witness.proofmode.ProofMode
 import org.witness.proofmode.ProofModeConstants
 
 object Prefs {
+    const val PASSCODE_ENABLED = "passcode_enabled"
     private const val DID_COMPLETE_ONBOARDING = "did_complete_onboarding"
     private const val UPLOAD_WIFI_ONLY = "upload_wifi_only"
     private const val NEARBY_USE_BLUETOOTH = "nearby_use_bluetooth"
@@ -37,6 +38,38 @@ object Prefs {
     @SuppressLint("ApplySharedPref")
     fun store() {
         prefs?.edit()?.commit()
+    }
+
+    fun getString(key: String, defaultValue: String): String {
+        return prefs?.getString(key, defaultValue) ?: defaultValue
+    }
+
+    fun putString(key: String, value: String) {
+        prefs?.edit()?.putString(key, value)?.apply()
+    }
+
+    fun getInt(key: String, defaultValue: Int): Int {
+        return prefs?.getInt(key, defaultValue) ?: defaultValue
+    }
+
+    fun putInt(key: String, value: Int) {
+        prefs?.edit()?.putInt(key, value)?.apply()
+    }
+
+    fun getLong(key: String, defaultValue: Long): Long {
+        return prefs?.getLong(key, defaultValue) ?: defaultValue
+    }
+
+    fun putLong(key: String, value: Long) {
+        prefs?.edit()?.putLong(key, value)?.apply()
+    }
+
+    fun getBoolean(key: String, defaultValue: Boolean): Boolean {
+        return prefs?.getBoolean(key, defaultValue) ?: defaultValue
+    }
+
+    fun putBoolean(key: String, value: Boolean) {
+        prefs?.edit()?.putBoolean(key, value)?.apply()
     }
 
 //    val useNextcloudChunking: Boolean
@@ -115,6 +148,12 @@ object Prefs {
         get() = prefs?.getString(LICENSE_URL, null)
         set(value) {
             prefs?.edit()?.putString(LICENSE_URL, value)?.apply()
+        }
+
+    var passcodeEnabled: Boolean
+        get() = prefs?.getBoolean(PASSCODE_ENABLED, false) ?: false
+        set(value) {
+            prefs?.edit()?.putBoolean(PASSCODE_ENABLED, value)?.apply()
         }
 
     var proofModeLocation: Boolean

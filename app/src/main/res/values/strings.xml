@@ -274,6 +274,8 @@
     <string name="photo_gallery">Photo Gallery</string>
     <string name="files">Files</string>
     <string name="health_checks">Health Checks</string>
+    <string name="passcode_setup" translatable="false">Setup Passcode</string>
+    <string name="passcode_entry" translatable="false">Enter Passcode</string>
     <string name="help_improve_the_app_by_running_health_checks_when_uploads_fail">Help improve the app by running health checks when uploads fail.</string>
     <string name="health_checks_help_us_understand_why_uploads_fail">Health checks help us understand why uploads fail.</string>
     <string name="contribute_your_data_to_be_part_of_the_solution">Contribute your data to be part of the solution.</string>

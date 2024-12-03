@@ -4,10 +4,11 @@
     android:installLocation="auto">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
-<!--    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />-->
-<!--    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />-->
+    <!--    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />-->
+    <!--    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />-->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -23,6 +24,7 @@
     <queries>
         <package android:name="org.torproject.android" />
         <package android:name="com.dropbox.android" />
+
         <intent>
             <action android:name="android.intent.action.OPEN_DOCUMENT" />
             <category android:name="android.intent.category.OPENABLE" />
@@ -42,17 +44,17 @@
     <application
         android:name=".SaveApp"
         android:allowBackup="false"
-        android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
+        android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:requestLegacyExternalStorage="true"
         android:supportsRtl="true"
-        android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/AppTheme.NoActionBar"
-        tools:replace="android:icon,android:allowBackup"
-        tools:ignore="UnusedAttribute,LockedOrientationActivity">
+        tools:ignore="UnusedAttribute,LockedOrientationActivity"
+        tools:replace="android:icon,android:allowBackup">
         <!-- task affinity lets us define within which 'task' does a activity belong to.
         By default, the activity has the same task affinity as its root
         Trail of bits ticket: https://github.com/OpenArchive/OA-Trail-of-Bits/issues/23
@@ -91,7 +93,8 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.DEFAULT" />
+
                 <data android:mimeType="application/*" />
                 <data android:mimeType="audio/*" />
                 <data android:mimeType="image/*" />
@@ -105,60 +108,63 @@
         <activity
             android:name=".services.webdav.WebDavActivity"
             android:label="@string/title_activity_login"
-            android:windowSoftInputMode="adjustPan"
-            android:taskAffinity="" />
+            android:taskAffinity=""
+            android:windowSoftInputMode="adjustPan" />
 
-        <activity android:name=".features.internetarchive.presentation.InternetArchiveActivity"
+        <activity
+            android:name=".features.internetarchive.presentation.InternetArchiveActivity"
             android:label="@string/title_activity_login"
             android:taskAffinity="" />
 
-        <activity
-            android:name=".services.gdrive.GDriveActivity" />
+        <activity android:name=".services.gdrive.GDriveActivity" />
 
         <activity
             android:name=".features.settings.FoldersActivity"
-            android:label="@string/folders"
-            android:exported="false" />
+            android:exported="false"
+            android:label="@string/folders" />
 
-        <activity android:name=".features.settings.GeneralSettingsActivity"
+        <activity
+            android:name=".features.settings.GeneralSettingsActivity"
+            android:exported="false"
             android:label="@string/general"
-            android:exported="false"
             android:taskAffinity="" />
 
-        <activity android:name=".features.settings.ProofModeSettingsActivity"
+        <activity
+            android:name=".features.settings.ProofModeSettingsActivity"
+            android:exported="false"
             android:label="@string/proofmode"
-            android:exported="false"
             android:taskAffinity="" />
 
-        <activity android:name=".features.media.PreviewActivity"
-            android:label="@string/preview_media"
+        <activity
+            android:name=".features.media.PreviewActivity"
             android:exported="false"
+            android:label="@string/preview_media"
             android:taskAffinity="" />
 
         <activity
             android:name=".features.media.ReviewActivity"
-            android:label="@string/edit_media_info"
-            android:windowSoftInputMode="stateHidden"
             android:exported="false"
-            android:taskAffinity="" />
+            android:label="@string/edit_media_info"
+            android:taskAffinity=""
+            android:windowSoftInputMode="stateHidden" />
 
         <activity
             android:name=".features.onboarding.SpaceSetupActivity"
-            android:label="@string/title_activity_first_start"
-            android:windowSoftInputMode="adjustPan"
             android:exported="false"
-            android:taskAffinity="" />
+            android:label="@string/title_activity_first_start"
+            android:taskAffinity=""
+            android:windowSoftInputMode="adjustPan" />
 
         <activity
             android:name=".features.onboarding.Onboarding23Activity"
-            android:noHistory="true"
             android:exported="false"
+            android:noHistory="true"
             android:taskAffinity="" />
 
         <activity
             android:name=".features.onboarding.Onboarding23InstructionsActivity"
-            android:noHistory="true"
             android:exported="false"
+            android:noHistory="true"
             android:taskAffinity="" />
 
         <activity
@@ -181,6 +187,21 @@
             android:name=".features.settings.ConsentActivity"
             android:label="@string/health_checks"
             android:taskAffinity="" />
+
+        <activity
+            android:name=".features.settings.passcode.passcode_setup.PasscodeSetupActivity"
+            android:label="@string/passcode_setup"
+            android:screenOrientation="portrait"
+            android:taskAffinity=""
+            android:windowSoftInputMode="stateHidden" />
+
+        <activity
+            android:name=".features.settings.passcode.passcode_entry.PasscodeEntryActivity"
+            android:excludeFromRecents="true"
+            android:label="@string/passcode_entry"
+            android:noHistory="true"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="stateHidden" />
 
         <meta-data
             android:name="DOMAIN_PACKAGE_NAME"
@@ -215,9 +236,9 @@
 
         <service
             android:name=".upload.UploadService"
-            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false"
             android:foregroundServiceType="dataSync"
-            android:exported="false" />
+            android:permission="android.permission.BIND_JOB_SERVICE" />
 
     </application>
 
