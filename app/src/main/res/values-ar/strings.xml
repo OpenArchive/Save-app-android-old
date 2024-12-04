@@ -180,7 +180,7 @@
     <string name="proofmode">ProofMode</string>
     <string name="no_webbrowser_found_error">لا يوجد تطبيق يمكنه التعامل مع هذا الطلب. الرجاء تثبيت متصفح الانترنت.</string>
 
-    <string name="intro_text_share">
+    <string name="intro_text_secure">
        قم بتحميل الوسائط المتحقق منها إلى الخادم الذي اخترته. أضف ترخيص المشاع الإبداعي للتعبير 
        عن رغباتك للاستخدام المستقبلي.
 </string>

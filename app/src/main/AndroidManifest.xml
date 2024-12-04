@@ -164,7 +164,6 @@
         <activity
             android:name=".features.onboarding.Onboarding23InstructionsActivity"
             android:exported="false"
-            android:noHistory="true"
             android:taskAffinity="" />
 
         <activity
