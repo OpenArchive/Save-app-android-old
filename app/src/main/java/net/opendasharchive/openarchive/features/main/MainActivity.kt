@@ -155,13 +155,7 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
             mBinding.folders.animate().alpha(1 - newAlpha)
         }
 
-        mBinding.currentSpaceName.text = Space.current?.friendlyName
-        mBinding.currentSpaceName.setDrawable(
-            Space.current?.getAvatar(applicationContext)?.scaled(32, applicationContext),
-            Position.Start, tint = true
-        )
-        mBinding.currentSpaceName.compoundDrawablePadding =
-            applicationContext.resources.getDimension(R.dimen.padding_small).roundToInt()
+        updateCurrentSpaceAtDrawer()
 
         mSpaceAdapter = SpaceAdapter(this)
         mBinding.spaces.layoutManager = LinearLayoutManager(this)
@@ -283,6 +277,16 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
 
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun updateCurrentSpaceAtDrawer() {
+        mBinding.currentSpaceName.text = Space.current?.friendlyName
+        mBinding.currentSpaceName.setDrawable(
+            Space.current?.getAvatar(applicationContext)?.scaled(32, applicationContext),
+            Position.Start, tint = true
+        )
+        mBinding.currentSpaceName.compoundDrawablePadding =
+            applicationContext.resources.getDimension(R.dimen.padding_small).roundToInt()
     }
 
     fun updateAfterDelete(done: Boolean) {
@@ -449,6 +453,8 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
 //        mBinding.spacesCard.disableAnimation {
 //            mBinding.spacesCard.hide()
 //        }
+
+        updateCurrentSpaceAtDrawer()
     }
 
     override fun addSpaceClicked() {
