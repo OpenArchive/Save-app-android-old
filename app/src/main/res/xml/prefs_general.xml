@@ -3,6 +3,21 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory
+        app:layout="@layout/prefs_title"
+        app:title="Secure">
+
+        <SwitchPreferenceCompat
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="false"
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="passcode_enabled"
+            app:singleLineTitle="false"
+            app:title="Lock app with passcode" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
         app:iconSpaceReserved="false"
         app:layout="@layout/prefs_title"
         app:title="@string/connectivity_data">

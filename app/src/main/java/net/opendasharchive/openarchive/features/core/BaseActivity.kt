@@ -5,7 +5,7 @@ import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import net.opendasharchive.openarchive.util.Prefs
 
-abstract class BaseActivity: AppCompatActivity() {
+abstract class BaseActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_DATA_SPACE = "space"
@@ -29,7 +29,8 @@ abstract class BaseActivity: AppCompatActivity() {
     }
 
     fun updateScreenshotPrevention() {
-        if (Prefs.prohibitScreenshots) {
+        if (Prefs.passcodeEnabled || Prefs.prohibitScreenshots) {
+            // Prevent screenshots and recent apps preview
             window.setFlags(
                 WindowManager.LayoutParams.FLAG_SECURE,
                 WindowManager.LayoutParams.FLAG_SECURE
