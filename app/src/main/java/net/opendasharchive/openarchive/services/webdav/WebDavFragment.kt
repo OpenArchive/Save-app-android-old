@@ -1,11 +1,13 @@
 package net.opendasharchive.openarchive.services.webdav
 
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
@@ -62,9 +64,14 @@ class WebDavFragment : Fragment() {
             binding.username.isEnabled = false
             binding.password.isEnabled = false
 
+            // Disable the password visibility toggle
+            binding.passwordLayout.isEndIconVisible = false
+
             binding.server.setText(mSpace.host)
             binding.username.setText(mSpace.username)
             binding.password.setText(mSpace.password)
+
+            binding.name.setText(mSpace.name)
 
 //            mBinding.swChunking.isChecked = mSpace.useChunking
 //            mBinding.swChunking.setOnCheckedChangeListener { _, useChunking ->
@@ -83,6 +90,33 @@ class WebDavFragment : Fragment() {
                 setFragmentResult(RESP_LICENSE, bundleOf())
             }
 
+            binding.name.setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+
+                    val enteredName = binding.name.text?.toString()?.trim()
+                    if (!enteredName.isNullOrEmpty()) {
+                        // Update the Space entity and save it using SugarORM
+                        mSpace.name = enteredName
+                        mSpace.save() // Save the entity using SugarORM
+
+                        // Hide the keyboard
+                        val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                        imm.hideSoftInputFromWindow(binding.name.windowToken, 0)
+                        binding.name.clearFocus() // Clear focus from the input field
+
+                        // Optional: Provide feedback to the user
+                        Snackbar.make(binding.root, "Name saved successfully!", Snackbar.LENGTH_SHORT).show()
+                    } else {
+                        // Notify the user that the name cannot be empty (optional)
+                        Snackbar.make(binding.root, "Name cannot be empty", Snackbar.LENGTH_SHORT).show()
+                    }
+
+                    true // Consume the event
+                } else {
+                    false // Pass the event to the next listener
+                }
+            }
+
 
         } else {
             // setup views for creating a new space
@@ -90,6 +124,8 @@ class WebDavFragment : Fragment() {
             binding.btRemove.visibility = View.GONE
             binding.buttonBar.visibility = View.VISIBLE
             binding.buttonBarEdit.visibility = View.GONE
+
+            binding.name.visibility = View.GONE
         }
 
         binding.btAuthenticate.setOnClickListener { attemptLogin() }
@@ -118,6 +154,12 @@ class WebDavFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         mSnackbar = binding.root.makeSnackBar(getString(R.string.login_activity_logging_message))
+
+        if (BuildConfig.DEBUG) {
+            binding.server.setText("https://nx27277.your-storageshare.de/")
+            binding.username.setText("Upul")
+            binding.password.setText("J7wc(ka_4#9!13h&")
+        }
     }
 
     private fun fixSpaceUrl(url: CharSequence?): Uri? {
