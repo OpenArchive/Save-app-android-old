@@ -180,7 +180,7 @@
     <string name="proofmode">ProofMode</string>
     <string name="no_webbrowser_found_error">Ninguna aplicación puede manejar esta solicitud. Por favor instala un navegador web.</string>
 
-    <string name="intro_text_share">
+    <string name="intro_text_secure">
 Suba medios verificados a su servidor elegido. Añada una licencia de Creative Commons para comunicarse
 sus intenciones para uso futuro.</string>
     <string name="intro_text_archive">
