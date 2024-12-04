@@ -68,7 +68,7 @@ class PasscodeSetupViewModel(
 //        if (state.isConfirming || state.passcode.isEmpty()) return
 //        _uiState.update { it.copy(passcode = it.passcode.dropLast(1)) }
 
-        _uiState.update { state ->
+        _uiState.update { state->
             // Remove the last digit from the passcode if not confirming or empty
             if (state.isProcessing || state.passcode.isEmpty()) state
             else state.copy(passcode = state.passcode.dropLast(1))
