@@ -208,25 +208,37 @@
     <string name="proofmode">ProofMode</string>
     <string name="no_webbrowser_found_error">No application can handle this request. Please install a webbrowser.</string>
 
-    <string name="intro_header_share" translatable="false">SHARE</string>
+    <string name="intro_header_secure" translatable="false">SECURE</string>
     <string name="intro_header_archive" translatable="false">ARCHIVE</string>
     <string name="intro_header_verify" translatable="false">VERIFY</string>
     <string name="intro_header_encrypt" translatable="false">ENCRYPT</string>
-    <string name="intro_text_share">
-        Upload verified media to your chosen server. Add a Creative Commons license to communicate
-        your intentions for future use.
+    <string name="intro_text_secure">
+        Send your media securely to private servers and lock the app with a pin.
     </string>
     <string name="intro_text_archive">
-        Keep your media safe and organized for the long-term and create in-app project folders that
-        map your personal or organizational media archive.
+    <![CDATA[
+    Keep your media verifiable, safe and organized for the long-term by uploading it to private or public servers like Nextcloud or the Internet Archive.<br><br>
+    Communicate your intentions for future use by adding a <a href="%1$s" style="text-decoration: underline;">Creative Commons License</a>.
+    ]]>
     </string>
+    <string name="intro_link_archive" translatable="false">https://creativecommons.org</string>
     <string name="intro_text_verify">
-        Authenticate your media with a cryptographic verification sha256 hash and optional
-        ProofMode. Add critical metadata like notes, people, and location with each upload.
+    <![CDATA[
+    Authenticate and verify your media with sha256 hashes and <a href="%1$s" style="text-decoration: underline;">ProofMode</a>.
+    ]]>
     </string>
-    <string name="intro_text_encrypt">
-        Automatically upload over TLS (Transport Layer Security) and and use the Tor network to protect your media in transit.
+    <string name="intro_link_verify" translatable="false">https://proofmode.org</string>
+    <string name="intro_text_encrypt_old">
+        Automatically upload over TLS (Transport Layer Security) and use Orbot to protect your media in transit over the Tor network.
     </string>
+    <string name="intro_text_encrypt" translatable="false">
+    <![CDATA[
+    <b><i>Save</i></b> always uploads over TLS (Transport Layer Security) to protect your media in transit.<br><br>
+    To further enhance security, enable <a href="%1$s" style="text-decoration: underline;">Tor</a> to prevent interception of your media from your phone to the server.
+    ]]>
+    </string>
+    <string name="intro_link_encrypt" translatable="false">https://www.torproject.org</string>
+
     <string name="next">Next</string>
     <string name="done">Done</string>
     <string name="secure_mobile_media_preservation">Secure Mobile Media Preservation</string>

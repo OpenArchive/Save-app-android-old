@@ -10,14 +10,20 @@
     tools:context=".features.onboarding.Onboarding23SlideFragment">
 
     <View
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="10" />
+
+    <View
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="80" />
+        android:layout_weight="65" />
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="30">
+        android:paddingTop="8dp"
+        android:layout_weight="40">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -34,8 +40,7 @@
                 android:textFontWeight="900"
                 android:textSize="28sp"
                 android:textStyle="bold"
-                tools:ignore="HardcodedText"
-                tools:targetApi="p" />
+                tools:ignore="HardcodedText" />
 
             <TextView
                 android:id="@+id/summary"
@@ -43,6 +48,7 @@
                 android:layout_height="wrap_content"
                 tools:text="@tools:sample/lorem/random"
                 android:textSize="16sp" />
+
         </LinearLayout>
     </ScrollView>
 
