@@ -8,18 +8,18 @@
         app:singleLineTitle="false"
         app:summary="@string/prefs_use_proofmode_summary" />
 
-    <SwitchPreferenceCompat
-        app:key="proofmode_key_encryption"
-        app:defaultValue="false"
-        app:title="@string/prefs_proofmode_key_encryption_title_all"
-        app:singleLineTitle="false"
-        app:summary="@string/prefs_proofmode_key_encryption_summary" />
+<!--    <SwitchPreferenceCompat-->
+<!--        app:key="proofmode_key_encryption"-->
+<!--        app:defaultValue="false"-->
+<!--        app:title="@string/prefs_proofmode_key_encryption_title_all"-->
+<!--        app:singleLineTitle="false"-->
+<!--        app:summary="@string/prefs_proofmode_key_encryption_summary" />-->
 
-    <Preference
-        app:key="share_proofmode"
-        app:title="@string/prefs_share_proofmode_title"
-        app:singleLineTitle="false"
-        app:summary="@string/prefs_share_proofmode_summary" />
+<!--    <Preference-->
+<!--        app:key="share_proofmode"-->
+<!--        app:title="@string/prefs_share_proofmode_title"-->
+<!--        app:singleLineTitle="false"-->
+<!--        app:summary="@string/prefs_share_proofmode_summary" />-->
 
     <Preference
         app:selectable="false"
