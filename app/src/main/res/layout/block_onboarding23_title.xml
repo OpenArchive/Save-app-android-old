@@ -46,7 +46,7 @@
             android:layout_weight="870"
             android:scaleX="1.15"
             android:scaleY="1.15"
-            android:text="@string/intro_header_share"
+            android:text="@string/intro_header_secure"
             android:textFontWeight="900"
             android:textStyle="bold"
             app:autoSizeTextType="uniform"

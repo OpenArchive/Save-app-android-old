@@ -180,7 +180,7 @@
     <string name="proofmode">ProofMode</string>
     <string name="no_webbrowser_found_error">Bu isteği yerine getirecek bir uygulama yok. Lütfen bir tarayıcı kurun.</string>
 
-    <string name="intro_text_share">
+    <string name="intro_text_secure">
         Doğrulanmış ortamı seçtiğiniz sunucuya yükleyin. Gelecekte kullanması niyetinizi göstermesi için
         bir Creative Commons lisansı ekleyin.
     </string>

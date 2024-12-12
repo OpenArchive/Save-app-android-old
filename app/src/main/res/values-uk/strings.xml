@@ -180,7 +180,7 @@
     <string name="proofmode">ProofMode</string>
     <string name="no_webbrowser_found_error">Жоден застосунок не може обробити цей запит. Будь ласка, встановіть веббраузер.</string>
 
-    <string name="intro_text_share">
+    <string name="intro_text_secure">
 Завантажуйте перевірені медіафайли на обраний сервер. Додавайте ліцензію Creative Commons 
 для визначення політики їхнього використання у майбутньому.</string>
     <string name="intro_text_archive">

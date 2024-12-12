@@ -98,7 +98,7 @@ class Onboarding23InstructionsActivity : BaseActivity() {
 
     private fun updateCoverImage() {
         when (mBinding.viewPager.currentItem) {
-            0 -> mBinding.coverImage.setImageResource(R.drawable.onboarding23_cover_share)
+            0 -> mBinding.coverImage.setImageResource(R.drawable.onboarding23_cover_secure)
             1 -> mBinding.coverImage.setImageResource(R.drawable.onboarding23_cover_archive)
             2 -> mBinding.coverImage.setImageResource(R.drawable.onboarding23_cover_verify)
             3 -> mBinding.coverImage.setImageResource(R.drawable.onboarding23_cover_encrypt)
