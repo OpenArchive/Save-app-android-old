@@ -29,9 +29,10 @@ class CreateNewFolderActivity : BaseActivity() {
         mBinding = ActivityCreateNewFolderBinding.inflate(layoutInflater)
         setContentView(mBinding.root)
 
-        setSupportActionBar(mBinding.toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = getString(R.string.new_folder)
+        setupToolbar(
+            title = getString(R.string.new_folder),
+            showBackButton = true
+        )
 
         mBinding.newFolder.setText(intent.getStringExtra(AddFolderActivity.EXTRA_FOLDER_NAME))
 

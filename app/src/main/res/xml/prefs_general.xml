@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<PreferenceScreen
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory
@@ -18,12 +18,81 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        app:layout="@layout/prefs_title"
+        app:title="Archive">
+
+        <Preference
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="false"
+            app:iconSpaceReserved="false"
+            app:key="@string/pref_media_servers"
+            app:singleLineTitle="true"
+            app:summary="Add or remove media servers"
+            app:title="Media Servers" />
+
+        <Preference
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="false"
+            app:iconSpaceReserved="false"
+            app:key="@string/pref_media_folders"
+            app:singleLineTitle="true"
+            app:summary="Add or remove media folders"
+            app:title="Media Folders" />
+
+        <ListPreference
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="false"
+            app:defaultValue="higher_quality"
+            app:enabled="false"
+            app:entries="@array/array_prefs_media_compression_labels"
+            app:entryValues="@array/array_prefs_media_compression_values"
+            app:iconSpaceReserved="false"
+            app:key="media_compression"
+            app:singleLineTitle="true"
+            app:summary="%s"
+            app:title="Media Compression" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
         app:iconSpaceReserved="false"
         app:layout="@layout/prefs_title"
-        app:title="@string/connectivity_data">
+        app:title="Verify">
+
+        <Preference
+            app:allowDividerAbove="false"
+            app:allowDividerBelow="false"
+            app:iconSpaceReserved="false"
+            app:key="proof_mode"
+            app:singleLineTitle="false"
+            app:title="@string/proofmode" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:layout="@layout/prefs_title"
+        app:title="Encrypt">
 
         <SwitchPreferenceCompat
-            app:allowDividerAbove="false"
+            android:enabled="false"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="false"
+            app:defaultValue="false"
+            app:enabled="true"
+            app:iconSpaceReserved="false"
+            app:key="use_tor"
+            app:singleLineTitle="false"
+            app:summary="@string/prefs_use_tor_summary"
+            app:title="@string/prefs_use_tor_title" />
+    </PreferenceCategory>
+
+
+    <PreferenceCategory
+        app:layout="@layout/prefs_title"
+        app:title="General">
+
+        <SwitchPreferenceCompat
+            app:allowDividerAbove="true"
             app:allowDividerBelow="false"
             app:defaultValue="false"
             app:iconSpaceReserved="false"
@@ -31,83 +100,88 @@
             app:singleLineTitle="false"
             app:title="@string/only_upload_media_when_you_are_connected_to_wi_fi" />
 
+        <ListPreference
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="false"
+            app:defaultValue="@string/prefs_theme_val_system"
+            app:entries="@array/ar_prefs_theme_labels"
+            app:entryValues="@array/ar_prefs_theme_val"
+            app:iconSpaceReserved="false"
+            app:key="theme"
+            app:singleLineTitle="false"
+            app:summary="%s"
+            app:title="@string/prefs_theme_title" />
+
     </PreferenceCategory>
 
     <PreferenceCategory
-        app:iconSpaceReserved="false"
         app:layout="@layout/prefs_title"
-        app:title="@string/metadata">
+        app:title="About">
+
+        <Preference
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="false"
+            app:enabled="true"
+            app:iconSpaceReserved="false"
+            app:key="privacy_policy"
+            app:singleLineTitle="true"
+            app:summary="Tap to view our Terms &amp; Privacy Policy"
+            app:title="Terms &amp; Privacy Policy" />
 
         <Preference
             app:allowDividerAbove="false"
             app:allowDividerBelow="false"
+            app:enabled="false"
             app:iconSpaceReserved="false"
-            app:key="proof_mode"
-            app:title="@string/proofmode"
-            app:singleLineTitle="false" />
+            app:key="app_version"
+            app:singleLineTitle="true"
+            app:summary="0.7.2.4783"
+            app:title="Version" />
 
     </PreferenceCategory>
 
-<!--    <PreferenceCategory-->
-<!--        app:iconSpaceReserved="false"-->
-<!--        app:layout="@layout/prefs_title"-->
-<!--        app:title="@string/security">-->
+    <!--    <PreferenceCategory-->
+    <!--        app:iconSpaceReserved="false"-->
+    <!--        app:layout="@layout/prefs_title"-->
+    <!--        app:title="@string/security">-->
 
-<!--        <SwitchPreferenceCompat-->
-<!--            app:allowDividerAbove="false"-->
-<!--            app:allowDividerBelow="false"-->
-<!--            app:iconSpaceReserved="false"-->
-<!--            app:key="use_tor"-->
-<!--            app:defaultValue="false"-->
-<!--            app:title="@string/prefs_use_tor_title"-->
-<!--            app:singleLineTitle="false"-->
-<!--            app:summary="@string/prefs_use_tor_summary" />-->
+    <!--        <SwitchPreferenceCompat-->
+    <!--            app:allowDividerAbove="false"-->
+    <!--            app:allowDividerBelow="false"-->
+    <!--            app:iconSpaceReserved="false"-->
+    <!--            app:key="use_tor"-->
+    <!--            app:defaultValue="false"-->
+    <!--            app:title="@string/prefs_use_tor_title"-->
+    <!--            app:singleLineTitle="false"-->
+    <!--            app:summary="@string/prefs_use_tor_summary" />-->
 
-<!--        <SwitchPreferenceCompat-->
-<!--            app:allowDividerAbove="false"-->
-<!--            app:allowDividerBelow="false"-->
-<!--            app:iconSpaceReserved="false"-->
-<!--            app:key="prohibit_screenshots"-->
-<!--            app:defaultValue="false"-->
-<!--            app:title="@string/prefs_prohibit_screenshots_title"-->
-<!--            app:singleLineTitle="false"-->
-<!--            app:summary="@string/prefs_prohibit_screenshots_summary" />-->
+    <!--        <SwitchPreferenceCompat-->
+    <!--            app:allowDividerAbove="false"-->
+    <!--            app:allowDividerBelow="false"-->
+    <!--            app:iconSpaceReserved="false"-->
+    <!--            app:key="prohibit_screenshots"-->
+    <!--            app:defaultValue="false"-->
+    <!--            app:title="@string/prefs_prohibit_screenshots_title"-->
+    <!--            app:singleLineTitle="false"-->
+    <!--            app:summary="@string/prefs_prohibit_screenshots_summary" />-->
 
-<!--    </PreferenceCategory>-->
+    <!--    </PreferenceCategory>-->
 
-    <PreferenceCategory
-        app:iconSpaceReserved="false"
-        app:layout="@layout/prefs_title"
-        app:title="@string/prefs_user_interface_title">
 
-        <ListPreference
-            app:allowDividerAbove="false"
-            app:allowDividerBelow="false"
-            app:iconSpaceReserved="false"
-            app:key="theme"
-            app:defaultValue="@string/prefs_theme_val_system"
-            app:entries="@array/ar_prefs_theme_labels"
-            app:entryValues="@array/ar_prefs_theme_val"
-            app:title="@string/prefs_theme_title"
-            app:singleLineTitle="false"
-            app:summary="@string/prefs_theme_summary" />
+    <!--    <PreferenceCategory-->
+    <!--        app:iconSpaceReserved="false"-->
+    <!--        app:layout="@layout/prefs_title"-->
+    <!--        app:title="@string/health_checks">-->
 
-    </PreferenceCategory>
+    <!--        <SwitchPreferenceCompat-->
+    <!--            app:allowDividerAbove="false"-->
+    <!--            app:allowDividerBelow="false"-->
+    <!--            app:iconSpaceReserved="false"-->
+    <!--            app:key="health_checks"-->
+    <!--            app:title="@string/health_checks"-->
+    <!--            app:singleLineTitle="false"-->
+    <!--            app:summary="@string/help_improve_the_app_by_running_health_checks_when_uploads_fail" />-->
 
-<!--    <PreferenceCategory-->
-<!--        app:iconSpaceReserved="false"-->
-<!--        app:layout="@layout/prefs_title"-->
-<!--        app:title="@string/health_checks">-->
-
-<!--        <SwitchPreferenceCompat-->
-<!--            app:allowDividerAbove="false"-->
-<!--            app:allowDividerBelow="false"-->
-<!--            app:iconSpaceReserved="false"-->
-<!--            app:key="health_checks"-->
-<!--            app:title="@string/health_checks"-->
-<!--            app:singleLineTitle="false"-->
-<!--            app:summary="@string/help_improve_the_app_by_running_health_checks_when_uploads_fail" />-->
-
-<!--    </PreferenceCategory>-->
+    <!--    </PreferenceCategory>-->
 
 </PreferenceScreen>

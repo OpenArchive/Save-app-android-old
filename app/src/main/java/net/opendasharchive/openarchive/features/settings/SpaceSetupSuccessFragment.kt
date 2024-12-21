@@ -8,8 +8,9 @@ import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
 import net.opendasharchive.openarchive.databinding.FragmentSpaceSetupSuccessBinding
+import net.opendasharchive.openarchive.features.onboarding.ToolbarConfigurable
 
-class SpaceSetupSuccessFragment : Fragment() {
+class SpaceSetupSuccessFragment : Fragment(), ToolbarConfigurable {
     private lateinit var mBinding: FragmentSpaceSetupSuccessBinding
     private var message = ""
 
@@ -50,4 +51,7 @@ class SpaceSetupSuccessFragment : Fragment() {
                 }
             }
     }
+
+    override fun getToolbarTitle() = ""
+    override fun shouldShowBackButton() = false
 }

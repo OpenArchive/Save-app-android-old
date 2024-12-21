@@ -6,14 +6,15 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
-import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResult
 import net.opendasharchive.openarchive.databinding.FragmentSpaceSetupBinding
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.features.main.MainActivity
+import net.opendasharchive.openarchive.features.onboarding.BaseFragment
+import net.opendasharchive.openarchive.features.onboarding.ToolbarConfigurable
 import net.opendasharchive.openarchive.util.extensions.hide
 
-class SpaceSetupFragment : Fragment() {
+class SpaceSetupFragment : BaseFragment(), ToolbarConfigurable {
 
     private lateinit var mBinding: FragmentSpaceSetupBinding
 
@@ -74,4 +75,8 @@ class SpaceSetupFragment : Fragment() {
         const val RESULT_VAL_INTERNET_ARCHIVE = "internet_archive"
         const val RESULT_VAL_GDRIVE = "gdrive"
     }
+
+    override fun getToolbarTitle() = "Select a Server"
+    override fun getToolbarSubtitle(): String? = null
+    override fun shouldShowBackButton() = true
 }
