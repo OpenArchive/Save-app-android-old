@@ -282,7 +282,7 @@ class MainActivity : BaseActivity(), FolderAdapterListener, SpaceAdapterListener
     private fun updateCurrentSpaceAtDrawer() {
         mBinding.currentSpaceName.text = Space.current?.friendlyName
         mBinding.currentSpaceName.setDrawable(
-            Space.current?.getAvatar(applicationContext)?.scaled(32, applicationContext),
+            Space.current?.getAvatar(applicationContext)?.scaled(R.dimen.avatar_size, applicationContext),
             Position.Start, tint = true
         )
         mBinding.currentSpaceName.compoundDrawablePadding =
