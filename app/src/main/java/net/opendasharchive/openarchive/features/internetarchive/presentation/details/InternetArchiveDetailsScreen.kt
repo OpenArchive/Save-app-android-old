@@ -11,8 +11,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -146,9 +148,11 @@ private fun RemoveInternetArchiveDialog(onDismiss: () -> Unit, onRemove: () -> U
         },
         text = { Text(stringResource(id = R.string.are_you_sure_you_want_to_remove_this_server_from_the_app)) },
         dismissButton = {
-            OutlinedButton(
+            TextButton(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(ThemeDimensions.roundedCorner)
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             ) {
                 Text(stringResource(id = R.string.action_cancel))
             }
@@ -156,7 +160,10 @@ private fun RemoveInternetArchiveDialog(onDismiss: () -> Unit, onRemove: () -> U
             Button(
                 onClick = onRemove,
                 shape = RoundedCornerShape(ThemeDimensions.roundedCorner),
-                colors = ButtonDefaults.buttonColors(containerColor = ThemeColors.material.error)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             ) {
                 Text(stringResource(id = R.string.remove))
             }
@@ -180,6 +187,7 @@ private fun InternetArchiveScreenPreview() {
 
 @Composable
 @Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 private fun RemoveInternetArchiveDialogPreview() {
     Theme {
         RemoveInternetArchiveDialog(onDismiss = { }) {}

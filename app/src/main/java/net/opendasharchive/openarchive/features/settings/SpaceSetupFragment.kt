@@ -11,10 +11,9 @@ import net.opendasharchive.openarchive.databinding.FragmentSpaceSetupBinding
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.features.main.MainActivity
 import net.opendasharchive.openarchive.features.onboarding.BaseFragment
-import net.opendasharchive.openarchive.features.onboarding.ToolbarConfigurable
 import net.opendasharchive.openarchive.util.extensions.hide
 
-class SpaceSetupFragment : BaseFragment(), ToolbarConfigurable {
+class SpaceSetupFragment : BaseFragment() {
 
     private lateinit var mBinding: FragmentSpaceSetupBinding
 

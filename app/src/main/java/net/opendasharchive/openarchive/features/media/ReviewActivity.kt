@@ -67,8 +67,10 @@ class ReviewActivity : BaseActivity(), View.OnClickListener {
         mBinding = ActivityReviewBinding.inflate(layoutInflater)
         setContentView(mBinding.root)
 
-        setSupportActionBar(mBinding.toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        setupToolbar(
+            title = getString(R.string.edit_media_info),
+            showBackButton = true
+        )
 
         mStore = intent.getLongArrayExtra(EXTRA_CURRENT_MEDIA_ID)
             ?.map { Media.get(it) }?.filterNotNull() ?: emptyList()

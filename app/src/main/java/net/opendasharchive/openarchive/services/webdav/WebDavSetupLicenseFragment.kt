@@ -12,11 +12,10 @@ import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.FragmentWebdavSetupLicenseBinding
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.features.onboarding.BaseFragment
-import net.opendasharchive.openarchive.features.onboarding.ToolbarConfigurable
 import net.opendasharchive.openarchive.features.settings.CcSelector
 import kotlin.properties.Delegates
 
-class WebDavSetupLicenseFragment: BaseFragment(), ToolbarConfigurable {
+class WebDavSetupLicenseFragment: BaseFragment() {
 
     private lateinit var binding: FragmentWebdavSetupLicenseBinding
 

@@ -21,6 +21,7 @@ import net.opendasharchive.openarchive.features.core.BaseActivity
 import net.opendasharchive.openarchive.features.folders.AddFolderActivity
 import net.opendasharchive.openarchive.features.media.AddMediaDialogFragment
 import net.opendasharchive.openarchive.features.media.AddMediaType
+import net.opendasharchive.openarchive.features.media.ContentPickerFragment
 import net.opendasharchive.openarchive.features.media.MediaLaunchers
 import net.opendasharchive.openarchive.features.media.Picker
 import net.opendasharchive.openarchive.features.media.PreviewActivity
@@ -163,8 +164,11 @@ class MainActivity : BaseActivity() {
             binding.bottomNavBar.setAddButtonLongClickEnabled()
 
             binding.bottomNavBar.onAddLongClick = {
-                val addMediaDialogFragment = AddMediaDialogFragment()
-                addMediaDialogFragment.show(supportFragmentManager, addMediaDialogFragment.tag)
+                //val addMediaDialogFragment = AddMediaDialogFragment()
+                //addMediaDialogFragment.show(supportFragmentManager, addMediaDialogFragment.tag)
+
+                val addMediaBottomSheet = ContentPickerFragment { actionType -> addClicked(actionType) }
+                addMediaBottomSheet.show(supportFragmentManager, ContentPickerFragment.TAG)
             }
 
             supportFragmentManager.setFragmentResultListener(

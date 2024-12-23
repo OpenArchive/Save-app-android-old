@@ -30,7 +30,7 @@ class CreateNewFolderActivity : BaseActivity() {
         setContentView(mBinding.root)
 
         setupToolbar(
-            title = getString(R.string.new_folder),
+            title = "Create Folder",
             showBackButton = true
         )
 
