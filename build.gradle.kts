@@ -34,12 +34,10 @@ buildscript {
                 includeGroup("org.glassfish.jaxb")
                 includeGroupByRegex("jakarta.*")
                 includeModule("org.jvnet.staxex", "stax-ex")
-                includeModule("gradle.plugin.com.browserstack.gradle", "browserstack-gradle-plugin")
                 includeGroup("com.testdroid")
                 includeModule("log4j", "log4j")
                 includeModule("com.fasterxml", "oss-parent")
                 includeGroupByRegex("com\\.fasterxml\\.jackson.*")
-                includeModule("com.neenbedankt.gradle.plugins", "android-apt")
                 includeModule("org.sonatype.oss", "oss-parent")
                 includeModule("org.eclipse.ee4j", "project")
                 includeGroup("org.codehaus.mojo")
@@ -48,9 +46,6 @@ buildscript {
     }
     dependencies {
         classpath("com.android.tools.build:gradle:8.7.3")
-        classpath("com.neenbedankt.gradle.plugins:android-apt:1.8")
-        classpath("com.testdroid:gradle:2.63.1")
-        classpath("gradle.plugin.com.browserstack.gradle:browserstack-gradle-plugin:2.3.1")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0")
         classpath("org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.1.0")
     }
@@ -81,14 +76,6 @@ allprojects {
                 includeModule("com.github.derlio", "audio-waveform")
                 includeModule("com.github.abdularis", "circularimageview")
                 includeModule("com.github.guardianproject", "sardine-android")
-            }
-        }
-
-        maven("https://jcenter.bintray.com") {
-            content {
-                includeModule("com.amulyakhare", "com.amulyakhare.textdrawable")
-                includeModule("com.github.stfalcon", "frescoimageviewer")
-                includeModule("me.relex", "photodraweeview")
             }
         }
     }

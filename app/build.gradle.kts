@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
@@ -25,7 +24,6 @@ android {
         targetSdk = 34
         versionCode = 30006
         versionName = "0.7.8"
-        //archivesBaseName = "Save-$versionName"
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -116,10 +114,11 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("androidx.security:security-crypto-ktx:1.1.0-alpha06")
 
-    implementation("androidx.legacy:legacy-support-v4:1.0.0")
-
     // Material Design
     implementation("com.google.android.material:material:1.12.0")
+
+    // AndroidX SwipeRefreshLayout
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-alpha01")
 
     // Compose Libraries
     implementation("androidx.compose.ui:ui:1.7.6")
