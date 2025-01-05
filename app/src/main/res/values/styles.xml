@@ -1,9 +1,19 @@
 <resources>
 
     <!-- themes -->
+    <style name="Theme.SaveApp.Starting" parent="Theme.SplashScreen">
 
-    <style name="OASwitchPreferenceStyle" parent="@style/Preference.SwitchPreferenceCompat.Material">
-        <item name="android:textSize">12sp</item>
+        <item name="windowSplashScreenBackground">@color/colorBackground</item>
+
+        <!-- Use windowSplashScreenAnimatedIcon to add a drawable or an animated
+             drawable. One of these is required. -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/avd_splash_animator</item>
+        <!-- Required for animated icons. -->
+        <item name="windowSplashScreenAnimationDuration">1000</item>
+
+        <!-- Set the theme of the Activity that directly follows your splash
+        screen. This is required. -->
+        <item name="postSplashScreenTheme">@style/SaveAppTheme.NoActionBar</item>
     </style>
 
     <style name="SaveAppTheme.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">
@@ -13,7 +23,6 @@
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorOnPrimary">@color/colorOnPrimary</item>
         <item name="android:colorBackground">@color/colorBackground</item>
-
 
 
         <item name="android:textViewStyle">@style/OATextViewStyle</item>
@@ -26,15 +35,13 @@
         <item name="bottomSheetDialogTheme">@style/SaveAppBottomSheetTheme</item>
         <item name="alertDialogTheme">@style/AlertDialogTheme</item>
         <item name="materialAlertDialogTheme">@style/AlertMaterialDialogTheme</item>
-        <item name="preferenceTheme">@style/OAPreferenceStyle</item>
-        <item name="switchPreferenceCompatStyle">@style/OASwitchPreferenceStyle</item>
+        <item name="preferenceTheme">@style/ThemeOverlay.SaveApp.Preference</item>
         <item name="floatingActionButtonStyle">@style/Widget.App.FloatingActionButton</item>
         <item name="appBarLayoutStyle">@style/SaveApp.Widget.AppBarStyle</item>
         <item name="toolbarStyle">@style/SaveApp.Widget.MaterialToolbarStyle</item>
 
 
-
-<!--        Button Styles-->
+        <!--        Button Styles-->
         <item name="buttonStyle">@style/OAButtonStyle</item>
         <item name="materialButtonStyle">@style/OAMaterialButtonStyle</item>
         <item name="materialIconButtonStyle">@style/OAMaterialButtonStyle</item>
@@ -44,27 +51,42 @@
         <!-- button text style -->
         <item name="textAppearanceLabelLarge">@style/TextAppearance.App.Button</item>
 
-<!--        For App Bar Action Menu Text Color-->
+        <!--        For App Bar Action Menu Text Color-->
         <item name="actionMenuTextColor">@color/white</item>
         <item name="android:actionMenuTextColor">@color/white</item>
 
-<!--        Input Layout Style-->
+        <!--        Input Layout Style-->
         <item name="textInputStyle">@style/Widget.SaveApp.TextInputLayout</item>
 
         <item name="textAppearanceTitleLarge">@style/TextAppearance.App.TitleLarge</item>
         <item name="textAppearanceTitleMedium">@style/TextAppearance.App.TitleMedium</item>
         <item name="textAppearanceBodySmall">@style/TextAppearance.App.BodySmall</item>
-        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.SaveApp.SmallComponent</item>
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.SaveApp.SmallComponent
+        </item>
         <item name="materialSwitchStyle">@style/Widget.SaveApp.Switch</item>
     </style>
 
 
-    <style name="OAPreferenceStyle" parent="PreferenceThemeOverlay">
-        <item name="android:textSize">16sp</item>
+    <style name="ThemeOverlay.SaveApp.Preference" parent="PreferenceThemeOverlay">
+        <item name="android:textSize">14sp</item>
         <item name="android:listDivider">@drawable/save_list_item_spacing_small</item>
         <item name="android:divider">@drawable/save_list_item_spacing_small</item>
-        <item name="android:dividerHeight">1dp</item>
+        <item name="android:dividerHeight">2dp</item>
+        <item name="alertDialogTheme">@style/AlertDialogTheme</item>
+        <item name="preferenceInformationStyle">@style/SaveApp.Preference.Information</item>
+        <item name="switchPreferenceCompatStyle">@style/SaveApp.Preference.SwitchPreference</item>
     </style>
+
+    <style name="SaveApp.Preference.Information" parent="@style/Preference.Information">
+        <item name="textSize">11sp</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+
+    <style name="SaveApp.Preference.SwitchPreference" parent="@style/Preference.SwitchPreferenceCompat.Material">
+        <item name="android:widgetLayout">@layout/custom_preference_widget_switch</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
 
     <!--    <style name="MainTheme.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">-->
     <!--        <item name="colorPrimary">@color/colorPrimary</item>-->
@@ -159,10 +181,10 @@
         <item name="android:background">@color/colorNavigationDrawerBackground</item>
     </style>
 
-    <style name="AlertDialogTheme" parent="ThemeOverlay.AppCompat.Dialog.Alert">
+    <style name="AlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="buttonBarNegativeButtonStyle">@style/NegativeButtonStyle</item>
         <item name="buttonBarPositiveButtonStyle">@style/PositiveButtonStyle</item>
-        <item name="android:textColor">@color/colorPrimary</item>
+        <item name="android:textColor">@color/colorTertiary</item>
         <item name="android:textSize">14sp</item>
     </style>
 
@@ -174,11 +196,11 @@
     </style>
 
     <style name="NegativeButtonStyle" parent="Widget.Material3.Button.TextButton.Dialog">
-        <item name="android:textColor">@color/colorPrimary</item>
+        <item name="android:textColor">@color/colorTertiary</item>
     </style>
 
     <style name="PositiveButtonStyle" parent="Widget.Material3.Button.TextButton.Dialog">
-        <item name="android:textColor">@color/colorPrimary</item>
+        <item name="android:textColor">@color/colorText</item>
     </style>
 
     <style name="OATextViewStyle" parent="Widget.MaterialComponents.TextView">
@@ -194,7 +216,8 @@
         <item name="elevation">6dp</item>
         <item name="tint">@color/white</item>
         <item name="android:stateListAnimator">@animator/custom_fab_animator</item>
-        <item name="shapeAppearanceOverlay">@style/ShapeAppearanceOverlay.App.FloatingActionButton</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearanceOverlay.App.FloatingActionButton
+        </item>
     </style>
 
 
@@ -286,7 +309,7 @@
 
     <style name="ThemeOverlay.App.TextInputLayout" parent="">
         <item name="colorPrimary">@color/colorPrimary</item>
-<!--        <item name="colorOnSurface">@color/colorText</item>-->
+        <!--        <item name="colorOnSurface">@color/colorText</item>-->
         <item name="colorError">@color/colorError</item>
         <item name="textAppearanceTitleMedium">@style/TextAppearance.App.TitleMedium</item>
         <item name="textAppearanceBodySmall">@style/TextAppearance.App.BodySmall</item>

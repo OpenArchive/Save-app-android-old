@@ -5,9 +5,11 @@ import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewTreeObserver
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.snackbar.Snackbar
@@ -77,8 +79,10 @@ class MainActivity : BaseActivity() {
             }
         }
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        installSplashScreen()
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -310,12 +314,12 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    private fun importSharedMedia(data: Intent?) {
-        if (data?.action != Intent.ACTION_SEND) return
+    private fun importSharedMedia(imageIntent: Intent?) {
+        if (imageIntent?.action != Intent.ACTION_SEND) return
 
-        val uri = data.data ?: if ((data.clipData?.itemCount
+        val uri = imageIntent.data ?: if ((imageIntent.clipData?.itemCount
                 ?: 0) > 0
-        ) data.clipData?.getItemAt(0)?.uri else null
+        ) imageIntent.clipData?.getItemAt(0)?.uri else null
         val path = uri?.path ?: return
 
         if (path.contains(packageName)) return

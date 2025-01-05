@@ -339,4 +339,7 @@
 
     <string name="pref_media_servers">pref_media_servers</string>
     <string name="pref_media_folders">pref_media_folders</string>
+    <string name="pref_app_passcode" translatable="false">passcode_enabled</string>
+    <string name="pref_title_secure">Secure</string>
+    <string name="pref_title_archive">Archive</string>
 </resources>

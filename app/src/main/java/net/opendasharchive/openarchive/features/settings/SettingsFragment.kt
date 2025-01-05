@@ -35,9 +35,6 @@ import kotlin.math.roundToInt
 
 class SettingsFragment : PreferenceFragmentCompat() {
 
-    private lateinit var mBinding: FragmentSettingsBinding
-
-
     private val passcodeRepository by inject<PasscodeRepository>()
 
 
