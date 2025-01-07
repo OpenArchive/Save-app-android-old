@@ -15,7 +15,8 @@
         android:id="@android:id/icon"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp" />
+        android:layout_marginStart="8dp"
+        android:contentDescription="@null" />
 
     <RelativeLayout
         android:layout_width="0dp"
@@ -29,10 +30,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:ellipsize="marquee"
-            android:singleLine="true"
-            android:textFontWeight="500"
-            android:textAppearance="?android:attr/textAppearanceListItem"
-            android:textSize="14sp"
+            android:textFontWeight="300"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="12sp"
             tools:text="Title" />
 
 
@@ -43,19 +44,10 @@
             android:layout_height="wrap_content"
             android:layout_below="@android:id/title"
             android:layout_alignStart="@android:id/title"
-            android:maxLines="2"
             android:textAppearance="?android:attr/textAppearanceSmall"
             android:textColor="?android:attr/textColorSecondary"
-            android:textSize="11sp"
+            android:textSize="12sp"
             tools:text="Summary" />
 
     </RelativeLayout>
-
-    <com.google.android.material.materialswitch.MaterialSwitch
-        android:id="@android:id/checkbox"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@null"
-        android:clickable="false"
-        android:focusable="false" />
 </LinearLayout>

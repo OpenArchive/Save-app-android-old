@@ -68,13 +68,12 @@
 
 
     <style name="ThemeOverlay.SaveApp.Preference" parent="PreferenceThemeOverlay">
-        <item name="android:textSize">14sp</item>
         <item name="android:listDivider">@drawable/save_list_item_spacing_small</item>
         <item name="android:divider">@drawable/save_list_item_spacing_small</item>
         <item name="android:dividerHeight">2dp</item>
         <item name="alertDialogTheme">@style/AlertDialogTheme</item>
-        <item name="preferenceInformationStyle">@style/SaveApp.Preference.Information</item>
-        <item name="switchPreferenceCompatStyle">@style/SaveApp.Preference.SwitchPreference</item>
+<!--        <item name="preferenceInformationStyle">@style/SaveApp.Preference.Information</item>-->
+<!--        <item name="switchPreferenceCompatStyle">@style/SaveApp.Preference.SwitchPreference</item>-->
     </style>
 
     <style name="SaveApp.Preference.Information" parent="@style/Preference.Information">
@@ -83,7 +82,7 @@
     </style>
 
     <style name="SaveApp.Preference.SwitchPreference" parent="@style/Preference.SwitchPreferenceCompat.Material">
-        <item name="android:widgetLayout">@layout/custom_preference_widget_switch</item>
+<!--        <item name="android:widgetLayout">@layout/custom_preference_widget_switch</item>-->
         <item name="android:textSize">12sp</item>
     </style>
 

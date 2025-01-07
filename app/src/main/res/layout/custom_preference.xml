@@ -3,41 +3,51 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:clickable="true"
-    android:focusable="true"
-    android:orientation="vertical"
-    tools:ignore="UnusedAttribute">
+    android:background="?android:attr/selectableItemBackground"
+    android:baselineAligned="false"
+    android:clipToPadding="false"
+    android:gravity="center_vertical"
+    android:minHeight="?android:attr/listPreferredItemHeightSmall"
+    android:paddingStart="?android:attr/listPreferredItemPaddingLeft"
+    android:paddingEnd="?android:attr/listPreferredItemPaddingRight">
 
-    <include layout="@layout/custom_preference_divider" />
-
-    <LinearLayout
-        android:orientation="vertical"
-        android:layout_width="match_parent"
+    <ImageView
+        android:id="@android:id/icon"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:clickable="false"
-        android:focusable="false"
-        android:padding="16dp">
+        android:layout_marginStart="8dp" />
 
-        <!--  Overriding android ids results automatic setting of icon / title -->
-
+    <RelativeLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp">
 
         <TextView
             android:id="@android:id/title"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="16sp"
-            android:textFontWeight="400"
-            android:textStyle="normal"
-            tools:text="Sending usage data" />
+            android:ellipsize="marquee"
+            android:singleLine="true"
+            android:textFontWeight="500"
+            android:textAppearance="?android:attr/textAppearanceListItem"
+            android:textSize="14sp"
+            tools:text="Title" />
+
+
 
         <TextView
             android:id="@android:id/summary"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:textFontWeight="200"
-            tools:text="This is a summary" />
+            android:layout_below="@android:id/title"
+            android:layout_alignStart="@android:id/title"
+            android:maxLines="2"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="11sp"
+            tools:text="Summary" />
 
-    </LinearLayout>
-
+    </RelativeLayout>
 </LinearLayout>

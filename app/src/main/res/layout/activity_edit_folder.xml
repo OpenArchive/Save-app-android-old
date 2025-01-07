@@ -9,21 +9,10 @@
     tools:background="@color/colorBackground"
     tools:context=".features.settings.EditFolderActivity">
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/app_bar_layout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/colorPrimary"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:titleCentered="true" />
-    </com.google.android.material.appbar.AppBarLayout>
+    <include
+        android:id="@+id/common_app_bar"
+        layout="@layout/common_app_bar"/>
 
 
     <TextView
@@ -36,7 +25,7 @@
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/app_bar_layout" />
+        app:layout_constraintTop_toBottomOf="@id/common_app_bar" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/folder_name_container"
