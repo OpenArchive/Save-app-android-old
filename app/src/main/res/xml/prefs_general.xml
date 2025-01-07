@@ -50,19 +50,19 @@
             app:allowDividerBelow="false"
             app:iconSpaceReserved="false" />
 
-        <ListPreference
-            android:iconSpaceReserved="false"
-            android:key="media_compression"
-            android:singleLineTitle="true"
-            android:summary="%s"
-            android:title="Media Compression"
-            app:allowDividerAbove="true"
-            app:allowDividerBelow="false"
-            app:defaultValue="higher_quality"
-            app:enabled="false"
-            app:entries="@array/array_prefs_media_compression_labels"
-            app:entryValues="@array/array_prefs_media_compression_values"
-            app:iconSpaceReserved="false" />
+<!--        <ListPreference-->
+<!--            android:iconSpaceReserved="false"-->
+<!--            android:key="media_compression"-->
+<!--            android:singleLineTitle="true"-->
+<!--            android:summary="%s"-->
+<!--            android:title="Media Compression"-->
+<!--            app:allowDividerAbove="true"-->
+<!--            app:allowDividerBelow="false"-->
+<!--            app:defaultValue="higher_quality"-->
+<!--            app:enabled="false"-->
+<!--            app:entries="@array/array_prefs_media_compression_labels"-->
+<!--            app:entryValues="@array/array_prefs_media_compression_values"-->
+<!--            app:iconSpaceReserved="false" />-->
 
     </PreferenceCategory>
 
