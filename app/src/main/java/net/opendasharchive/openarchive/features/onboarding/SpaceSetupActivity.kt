@@ -164,6 +164,14 @@ class SpaceSetupActivity : BaseActivity() {
                         .replace(mBinding.spaceSetupFragment.id, GDriveFragment(), FRAGMENT_TAG)
                         .commit()
                 }
+
+                SpaceSetupFragment.RESULT_VAL_RAVEN -> {
+                    supportFragmentManager
+                        .beginTransaction()
+                        .setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
+                        .replace(mBinding.spaceSetupFragment.id, GDriveFragment(), FRAGMENT_TAG)
+                        .commit()
+                }
             }
         }
     }

@@ -38,6 +38,11 @@ class SpaceSetupFragment : BaseFragment() {
             }
         }
 
+
+        mBinding.raven.setOnClickListener {
+            setFragmentResult(RESULT_REQUEST_KEY, bundleOf(RESULT_BUNDLE_KEY to RESULT_VAL_RAVEN))
+        }
+
 //        if (Space.has(Space.Type.GDRIVE) || !playServicesAvailable()) {
 //            mBinding.gdrive.hide()
 //        } else {
@@ -71,6 +76,7 @@ class SpaceSetupFragment : BaseFragment() {
         const val RESULT_BUNDLE_KEY = "space_setup_result_key"
         const val RESULT_VAL_DROPBOX = "dropbox"
         const val RESULT_VAL_WEBDAV = "webdav"
+        const val RESULT_VAL_RAVEN = "raven"
         const val RESULT_VAL_INTERNET_ARCHIVE = "internet_archive"
         const val RESULT_VAL_GDRIVE = "gdrive"
     }
