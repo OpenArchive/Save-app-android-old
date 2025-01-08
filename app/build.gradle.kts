@@ -93,6 +93,7 @@ dependencies {
 
     // Core Kotlin and Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
 
 
     // AndroidX Libraries
