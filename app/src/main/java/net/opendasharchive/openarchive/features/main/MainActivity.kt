@@ -157,7 +157,17 @@ class MainActivity : BaseActivity() {
         }
 
         binding.bottomNavBar.onAddClick = {
-            addClicked(AddMediaType.GALLERY)
+
+            if (Prefs.addMediaHint) {
+                addClicked(AddMediaType.GALLERY)
+            } else {
+                AlertHelper.show(
+                    context = this,
+                    message = R.string.press_and_hold_options_media_screen_message,
+                    title = R.string.press_and_hold_options_media_screen_title,
+                )
+                Prefs.addMediaHint = true
+            }
         }
 
         binding.bottomNavBar.onSettingsClick = {
@@ -171,7 +181,8 @@ class MainActivity : BaseActivity() {
                 //val addMediaDialogFragment = AddMediaDialogFragment()
                 //addMediaDialogFragment.show(supportFragmentManager, addMediaDialogFragment.tag)
 
-                val addMediaBottomSheet = ContentPickerFragment { actionType -> addClicked(actionType) }
+                val addMediaBottomSheet =
+                    ContentPickerFragment { actionType -> addClicked(actionType) }
                 addMediaBottomSheet.show(supportFragmentManager, ContentPickerFragment.TAG)
             }
 

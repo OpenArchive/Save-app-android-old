@@ -262,6 +262,8 @@
     <string name="got_it">Got it</string>
     <string name="do_not_show_me_this_again">Do not show me this again</string>
     <string name="edit_multiple">Edit Multiple</string>
+    <string name="press_and_hold_options_media_screen_title">Add Media Options</string>
+    <string name="press_and_hold_options_media_screen_message">Tap + to upload an image. Press and hold for more options.</string>
     <string name="press_and_hold_to_select_and_edit_multiple_media">Press and hold to select and edit multiple media.</string>
     <string name="once_uploaded_you_will_not_be_able_to_edit_media">Once uploaded, you will not be able to edit media</string>
     <string name="edit_media_info">Edit Media Info</string>

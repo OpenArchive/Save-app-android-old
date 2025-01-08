@@ -287,7 +287,11 @@ class ReviewActivity : BaseActivity(), View.OnClickListener {
     private fun showFirstTimeFlag() {
         if (Prefs.flagHintShown) return
 
-        AlertHelper.show(this, R.string.popup_flag_desc, R.string.popup_flag_title)
+        AlertHelper.show(
+            context = this,
+            message = R.string.popup_flag_desc,
+            title = R.string.popup_flag_title
+        )
 
         Prefs.flagHintShown = true
     }

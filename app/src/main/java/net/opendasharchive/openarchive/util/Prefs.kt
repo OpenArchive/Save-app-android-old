@@ -23,6 +23,7 @@ object Prefs {
     private const val CURRENT_SPACE_ID = "current_space"
     private const val FLAG_HINT_SHOWN = "ft.flag"
     private const val BATCH_HINT_SHOWN = "ft.batch"
+    private const val ADD_MEDIA_HINT = "ft.addMedia"
     private const val DONT_SHOW_UPLOAD_HINT = "ft.upload"
     private const val IA_HINT_SHOWN = "ft.ia"
     private const val ADD_FOLDER_HINT_SHOWN = "ft.add_folder"
@@ -118,6 +119,12 @@ object Prefs {
         get() = prefs?.getBoolean(FLAG_HINT_SHOWN, false) ?: false
         set(value) {
             prefs?.edit()?.putBoolean(FLAG_HINT_SHOWN, value)?.apply()
+        }
+
+    var addMediaHint: Boolean
+        get() = prefs?.getBoolean(ADD_MEDIA_HINT, false) ?: false
+        set(value) {
+            prefs?.edit()?.putBoolean(ADD_MEDIA_HINT, value)?.apply()
         }
 
     var batchHintShown: Boolean
