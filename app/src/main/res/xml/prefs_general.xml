@@ -140,6 +140,21 @@
 
         <Preference
             android:iconSpaceReserved="false"
+            android:key="about_app"
+            android:singleLineTitle="true"
+            android:summary="Tap to view about Save App"
+            android:title="Save by Open Archive"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="false"
+            app:enabled="true"
+            app:iconSpaceReserved="false">
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="https://open-archive.org/save" />
+        </Preference>
+
+        <Preference
+            android:iconSpaceReserved="false"
             android:key="privacy_policy"
             android:singleLineTitle="true"
             android:summary="Tap to view our Terms &amp; Privacy Policy"
@@ -147,13 +162,17 @@
             app:allowDividerAbove="true"
             app:allowDividerBelow="false"
             app:enabled="true"
-            app:iconSpaceReserved="false" />
+            app:iconSpaceReserved="false">
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="https://open-archive.org/privacy" />
+        </Preference>
 
         <Preference
             android:iconSpaceReserved="false"
             android:key="app_version"
             android:singleLineTitle="true"
-            android:summary="0.7.2.4783"
+            tools:summary="0.7.2.4783"
             android:title="Version"
             app:allowDividerAbove="false"
             app:allowDividerBelow="false"

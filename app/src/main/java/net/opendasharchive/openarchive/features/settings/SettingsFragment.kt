@@ -113,9 +113,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<Preference>(Prefs.USE_TOR)?.setOnPreferenceChangeListener { _, newValue ->
-            Prefs.useTor = (newValue as Boolean)
+            //Prefs.useTor = (newValue as Boolean)
             //torViewModel.updateTorServiceState()
-            true
+            false
         }
 
         findPreference<Preference>(Prefs.THEME)?.setOnPreferenceChangeListener { _, newValue ->
@@ -131,6 +131,11 @@ class SettingsFragment : PreferenceFragmentCompat() {
             // LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(intent)
             true
         }
+
+        val packageManager = requireActivity().packageManager
+        val versionText = packageManager.getVersionName(requireActivity().packageName)
+
+        findPreference<Preference>("app_version")?.summary = versionText
     }
 
     private fun <T: Preference> getPrefByKey(key: Int): T? {
@@ -144,4 +149,25 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
+
+
+//    mBinding.btAbout.text = getString(R.string.action_about, getString(R.string.app_name))
+//    mBinding.btAbout.styleAsLink()
+//    mBinding.btAbout.setOnClickListener {
+//        context?.openBrowser("https://open-archive.org/save")
+//    }
+//
+//    mBinding.btPrivacy.styleAsLink()
+//    mBinding.btPrivacy.setOnClickListener {
+//        context?.openBrowser("https://open-archive.org/privacy")
+//    }
+//
+//    val activity = activity
+//
+//    if (activity != null) {
+//        mBinding.version.text = getString(
+//            R.string.version__,
+//            activity.packageManager.getVersionName(activity.packageName)
+//        )
+//    }
 }
