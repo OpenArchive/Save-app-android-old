@@ -6,7 +6,7 @@
     <PreferenceCategory
         android:layout="@layout/custom_preference_category"
         android:title="@string/pref_title_secure"
-        app:summary="Secure your account">
+        app:allowDividerAbove="true">
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
@@ -14,10 +14,7 @@
             android:iconSpaceReserved="false"
             android:key="@string/pref_app_passcode"
             android:singleLineTitle="false"
-            android:summary="6 digit passcode"
             android:title="Lock app with passcode"
-            app:allowDividerAbove="true"
-            app:allowDividerBelow="false"
             app:icon="@null"
             app:iconSpaceReserved="false"
             app:summary="6 digit passcode" />
@@ -26,7 +23,8 @@
 
     <PreferenceCategory
         android:layout="@layout/custom_preference_category"
-        android:title="@string/pref_title_archive">
+        android:title="@string/pref_title_archive"
+        app:allowDividerAbove="true">
 
         <Preference
             android:iconSpaceReserved="false"
@@ -34,8 +32,6 @@
             android:singleLineTitle="true"
             android:summary="Add or remove media servers"
             android:title="Media Servers"
-            app:allowDividerAbove="true"
-            app:allowDividerBelow="false"
             app:iconSpaceReserved="false"
             app:summary="Add or remove media servers"
             app:title="Media Servers" />
@@ -46,23 +42,21 @@
             android:singleLineTitle="true"
             android:summary="Add or remove media folders"
             android:title="Media Folders"
-            app:allowDividerAbove="true"
-            app:allowDividerBelow="false"
             app:iconSpaceReserved="false" />
 
-<!--        <ListPreference-->
-<!--            android:iconSpaceReserved="false"-->
-<!--            android:key="media_compression"-->
-<!--            android:singleLineTitle="true"-->
-<!--            android:summary="%s"-->
-<!--            android:title="Media Compression"-->
-<!--            app:allowDividerAbove="true"-->
-<!--            app:allowDividerBelow="false"-->
-<!--            app:defaultValue="higher_quality"-->
-<!--            app:enabled="false"-->
-<!--            app:entries="@array/array_prefs_media_compression_labels"-->
-<!--            app:entryValues="@array/array_prefs_media_compression_values"-->
-<!--            app:iconSpaceReserved="false" />-->
+        <!--        <ListPreference-->
+        <!--            android:iconSpaceReserved="false"-->
+        <!--            android:key="media_compression"-->
+        <!--            android:singleLineTitle="true"-->
+        <!--            android:summary="%s"-->
+        <!--            android:title="Media Compression"-->
+        <!--            app:allowDividerAbove="true"-->
+        <!--            app:allowDividerBelow="false"-->
+        <!--            app:defaultValue="higher_quality"-->
+        <!--            app:enabled="false"-->
+        <!--            app:entries="@array/array_prefs_media_compression_labels"-->
+        <!--            app:entryValues="@array/array_prefs_media_compression_values"-->
+        <!--            app:iconSpaceReserved="false" />-->
 
     </PreferenceCategory>
 
@@ -77,8 +71,6 @@
             android:key="proof_mode"
             android:singleLineTitle="false"
             android:title="@string/proofmode"
-            app:allowDividerAbove="true"
-            app:allowDividerBelow="false"
             app:iconSpaceReserved="false" />
 
     </PreferenceCategory>
@@ -94,11 +86,9 @@
             android:singleLineTitle="false"
             android:summary="@string/prefs_use_tor_summary"
             android:title="@string/prefs_use_tor_title"
-            app:allowDividerAbove="true"
-            app:allowDividerBelow="false"
             app:defaultValue="false"
             app:enabled="true"
-            app:iconSpaceReserved="false"/>
+            app:iconSpaceReserved="false" />
     </PreferenceCategory>
 
 
@@ -111,8 +101,6 @@
             android:key="upload_wifi_only"
             android:singleLineTitle="false"
             android:title="@string/only_upload_media_when_you_are_connected_to_wi_fi"
-            app:allowDividerAbove="true"
-            app:allowDividerBelow="false"
             app:defaultValue="false"
             app:iconSpaceReserved="false"
             app:singleLineTitle="false" />
@@ -124,8 +112,6 @@
             android:singleLineTitle="false"
             android:summary="%s"
             android:title="@string/prefs_theme_title"
-            app:allowDividerAbove="true"
-            app:allowDividerBelow="false"
             app:defaultValue="@string/prefs_theme_val_system"
             app:entries="@array/ar_prefs_theme_labels"
             app:entryValues="@array/ar_prefs_theme_val"
@@ -144,8 +130,6 @@
             android:singleLineTitle="true"
             android:summary="Tap to view about Save App"
             android:title="Save by Open Archive"
-            app:allowDividerAbove="true"
-            app:allowDividerBelow="false"
             app:enabled="true"
             app:iconSpaceReserved="false">
             <intent
@@ -159,8 +143,6 @@
             android:singleLineTitle="true"
             android:summary="Tap to view our Terms &amp; Privacy Policy"
             android:title="Terms &amp; Privacy Policy"
-            app:allowDividerAbove="true"
-            app:allowDividerBelow="false"
             app:enabled="true"
             app:iconSpaceReserved="false">
             <intent
@@ -172,12 +154,10 @@
             android:iconSpaceReserved="false"
             android:key="app_version"
             android:singleLineTitle="true"
-            tools:summary="0.7.2.4783"
             android:title="Version"
-            app:allowDividerAbove="false"
-            app:allowDividerBelow="false"
             app:enabled="false"
-            app:iconSpaceReserved="false" />
+            app:iconSpaceReserved="false"
+            tools:summary="0.7.2.4783" />
 
     </PreferenceCategory>
 
