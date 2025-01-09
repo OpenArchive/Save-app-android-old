@@ -9,11 +9,14 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
 import net.opendasharchive.openarchive.R
+import net.opendasharchive.openarchive.core.presentation.theme.Theme
 import net.opendasharchive.openarchive.databinding.FragmentSettingsBinding
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.features.core.BaseActivity
@@ -50,6 +53,23 @@ class SettingsFragment : PreferenceFragmentCompat() {
             passcodePreference?.isChecked = false
         }
     }
+
+//    override fun onCreateView(
+//        inflater: LayoutInflater,
+//        container: ViewGroup?,
+//        savedInstanceState: Bundle?
+//    ): View? {
+//        return ComposeView(requireContext()).apply {
+//            // Dispose of the Composition when the view's LifecycleOwner
+//            // is destroyed
+//            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+//            setContent {
+//                Theme {
+//                    SettingsScreen()
+//                }
+//            }
+//        }
+//    }
 
     override fun onCreatePreferences(
         savedInstanceState: Bundle?,

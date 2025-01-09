@@ -115,6 +115,9 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("androidx.security:security-crypto-ktx:1.1.0-alpha06")
 
+    // Compose Preferences
+    implementation("me.zhanghai.compose.preference:library:1.1.1")
+
     // Material Design
     implementation("com.google.android.material:material:1.12.0")
 
