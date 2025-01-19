@@ -177,7 +177,7 @@
 
 
         <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/raven"
+            android:id="@+id/snowbird"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
@@ -188,7 +188,7 @@
             android:padding="4dp">
 
             <ImageView
-                android:id="@+id/icon_raven"
+                android:id="@+id/icon_snowbird"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:importantForAccessibility="no"
@@ -199,7 +199,7 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <LinearLayout
-                android:id="@+id/raven_texts"
+                android:id="@+id/snowbird_texts"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
@@ -207,8 +207,8 @@
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@id/icon_next_raven"
-                app:layout_constraintStart_toEndOf="@id/icon_raven"
+                app:layout_constraintEnd_toStartOf="@id/icon_next_snowbird"
+                app:layout_constraintStart_toEndOf="@id/icon_snowbird"
                 app:layout_constraintTop_toTopOf="parent">
 
                 <TextView
@@ -216,20 +216,20 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
                     android:gravity="center_vertical"
-                    android:text="Raevn"
+                    android:text="Raven"
                     android:textSize="16sp" />
 
             </LinearLayout>
 
             <ImageView
-                android:id="@+id/icon_next_raven"
+                android:id="@+id/icon_next_snowbird"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:importantForAccessibility="no"
                 android:src="@drawable/keyboard_arrow_right"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@id/raven_texts"
+                app:layout_constraintStart_toEndOf="@id/snowbird_texts"
                 app:layout_constraintTop_toTopOf="parent"
                 app:tint="@color/colorText" />
 

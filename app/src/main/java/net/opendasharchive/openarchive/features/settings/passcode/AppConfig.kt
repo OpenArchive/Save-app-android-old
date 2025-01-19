@@ -6,5 +6,5 @@ data class AppConfig(
     val maxRetryLimitEnabled: Boolean = false,
     val biometricAuthEnabled: Boolean = false,
     val maxFailedAttempts: Int = 5,
-    val ravenEnabled: Boolean = true
+    val snowbirdEnabled: Boolean = true
 )

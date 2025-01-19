@@ -39,36 +39,11 @@ class SpaceSetupFragment : BaseFragment() {
         }
 
 
-        mBinding.raven.setOnClickListener {
+        mBinding.snowbird.setOnClickListener {
             setFragmentResult(RESULT_REQUEST_KEY, bundleOf(RESULT_BUNDLE_KEY to RESULT_VAL_RAVEN))
         }
 
-//        if (Space.has(Space.Type.GDRIVE) || !playServicesAvailable()) {
-//            mBinding.gdrive.hide()
-//        } else {
-//            mBinding.gdrive.setOnClickListener {
-//                setFragmentResult(
-//                    RESULT_REQUEST_KEY,
-//                    bundleOf(RESULT_BUNDLE_KEY to RESULT_VAL_GDRIVE)
-//                )
-//            }
-//        }
-
-//        mBinding.skipForNowButton.setOnClickListener {
-//            skipSpaceConfig()
-//        }
-
         return mBinding.root
-    }
-
-    private fun skipSpaceConfig() {
-        startActivity(Intent(context, MainActivity::class.java))
-    }
-
-    private fun playServicesAvailable(): Boolean {
-        return true
-//        return ConnectionResult.SUCCESS == GoogleApiAvailability.getInstance()
-//            .isGooglePlayServicesAvailable(requireContext())
     }
 
     companion object {

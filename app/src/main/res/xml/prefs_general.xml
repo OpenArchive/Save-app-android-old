@@ -5,8 +5,7 @@
 
     <PreferenceCategory
         android:layout="@layout/custom_preference_category"
-        android:title="@string/pref_title_secure"
-        app:summary="Secure your account">
+        android:title="@string/pref_title_secure">
 
         <SwitchPreferenceCompat
             android:defaultValue="false"

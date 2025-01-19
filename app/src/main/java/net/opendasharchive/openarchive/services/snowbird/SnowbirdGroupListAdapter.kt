@@ -29,14 +29,17 @@ class SnowbirdGroupsAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(group: SnowbirdGroup?) {
+
             if (group == null) {
                 return
             }
 
             val context = binding.button.context
 
-            binding.button.setLeftIcon(ContextCompat.getDrawable(context, R.drawable.snowbird)?.scaled(40, context))
-            binding.button.setBackgroundResource(R.drawable.button_outlined_ripple)
+            binding.button.setLeftIcon(
+                ContextCompat.getDrawable(context, R.drawable.snowbird)?.scaled(40, context)
+            )
+            //binding.button.setBackgroundResource(R.drawable.button_outlined_ripple)
             binding.button.setTitle(group.name ?: "No name provided")
             binding.button.setSubTitle(group.shortHash())
 
@@ -57,7 +60,10 @@ class SnowbirdGroupsAdapter(
                 return oldItem.id == newItem.id
             }
 
-            override fun areContentsTheSame(oldItem: SnowbirdGroup, newItem: SnowbirdGroup): Boolean {
+            override fun areContentsTheSame(
+                oldItem: SnowbirdGroup,
+                newItem: SnowbirdGroup
+            ): Boolean {
                 return oldItem.key == newItem.key
             }
         }
