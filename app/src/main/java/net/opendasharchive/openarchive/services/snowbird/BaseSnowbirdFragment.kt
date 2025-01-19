@@ -6,7 +6,6 @@ import android.view.inputmethod.InputMethodManager
 import androidx.fragment.app.Fragment
 import net.opendasharchive.openarchive.db.SnowbirdError
 import net.opendasharchive.openarchive.extensions.androidViewModel
-import net.opendasharchive.openarchive.util.FullScreenOverlayManager
 import net.opendasharchive.openarchive.util.Utility
 
 open class BaseSnowbirdFragment : Fragment() {
@@ -27,9 +26,9 @@ open class BaseSnowbirdFragment : Fragment() {
 
     open fun handleLoadingStatus(isLoading: Boolean) {
         if (isLoading) {
-            FullScreenOverlayManager.show(this@BaseSnowbirdFragment)
+            //FullScreenOverlayManager.show(this@BaseSnowbirdFragment)
         } else {
-            FullScreenOverlayManager.hide()
+            //FullScreenOverlayManager.hide()
         }
     }
 }

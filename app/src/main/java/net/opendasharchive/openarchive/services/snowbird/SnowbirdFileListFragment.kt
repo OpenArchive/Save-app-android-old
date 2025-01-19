@@ -21,11 +21,12 @@ import net.opendasharchive.openarchive.db.FileUploadResult
 import net.opendasharchive.openarchive.db.SnowbirdError
 import net.opendasharchive.openarchive.db.SnowbirdFileItem
 import net.opendasharchive.openarchive.extensions.androidViewModel
+import net.opendasharchive.openarchive.features.onboarding.BaseFragment
 import net.opendasharchive.openarchive.util.SpacingItemDecoration
 import net.opendasharchive.openarchive.util.Utility
 import timber.log.Timber
 
-class SnowbirdFileListFragment : BaseSnowbirdFragment() {
+class SnowbirdFileListFragment : BaseFragment() {
 
     private val snowbirdFileViewModel: SnowbirdFileViewModel by androidViewModel()
     private lateinit var viewBinding: FragmentSnowbirdListMediaBinding
@@ -37,8 +38,8 @@ class SnowbirdFileListFragment : BaseSnowbirdFragment() {
         super.onCreate(savedInstanceState)
 
         arguments?.let {
-            groupKey = it.getString("groupKey", "")
-            repoKey = it.getString("repoKey", "")
+            groupKey = it.getString(RESULT_VAL_RAVEN_GROUP_KEY, "")
+            repoKey = it.getString(RESULT_VAL_RAVEN_REPO_KEY, "")
         }
     }
 
@@ -76,7 +77,7 @@ class SnowbirdFileListFragment : BaseSnowbirdFragment() {
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
-    private val getMultipleContents = registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+    private val getMultipleContentsLauncher = registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
         handleSelectedFiles(uris)
     }
 
@@ -116,7 +117,7 @@ class SnowbirdFileListFragment : BaseSnowbirdFragment() {
     }
 
     private fun openFilePicker() {
-        getMultipleContents.launch("*/*")
+        getMultipleContentsLauncher.launch("*/*")
     }
 
     private fun setupRecyclerView() {
@@ -231,5 +232,24 @@ class SnowbirdFileListFragment : BaseSnowbirdFragment() {
         viewBinding.swipeRefreshLayout.setColorSchemeResources(
             R.color.colorPrimary, R.color.colorPrimaryDark
         )
+    }
+
+    override fun getToolbarTitle(): String {
+        return "My Files"
+    }
+
+    companion object {
+        const val RESULT_REQUEST_KEY = "raven_fragment_file_list_result"
+        const val RESULT_VAL_RAVEN_GROUP_KEY = "raven_fragment_file_list_group_key"
+        const val RESULT_VAL_RAVEN_REPO_KEY = "raven_fragment_file_list_repo_key"
+
+        @JvmStatic
+        fun newInstance(groupKey: String, repoKey: String) =
+            SnowbirdFileListFragment().apply {
+                arguments = Bundle().apply {
+                    putString(RESULT_VAL_RAVEN_GROUP_KEY, groupKey)
+                    putString(RESULT_VAL_RAVEN_REPO_KEY, repoKey)
+                }
+            }
     }
 }

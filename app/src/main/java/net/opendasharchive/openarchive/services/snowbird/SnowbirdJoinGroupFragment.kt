@@ -14,12 +14,13 @@ import net.opendasharchive.openarchive.db.SnowbirdGroup
 import net.opendasharchive.openarchive.db.SnowbirdRepo
 import net.opendasharchive.openarchive.extensions.getQueryParameter
 import net.opendasharchive.openarchive.extensions.showKeyboard
-import net.opendasharchive.openarchive.services.snowbird.SnowbirdCreateGroupFragment
+import net.opendasharchive.openarchive.features.onboarding.BaseFragment
+import net.opendasharchive.openarchive.features.settings.SpaceSetupSuccessFragment
 import net.opendasharchive.openarchive.util.FullScreenOverlayCreateGroupManager
 import net.opendasharchive.openarchive.util.Utility
 import timber.log.Timber
 
-class SnowbirdJoinGroupFragment : BaseSnowbirdFragment() {
+class SnowbirdJoinGroupFragment private constructor(): BaseFragment() {
 
     private lateinit var viewBinding: FragmentSnowbirdJoinGroupBinding
     private lateinit var uriString: String
@@ -30,7 +31,7 @@ class SnowbirdJoinGroupFragment : BaseSnowbirdFragment() {
         super.onCreate(savedInstanceState)
 
         arguments?.let {
-            uriString = it.getString("uriString", "")
+            uriString = it.getString(ARG_RAVEN_GROUP_URI_STRING, "")
         }
     }
 
@@ -139,5 +140,23 @@ class SnowbirdJoinGroupFragment : BaseSnowbirdFragment() {
                 dismissKeyboard(it)
             }
         }
+    }
+
+    companion object {
+
+
+        const val ARG_RAVEN_GROUP_URI_STRING = "space_setup_success_fragment_arg_message"
+
+        @JvmStatic
+        fun newInstance(uriString: String) =
+            SnowbirdJoinGroupFragment().apply {
+                arguments = Bundle().apply {
+                    putString(ARG_RAVEN_GROUP_URI_STRING, uriString)
+                }
+            }
+    }
+
+    override fun getToolbarTitle(): String {
+        return "Join Group"
     }
 }

@@ -20,7 +20,7 @@ import net.opendasharchive.openarchive.SaveApp
 import net.opendasharchive.openarchive.extensions.RetryAttempt
 import net.opendasharchive.openarchive.extensions.retryWithScope
 import net.opendasharchive.openarchive.extensions.suspendToRetry
-import net.opendasharchive.openarchive.features.main.TabBarActivity
+import net.opendasharchive.openarchive.features.main.MainActivity
 import net.opendasharchive.openarchive.services.snowbird.SnowbirdBridge
 import timber.log.Timber
 import java.io.File
@@ -65,13 +65,17 @@ class SnowbirdService : Service() {
             Files.delete(path)
         } catch (e: Exception) {
             // ignore
+            e.printStackTrace()
         } finally {
             Files.createFile(path)
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(SaveApp.SNOWBIRD_SERVICE_ID, createNotification("Snowbird Server is starting up."))
+        startForeground(
+            SaveApp.SNOWBIRD_SERVICE_ID,
+            createNotification("Snowbird Server is starting up.")
+        )
         startServer(DEFAULT_BACKEND_DIRECTORY, DEFAULT_SOCKET_PATH)
         startPolling()
         return START_STICKY
@@ -119,9 +123,13 @@ class SnowbirdService : Service() {
     }
 
     private fun createNotification(text: String, withSound: Boolean = false): Notification {
-        val channelId = if (withSound) SaveApp.SNOWBIRD_SERVICE_CHANNEL_CHIME else SaveApp.SNOWBIRD_SERVICE_CHANNEL_SILENT
+        val channelId =
+            if (withSound) SaveApp.SNOWBIRD_SERVICE_CHANNEL_CHIME else SaveApp.SNOWBIRD_SERVICE_CHANNEL_SILENT
 
-        val pendingIntent: PendingIntent = Intent(this, TabBarActivity::class.java).let { notificationIntent ->
+        val pendingIntent: PendingIntent = Intent(
+            this,
+            MainActivity::class.java
+        ).let { notificationIntent ->
             PendingIntent.getActivity(
                 this,
                 0,
@@ -159,6 +167,7 @@ class SnowbirdService : Service() {
                     when (error) {
                         is ConnectException,
                         is SocketTimeoutException -> true
+
                         else -> false
                     }
                 }
@@ -171,11 +180,13 @@ class SnowbirdService : Service() {
                         Timber.d("Service is up after $attemptNumber attempt(s)")
                         stopPolling()
                     }
+
                     is RetryAttempt.Retry -> {
                         _serviceStatus.value = ServiceStatus.Connecting
                         updateNotification("Connecting... One moment please.")
                         Timber.d("Attempt $attemptNumber failed, retrying...")
                     }
+
                     is RetryAttempt.Failure -> {
                         val errorMessage = attempt.error.message ?: "Unknown error"
                         _serviceStatus.value = ServiceStatus.Failed(attempt.error)
@@ -190,7 +201,8 @@ class SnowbirdService : Service() {
     private fun startServer(baseDirectory: String, socketPath: String) {
         serverJob = serviceScope.launch {
             Timber.d("Starting Raven Service")
-            val result = SnowbirdBridge.getInstance().startServer(applicationContext, baseDirectory, socketPath)
+            val result = SnowbirdBridge.getInstance()
+                .startServer(applicationContext, baseDirectory, socketPath)
             Timber.d("Raven Service: $result")
         }
     }
@@ -207,7 +219,10 @@ class SnowbirdService : Service() {
 
     private fun updateNotification(status: String, withSound: Boolean = false) {
         val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.notify(SaveApp.SNOWBIRD_SERVICE_ID, createNotification(status, withSound))
+        notificationManager.notify(
+            SaveApp.SNOWBIRD_SERVICE_ID,
+            createNotification(status, withSound)
+        )
     }
 }
 

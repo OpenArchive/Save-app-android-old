@@ -8,8 +8,9 @@ import net.opendasharchive.openarchive.databinding.FragmentSnowbirdShareGroupBin
 import net.opendasharchive.openarchive.db.SnowbirdGroup
 import net.opendasharchive.openarchive.extensions.asQRCode
 import net.opendasharchive.openarchive.extensions.urlEncode
+import net.opendasharchive.openarchive.features.onboarding.BaseFragment
 
-class SnowbirdShareFragment: BaseSnowbirdFragment() {
+class SnowbirdShareFragment private constructor(): BaseFragment() {
     private lateinit var viewBinding: FragmentSnowbirdShareGroupBinding
     private lateinit var groupKey: String
 
@@ -17,7 +18,7 @@ class SnowbirdShareFragment: BaseSnowbirdFragment() {
         super.onCreate(savedInstanceState)
 
         arguments?.let {
-            groupKey = it.getString("groupKey", "")
+            groupKey = it.getString(RESULT_VAL_RAVEN_GROUP_KEY, "")
         }
     }
 
@@ -38,6 +39,24 @@ class SnowbirdShareFragment: BaseSnowbirdFragment() {
         SnowbirdGroup.get(groupKey)?.uri?.let { uriString ->
             val qrCode = "$uriString&name=${groupName.urlEncode()}".asQRCode(size = 1024)
             viewBinding.qrCode.setImageBitmap(qrCode)
+        }
+    }
+
+    override fun getToolbarTitle(): String {
+        return "Share Raven Group"
+    }
+
+    companion object {
+
+        const val RESULT_VAL_RAVEN_GROUP_KEY = "RESULT_VAL_RAVEN_GROUP_KEY"
+
+        @JvmStatic
+        fun newInstance(groupKey: String): SnowbirdShareFragment {
+            return SnowbirdShareFragment().apply {
+                arguments = Bundle().apply {
+                    putString(RESULT_VAL_RAVEN_GROUP_KEY, groupKey)
+                }
+            }
         }
     }
 }

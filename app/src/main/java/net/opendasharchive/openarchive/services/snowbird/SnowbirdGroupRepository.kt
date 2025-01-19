@@ -54,6 +54,7 @@ class SnowbirdGroupRepository(val api: ISnowbirdAPI) : ISnowbirdGroupRepository 
                 MembershipRequest(uriString))
             SnowbirdResult.Success(response)
         } catch (e: Exception) {
+            e.printStackTrace()
             SnowbirdResult.Error(e.toSnowbirdError())
         }
     }

@@ -48,6 +48,7 @@ class SnowbirdFileRepository(val api: ISnowbirdAPI) : ISnowbirdFileRepository {
             val response = api.uploadFile(groupKey, repoKey, uri)
             SnowbirdResult.Success(response)
         } catch (e: Exception) {
+            e.printStackTrace()
             SnowbirdResult.Error(e.toSnowbirdError())
         }
     }

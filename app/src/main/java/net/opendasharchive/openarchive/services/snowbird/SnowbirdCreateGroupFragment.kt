@@ -4,25 +4,30 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.os.bundleOf
+import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.fragment.findNavController
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.databinding.FragmentSnowbirdCreateGroupBinding
 import net.opendasharchive.openarchive.db.SnowbirdError
 import net.opendasharchive.openarchive.db.SnowbirdGroup
 import net.opendasharchive.openarchive.db.SnowbirdRepo
-import net.opendasharchive.openarchive.services.snowbird.BaseSnowbirdFragment
+import net.opendasharchive.openarchive.features.onboarding.BaseFragment
 import net.opendasharchive.openarchive.util.FullScreenOverlayCreateGroupManager
 import net.opendasharchive.openarchive.util.Utility
 import timber.log.Timber
 
-class SnowbirdCreateGroupFragment : BaseSnowbirdFragment() {
+class SnowbirdCreateGroupFragment private constructor() : BaseFragment() {
 
     private lateinit var viewBinding: FragmentSnowbirdCreateGroupBinding
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         viewBinding = FragmentSnowbirdCreateGroupBinding.inflate(inflater)
 
         return viewBinding.root
@@ -42,8 +47,20 @@ class SnowbirdCreateGroupFragment : BaseSnowbirdFragment() {
     private fun initializeViewModelObservers() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { snowbirdGroupViewModel.groupState.collect { state -> handleGroupStateUpdate(state) } }
-                launch { snowbirdRepoViewModel.repoState.collect { state -> handleRepoStateUpdate(state) } }
+                launch {
+                    snowbirdGroupViewModel.groupState.collect { state ->
+                        handleGroupStateUpdate(
+                            state
+                        )
+                    }
+                }
+                launch {
+                    snowbirdRepoViewModel.repoState.collect { state ->
+                        handleRepoStateUpdate(
+                            state
+                        )
+                    }
+                }
             }
         }
     }
@@ -113,12 +130,40 @@ class SnowbirdCreateGroupFragment : BaseSnowbirdFragment() {
             title = "Raven Group Created",
             message = "Would you like to share your new group with a QR code?",
             positiveButtonText = "Yes",
-            negativeButtonText = "No") { affirm ->
-            if (affirm) {
-                findNavController().navigate(SnowbirdCreateGroupFragmentDirections.navigateToShareScreen(group.key))
-            } else {
-                parentFragmentManager.popBackStack()
+            negativeButtonText = "No",
+            completion = { affirm ->
+                if (affirm) {
+                    setFragmentResult(
+                        RESULT_REQUEST_KEY,
+                        bundleOf(
+                            RESULT_NAVIGATION_KEY to RESULT_NAVIGATION_VAL_SHARE_SCREEN,
+                            RESULT_BUNDLE_GROUP_KEY to group.key
+                        )
+                    )
+                    //findNavController().navigate(SnowbirdCreateGroupFragmentDirections.navigateToShareScreen(group.key))
+                } else {
+                    parentFragmentManager.popBackStack()
+                }
             }
-        }
+        )
     }
+
+    override fun getToolbarTitle(): String {
+        return "Create Raven Group"
+    }
+
+    companion object {
+
+        const val RESULT_REQUEST_KEY = "create_group_result"
+
+        const val RESULT_NAVIGATION_KEY = "create_group_navigation"
+
+        const val RESULT_NAVIGATION_VAL_SHARE_SCREEN = "share_screen"
+
+        const val RESULT_BUNDLE_GROUP_KEY = "raven_create_group_fragment_bundle_group_id"
+
+        @JvmStatic
+        fun newInstance() = SnowbirdCreateGroupFragment()
+    }
+
 }
