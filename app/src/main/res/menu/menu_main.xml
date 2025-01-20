@@ -22,10 +22,10 @@
         android:visible="false"
         app:showAsAction="always" />
 
-    <item
-        android:id="@+id/snowbird_menu"
-        android:icon="@drawable/snowbird"
-        android:title="Snowbird"
-        app:showAsAction="always" />
+<!--    <item-->
+<!--        android:id="@+id/snowbird_menu"-->
+<!--        android:icon="@drawable/snowbird"-->
+<!--        android:title="Snowbird"-->
+<!--        app:showAsAction="always" />-->
 
 </menu>
