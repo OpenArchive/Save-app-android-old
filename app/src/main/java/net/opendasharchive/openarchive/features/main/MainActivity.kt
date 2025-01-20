@@ -503,12 +503,12 @@ class MainActivity : BaseActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.snowbird_menu -> {
-                val intent = Intent(this, SpaceSetupActivity::class.java)
-                intent.putExtra("snowbird", true)
-                startActivity(intent)
-                true
-            }
+//            R.id.snowbird_menu -> {
+//                val intent = Intent(this, SpaceSetupActivity::class.java)
+//                intent.putExtra("snowbird", true)
+//                startActivity(intent)
+//                true
+//            }
             else -> super.onOptionsItemSelected(item)
         }
     }
