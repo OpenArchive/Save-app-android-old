@@ -48,6 +48,10 @@ class SaveApp : SugarApp() {
             .logger(object : Logger {
                 override var level = Log.VERBOSE
 
+        val imageLoader = ImageLoader.Builder(this)
+            .logger(object : Logger {
+                override var level = Log.VERBOSE
+
                 override fun log(tag: String, priority: Int, message: String?, throwable: Throwable?) {
                     Timber.tag("Coil").log(priority, throwable, message)
                 }
@@ -55,7 +59,6 @@ class SaveApp : SugarApp() {
             .build()
 
         Coil.setImageLoader(imageLoader)
-
         Prefs.load(this)
 
         if (Prefs.useTor) initNetCipher()
