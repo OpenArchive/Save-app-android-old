@@ -4,18 +4,20 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.plugin.serialization")
+    id("com.google.devtools.ksp")
 }
 android {
 
     compileSdk = 34
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
 
     defaultConfig {
@@ -29,30 +31,30 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    base {
+        archivesName.set("save-${project.version}")
+    }
+
     buildFeatures {
         viewBinding = true
         buildConfig = true
         compose = true
     }
 
-    flavorDimensions += listOf("free")
-    productFlavors {
-        create("releaseflavor") {
-            dimension = "free"
-            applicationId = "net.opendasharchive.openarchive.release"
-        }
-    }
-
     buildTypes {
+
         getByName("release") {
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
-            //shrinkResources = false
+            isShrinkResources = false
+            applicationIdSuffix = ".release"
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
         }
 
         getByName("debug") {
             signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".debug"
+            isMinifyEnabled = false
         }
     }
 
@@ -87,19 +89,27 @@ android {
     }
 
     namespace = "net.opendasharchive.openarchive"
+
+    configurations.all {
+        resolutionStrategy {
+            force("org.bouncycastle:bcprov-jdk15to18:1.72")
+            exclude(group = "org.bouncycastle", module = "bcprov-jdk15on")
+        }
+    }
 }
 
 dependencies {
 
     // Core Kotlin and Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
 
 
     // AndroidX Libraries
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.recyclerview:recyclerview-selection:1.1.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.0")
     implementation("androidx.constraintlayout:constraintlayout-compose:1.1.0")
     implementation("androidx.coordinatorlayout:coordinatorlayout:1.2.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
@@ -135,22 +145,29 @@ dependencies {
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.8.5")
 
+    // Preference
+    implementation("androidx.preference:preference-ktx:1.2.1")
+
     // Dependency Injection
-    implementation("io.insert-koin:koin-core:4.0.0")
-    implementation("io.insert-koin:koin-android:4.0.0")
-    implementation("io.insert-koin:koin-androidx-compose:4.0.0")
+    implementation("io.insert-koin:koin-core:4.1.0-Beta5")
+    implementation("io.insert-koin:koin-android:4.1.0-Beta5")
+    implementation("io.insert-koin:koin-androidx-compose:4.1.0-Beta5")
 
     // Image Libraries
     implementation("com.github.bumptech.glide:glide:4.16.0")
-    implementation("androidx.preference:preference-ktx:1.2.1")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
     implementation("com.github.esafirm:android-image-picker:3.0.0")
-    implementation("com.facebook.fresco:fresco:3.5.0")
     implementation("com.squareup.picasso:picasso:2.5.2")
+    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("io.coil-kt:coil-video:2.7.0")
 
     // Networking and Data
+    // Networking
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("com.github.guardianproject:sardine-android:89f7eae512")
 
     // Utility Libraries
@@ -159,6 +176,10 @@ dependencies {
     implementation("com.github.abdularis:circularimageview:1.4")
     implementation("com.tbuonomo:dotsindicator:5.1.0")
     implementation("com.guolindev.permissionx:permissionx:1.6.4")
+
+    // Barcode Scanning
+    implementation("com.google.zxing:core:3.4.1")
+    implementation("com.journeyapps:zxing-android-embedded:4.2.0")
 
     // Security and Encryption
     implementation("org.bouncycastle:bcpkix-jdk15to18:1.72")
@@ -181,6 +202,9 @@ dependencies {
     // Tor Libraries
     implementation("info.guardianproject:tor-android:0.4.7.14")
     implementation("info.guardianproject:jtorctl:0.4.5.7")
+
+    implementation("org.bitcoinj:bitcoinj-core:0.16.2")
+    implementation("com.eclipsesource.j2v8:j2v8:6.2.1@aar")
 
     // ProofMode //from here: https://github.com/guardianproject/proofmode
     implementation("org.proofmode:android-libproofmode:1.0.26") {
@@ -218,9 +242,9 @@ dependencies {
 
     // Tests
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.7.3")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test:runner:1.5.2")
+    testImplementation("org.robolectric:robolectric:4.10.3")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
     testImplementation("androidx.work:work-testing:2.9.1")
     debugImplementation("androidx.compose.ui:ui-tooling:1.7.6")
 }

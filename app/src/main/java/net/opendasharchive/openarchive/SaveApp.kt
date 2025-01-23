@@ -1,9 +1,10 @@
 package net.opendasharchive.openarchive
 
 import android.content.Context
-import com.facebook.drawee.backends.pipeline.Fresco
-import com.facebook.imagepipeline.core.ImagePipelineConfig
-import com.facebook.imagepipeline.decoder.SimpleProgressiveJpegConfig
+import android.util.Log
+import coil.Coil
+import coil.ImageLoader
+import coil.util.Logger
 import com.orm.SugarApp
 import info.guardianproject.netcipher.proxy.OrbotHelper
 import net.opendasharchive.openarchive.core.di.coreModule
@@ -16,6 +17,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 import org.koin.core.logger.Level
+import timber.log.Timber
 
 class SaveApp : SugarApp() {
 
@@ -34,13 +36,17 @@ class SaveApp : SugarApp() {
         }
 
 
-        val config = ImagePipelineConfig.newBuilder(this)
-            .setProgressiveJpegConfig(SimpleProgressiveJpegConfig())
-            .setResizeAndRotateEnabledForNetwork(true)
-            .setDownsampleEnabled(true)
+        val imageLoader = ImageLoader.Builder(this)
+            .logger(object : Logger {
+                override var level = Log.VERBOSE
+
+                override fun log(tag: String, priority: Int, message: String?, throwable: Throwable?) {
+                    Timber.tag("Coil").log(priority, throwable, message)
+                }
+            })
             .build()
 
-        Fresco.initialize(this, config)
+        Coil.setImageLoader(imageLoader)
         Prefs.load(this)
 
         if (Prefs.useTor) initNetCipher()
