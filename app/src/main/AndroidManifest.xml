@@ -52,7 +52,7 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:requestLegacyExternalStorage="true"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme.NoActionBar"
+        android:theme="@style/Theme.SaveApp.Starting"
         tools:ignore="UnusedAttribute,LockedOrientationActivity"
         tools:replace="android:icon,android:allowBackup">
         <!-- task affinity lets us define within which 'task' does a activity belong to.
@@ -64,14 +64,14 @@
             android:exported="false"
             android:label="@string/browse_existing"
             android:taskAffinity=""
-            android:theme="@style/AppTheme.NoActionBar" />
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".upload.UploadManagerActivity"
             android:exported="false"
             android:label="@string/title_activity_upload_manager"
             android:taskAffinity=""
-            android:theme="@style/AppTheme.NoActionBar" />
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".features.main.MainActivity"
@@ -109,43 +109,58 @@
             android:name=".services.webdav.WebDavActivity"
             android:label="@string/title_activity_login"
             android:taskAffinity=""
+            android:theme="@style/SaveAppTheme.NoActionBar"
             android:windowSoftInputMode="adjustPan" />
 
         <activity
             android:name=".features.internetarchive.presentation.InternetArchiveActivity"
             android:label="@string/title_activity_login"
-            android:taskAffinity="" />
+            android:taskAffinity=""
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
-        <activity android:name=".services.gdrive.GDriveActivity" />
+        <activity
+            android:name=".services.gdrive.GDriveActivity"
+            android:theme="@style/SaveAppTheme.NoActionBar" />
+
+        <activity
+            android:name=".features.settings.SpacesActivity"
+            android:exported="true"
+            android:label="@string/servers"
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".features.settings.FoldersActivity"
             android:exported="false"
-            android:label="@string/folders" />
+            android:label="@string/folders"
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".features.settings.GeneralSettingsActivity"
             android:exported="false"
             android:label="@string/general"
-            android:taskAffinity="" />
+            android:taskAffinity=""
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".features.settings.ProofModeSettingsActivity"
             android:exported="false"
             android:label="@string/proofmode"
-            android:taskAffinity="" />
+            android:taskAffinity=""
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".features.media.PreviewActivity"
             android:exported="false"
             android:label="@string/preview_media"
-            android:taskAffinity="" />
+            android:taskAffinity=""
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".features.media.ReviewActivity"
             android:exported="false"
             android:label="@string/edit_media_info"
             android:taskAffinity=""
+            android:theme="@style/SaveAppTheme.NoActionBar"
             android:windowSoftInputMode="stateHidden" />
 
         <activity
@@ -153,45 +168,50 @@
             android:exported="false"
             android:label="@string/title_activity_first_start"
             android:taskAffinity=""
+            android:theme="@style/SaveAppTheme.NoActionBar"
             android:windowSoftInputMode="adjustPan" />
 
         <activity
             android:name=".features.onboarding.Onboarding23Activity"
             android:exported="false"
             android:noHistory="true"
-            android:taskAffinity="" />
+            android:taskAffinity=""
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".features.onboarding.Onboarding23InstructionsActivity"
             android:exported="false"
-            android:taskAffinity="" />
+            android:taskAffinity=""
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".features.folders.CreateNewFolderActivity"
             android:label="@string/new_folder"
             android:taskAffinity=""
-            android:theme="@style/AppTheme.NoActionBar" />
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".features.folders.AddFolderActivity"
             android:taskAffinity=""
-            android:theme="@style/AppTheme.NoActionBar" />
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".features.settings.EditFolderActivity"
             android:taskAffinity=""
-            android:theme="@style/AppTheme.NoActionBar" />
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".features.settings.ConsentActivity"
             android:label="@string/health_checks"
-            android:taskAffinity="" />
+            android:taskAffinity=""
+            android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
             android:name=".features.settings.passcode.passcode_setup.PasscodeSetupActivity"
             android:label="@string/passcode_setup"
             android:screenOrientation="portrait"
             android:taskAffinity=""
+            android:theme="@style/SaveAppTheme.NoActionBar"
             android:windowSoftInputMode="stateHidden" />
 
         <activity
@@ -200,6 +220,7 @@
             android:label="@string/passcode_entry"
             android:noHistory="true"
             android:screenOrientation="portrait"
+            android:theme="@style/SaveAppTheme.NoActionBar"
             android:windowSoftInputMode="stateHidden" />
 
         <meta-data
