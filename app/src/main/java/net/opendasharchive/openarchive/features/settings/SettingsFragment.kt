@@ -12,6 +12,7 @@ import androidx.preference.SwitchPreferenceCompat
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.features.core.BaseActivity
 import net.opendasharchive.openarchive.features.settings.app_masking.AppMaskingActivity
+import net.opendasharchive.openarchive.features.settings.passcode.AppConfig
 import net.opendasharchive.openarchive.features.settings.passcode.PasscodeRepository
 import net.opendasharchive.openarchive.features.settings.passcode.passcode_setup.PasscodeSetupActivity
 import net.opendasharchive.openarchive.features.spaces.SpacesActivity
@@ -21,6 +22,8 @@ import net.opendasharchive.openarchive.util.extensions.getVersionName
 import org.koin.android.ext.android.inject
 
 class SettingsFragment : PreferenceFragmentCompat() {
+
+    private val appConfig by inject<AppConfig>()
 
     private val passcodeRepository by inject<PasscodeRepository>()
 
@@ -101,9 +104,15 @@ class SettingsFragment : PreferenceFragmentCompat() {
             true
         }
 
-        getPrefByKey<Preference>(R.string.pref_app_masking)?.setOnPreferenceClickListener {
-            startActivity(Intent(context, AppMaskingActivity::class.java))
-            true
+        // Check if app masking is enabled in the app config
+        if (appConfig.appMaskingEnabled) {
+            getPrefByKey<Preference>(R.string.pref_app_masking)?.setOnPreferenceClickListener {
+                startActivity(Intent(context, AppMaskingActivity::class.java))
+                true
+            }
+        } else {
+            // Remove the app masking preference if the feature is disabled
+            findPreference<Preference>(getString(R.string.pref_app_masking))?.isVisible = false
         }
 
         getPrefByKey<Preference>(R.string.pref_media_servers)?.setOnPreferenceClickListener {
