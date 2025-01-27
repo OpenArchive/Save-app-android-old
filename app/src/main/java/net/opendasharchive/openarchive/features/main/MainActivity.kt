@@ -176,7 +176,7 @@ class MainActivity : BaseActivity() {
 
 
         if (appConfig.snowbirdEnabled) {
-            
+
             checkNotificationPermissions()
 
             SnowbirdBridge.getInstance().initialize()
@@ -208,17 +208,7 @@ class MainActivity : BaseActivity() {
         }
 
         binding.bottomNavBar.onAddClick = {
-
-            if (Prefs.addMediaHint) {
-                addClicked(AddMediaType.GALLERY)
-            } else {
-                AlertHelper.show(
-                    context = this,
-                    message = R.string.press_and_hold_options_media_screen_message,
-                    title = R.string.press_and_hold_options_media_screen_title,
-                )
-                Prefs.addMediaHint = true
-            }
+            addClicked(AddMediaType.GALLERY)
         }
 
         binding.bottomNavBar.onSettingsClick = {
@@ -433,18 +423,33 @@ class MainActivity : BaseActivity() {
 
         // Check if there's any project selected
         if (getSelectedProject() != null) {
-            when (mediaType) {
-                AddMediaType.CAMERA -> Picker.takePhoto(
-                    this@MainActivity,
-                    mediaLaunchers.cameraLauncher
-                )
 
-                AddMediaType.GALLERY -> Picker.pickMedia(this, mediaLaunchers.imagePickerLauncher)
-                AddMediaType.FILES -> Picker.pickFiles(mediaLaunchers.filePickerLauncher)
+            if (Prefs.addMediaHint) {
+                when (mediaType) {
+                    AddMediaType.CAMERA -> Picker.takePhoto(
+                        this@MainActivity,
+                        mediaLaunchers.cameraLauncher
+                    )
+
+                    AddMediaType.GALLERY -> Picker.pickMedia(
+                        this,
+                        mediaLaunchers.imagePickerLauncher
+                    )
+
+                    AddMediaType.FILES -> Picker.pickFiles(mediaLaunchers.filePickerLauncher)
+                }
+            } else {
+                AlertHelper.show(
+                    context = this,
+                    message = R.string.press_and_hold_options_media_screen_message,
+                    title = R.string.press_and_hold_options_media_screen_title,
+                )
+                Prefs.addMediaHint = true
             }
+
+
         } else if (Space.current == null) { // Check if there's any space available
             startActivity(Intent(this, SpaceSetupActivity::class.java))
-
         } else {
 
             if (!Prefs.addFolderHintShown) {
@@ -477,9 +482,11 @@ class MainActivity : BaseActivity() {
                 ) == PackageManager.PERMISSION_GRANTED -> {
                     Timber.d("We have notifications permissions")
                 }
+
                 shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
                     showNotificationPermissionRationale()
                 }
+
                 else -> {
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
