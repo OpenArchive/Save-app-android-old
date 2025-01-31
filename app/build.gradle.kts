@@ -117,8 +117,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("androidx.navigation:navigation-fragment-ktx:2.8.5")
-    implementation("androidx.navigation:navigation-ui-ktx:2.8.5")
+    implementation("androidx.navigation:navigation-fragment-ktx:2.8.6")
+    implementation("androidx.navigation:navigation-ui-ktx:2.8.6")
 
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("androidx.biometric:biometric:1.1.0")
@@ -135,15 +135,15 @@ dependencies {
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-alpha01")
 
     // Compose Libraries
-    implementation("androidx.compose.ui:ui:1.7.6")
-    implementation("androidx.compose.foundation:foundation:1.7.6")
+    implementation("androidx.compose.ui:ui:1.7.7")
+    implementation("androidx.compose.foundation:foundation:1.7.7")
     implementation("androidx.compose.material3:material3:1.3.1")
-    implementation("androidx.compose.ui:ui-tooling-preview:1.7.6")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.7.7")
     implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("androidx.compose.material:material-icons-extended:1.7.6")
+    implementation("androidx.compose.material:material-icons-extended:1.7.7")
 
     // Navigation
-    implementation("androidx.navigation:navigation-compose:2.8.5")
+    implementation("androidx.navigation:navigation-compose:2.8.6")
 
     // Preference
     implementation("androidx.preference:preference-ktx:1.2.1")
@@ -246,7 +246,7 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     testImplementation("androidx.work:work-testing:2.9.1")
-    debugImplementation("androidx.compose.ui:ui-tooling:1.7.6")
+    debugImplementation("androidx.compose.ui:ui-tooling:1.7.7")
 }
 
 configurations.all {
