@@ -10,16 +10,13 @@ import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.fragment.findNavController
 import com.google.zxing.integration.android.IntentIntegrator
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.databinding.FragmentSnowbirdBinding
 import net.opendasharchive.openarchive.db.SnowbirdGroup
 import net.opendasharchive.openarchive.extensions.getQueryParameter
 import net.opendasharchive.openarchive.features.main.QRScannerActivity
-import net.opendasharchive.openarchive.features.onboarding.BaseFragment
-import net.opendasharchive.openarchive.features.settings.SpaceSetupFragment
-import net.opendasharchive.openarchive.features.settings.SpaceSetupFragment.Companion.RESULT_VAL_INTERNET_ARCHIVE
+import net.opendasharchive.openarchive.features.core.BaseFragment
 import net.opendasharchive.openarchive.util.Utility
 import timber.log.Timber
 

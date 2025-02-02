@@ -1,16 +1,61 @@
 package net.opendasharchive.openarchive.features.core
 
 import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.ui.platform.ComposeView
 import com.google.android.material.appbar.MaterialToolbar
 import net.opendasharchive.openarchive.R
+import net.opendasharchive.openarchive.core.presentation.theme.SaveAppTheme
+import net.opendasharchive.openarchive.features.core.dialog.DialogHost
+import net.opendasharchive.openarchive.features.core.dialog.DialogStateManager
 import net.opendasharchive.openarchive.util.Prefs
 
 abstract class BaseActivity : AppCompatActivity() {
 
+    val dialogManager: DialogStateManager by viewModels()
+
     companion object {
         const val EXTRA_DATA_SPACE = "space"
+    }
+
+    override fun setContentView(layoutResID: Int) {
+        super.setContentView(layoutResID)
+        ensureComposeDialogHost()
+    }
+
+    override fun setContentView(view: View?) {
+        super.setContentView(view)
+        ensureComposeDialogHost()
+    }
+
+    fun ensureComposeDialogHost() {
+        // Get root view of the window
+        val rootView = findViewById<ViewGroup>(android.R.id.content)
+
+        // Add ComposeView if not already present
+        if (rootView.findViewById<ComposeView>(R.id.compose_dialog_host) == null) {
+            ComposeView(this).apply {
+                id = R.id.compose_dialog_host
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+
+                rootView.addView(this)
+
+                setContent {
+                    SaveAppTheme {
+                        // Get ViewModel scoped to this activity
+                        val dialogManager: DialogStateManager by viewModels()
+                        DialogHost(dialogStateManager = dialogManager)
+                    }
+                }
+            }
+        }
     }
 
     override fun dispatchTouchEvent(event: MotionEvent?): Boolean {

@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.FragmentGdriveBinding
 import net.opendasharchive.openarchive.db.Space
-import net.opendasharchive.openarchive.features.onboarding.BaseFragment
+import net.opendasharchive.openarchive.features.core.BaseFragment
 
 class GDriveFragment : BaseFragment() {
 

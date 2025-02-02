@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import androidx.core.os.bundleOf
 import androidx.fragment.app.setFragmentResult
 import net.opendasharchive.openarchive.databinding.FragmentSpaceSetupSuccessBinding
-import net.opendasharchive.openarchive.features.onboarding.BaseFragment
+import net.opendasharchive.openarchive.features.core.BaseFragment
 
 class SpaceSetupSuccessFragment private constructor(): BaseFragment() {
     private lateinit var mBinding: FragmentSpaceSetupSuccessBinding
