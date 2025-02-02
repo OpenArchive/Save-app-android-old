@@ -52,3 +52,6 @@ fastlane/test_output
 fastlane/README.md
 fastlane/.env
 .env.default
+/app/release/baselineProfiles/0/save-unspecified-release.dm
+/app/release/baselineProfiles/1/save-unspecified-release.dm
+/app/release/output-metadata.json

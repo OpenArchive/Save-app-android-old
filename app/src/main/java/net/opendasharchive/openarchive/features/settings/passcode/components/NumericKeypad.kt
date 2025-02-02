@@ -33,7 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import net.opendasharchive.openarchive.core.presentation.theme.Theme
+import net.opendasharchive.openarchive.core.presentation.theme.SaveAppTheme
 import net.opendasharchive.openarchive.features.settings.passcode.AppHapticFeedbackType
 import net.opendasharchive.openarchive.features.settings.passcode.HapticManager
 import org.koin.compose.koinInject
@@ -88,7 +88,7 @@ fun NumericKeypad(
 @Preview
 @Composable
 private fun NumericKeypadPreview() {
-    Theme {
+    SaveAppTheme {
         Scaffold {
             Box(
                 modifier = Modifier.padding(it),
@@ -148,7 +148,7 @@ private fun NumberButton(
                     onClick()
                 }
             )
-            .border(width = 2.dp, color = MaterialTheme.colorScheme.primary, shape = CircleShape)
+            .border(width = 2.dp, color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f), shape = CircleShape)
             .size(72.dp),
         contentAlignment = Alignment.Center
     ) {
