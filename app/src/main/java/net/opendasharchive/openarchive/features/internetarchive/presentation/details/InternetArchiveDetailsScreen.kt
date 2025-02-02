@@ -12,7 +12,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,7 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import net.opendasharchive.openarchive.R
-import net.opendasharchive.openarchive.core.presentation.theme.Theme
+import net.opendasharchive.openarchive.core.presentation.theme.SaveAppTheme
 import net.opendasharchive.openarchive.core.presentation.theme.ThemeColors
 import net.opendasharchive.openarchive.core.presentation.theme.ThemeDimensions
 import net.opendasharchive.openarchive.core.state.Dispatch
@@ -38,7 +37,7 @@ import net.opendasharchive.openarchive.features.internetarchive.presentation.com
 import net.opendasharchive.openarchive.features.internetarchive.presentation.components.InternetArchiveHeader
 import net.opendasharchive.openarchive.features.internetarchive.presentation.details.InternetArchiveDetailsViewModel.Action
 import net.opendasharchive.openarchive.features.internetarchive.presentation.login.CustomTextField
-import net.opendasharchive.openarchive.features.internetarchive.presentation.login.DefaultScaffoldPreview
+import net.opendasharchive.openarchive.core.presentation.theme.DefaultScaffoldPreview
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -63,7 +62,6 @@ fun InternetArchiveDetailsScreen(space: Space, onResult: (IAResult) -> Unit) {
     InternetArchiveDetailsContent(state, viewModel::dispatch)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun InternetArchiveDetailsContent(
     state: InternetArchiveDetailsState,
@@ -189,7 +187,7 @@ private fun InternetArchiveScreenPreview() {
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 private fun RemoveInternetArchiveDialogPreview() {
-    Theme {
+    SaveAppTheme {
         RemoveInternetArchiveDialog(onDismiss = { }) {}
     }
 }

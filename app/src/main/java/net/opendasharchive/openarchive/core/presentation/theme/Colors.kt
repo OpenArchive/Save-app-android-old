@@ -93,7 +93,7 @@ internal fun lightColorScheme() = ColorTheme(
 internal fun darkColorScheme() = ColorTheme(
     material = darkColorScheme(
         primary = darkPrimary,
-        onPrimary = Color.Black,
+        onPrimary = Color.White,
         primaryContainer = c23_teal,
         onPrimaryContainer = Color.White,
 

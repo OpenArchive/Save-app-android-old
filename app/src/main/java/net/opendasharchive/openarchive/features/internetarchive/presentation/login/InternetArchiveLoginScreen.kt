@@ -8,7 +8,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,7 +28,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -59,7 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import net.opendasharchive.openarchive.R
-import net.opendasharchive.openarchive.core.presentation.theme.Theme
+import net.opendasharchive.openarchive.core.presentation.theme.DefaultScaffoldPreview
 import net.opendasharchive.openarchive.core.presentation.theme.ThemeColors
 import net.opendasharchive.openarchive.core.presentation.theme.ThemeDimensions
 import net.opendasharchive.openarchive.core.state.Dispatch
@@ -71,7 +69,6 @@ import net.opendasharchive.openarchive.features.internetarchive.presentation.log
 import net.opendasharchive.openarchive.features.internetarchive.presentation.login.InternetArchiveLoginAction.UpdatePassword
 import net.opendasharchive.openarchive.features.internetarchive.presentation.login.InternetArchiveLoginAction.UpdateUsername
 import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.KoinContext
 import org.koin.core.parameter.parametersOf
 import net.opendasharchive.openarchive.features.internetarchive.presentation.login.InternetArchiveLoginAction as Action
 
@@ -239,27 +236,6 @@ private fun InternetArchiveLoginPreview() {
             )
         ) {}
     }
-}
-
-@Composable
-fun DefaultScaffoldPreview(
-    content: @Composable () -> Unit
-) {
-
-    Theme {
-
-        Scaffold(
-            topBar = {
-                ComposeAppBar()
-            }
-        ) { paddingValues ->
-
-            Box(modifier = Modifier.padding(paddingValues), contentAlignment = Alignment.Center) {
-                content()
-            }
-        }
-    }
-
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

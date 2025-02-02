@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.view.MenuItem
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
-import net.opendasharchive.openarchive.core.presentation.theme.Theme
+import net.opendasharchive.openarchive.core.presentation.theme.SaveAppTheme
 import net.opendasharchive.openarchive.features.core.BaseActivity
 import net.opendasharchive.openarchive.features.settings.passcode.components.DefaultScaffold
 
@@ -30,7 +30,7 @@ class PasscodeSetupActivity : BaseActivity() {
         onBackPressedDispatcher.addCallback(onBackPressedCallback)
 
         setContent {
-            Theme {
+            SaveAppTheme {
                 DefaultScaffold {
                     PasscodeSetupScreen(
                         onPasscodeSet = {

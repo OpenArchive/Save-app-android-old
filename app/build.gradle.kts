@@ -100,6 +100,10 @@ android {
 
 dependencies {
 
+    val composeVersion = "1.7.7"
+    val material = "1.12.0"
+    val material3 = "1.3.1"
+
     // Core Kotlin and Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
@@ -129,18 +133,19 @@ dependencies {
     implementation("me.zhanghai.compose.preference:library:1.1.1")
 
     // Material Design
-    implementation("com.google.android.material:material:1.12.0")
+    implementation("com.google.android.material:material:$material")
 
     // AndroidX SwipeRefreshLayout
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-alpha01")
 
     // Compose Libraries
-    implementation("androidx.compose.ui:ui:1.7.7")
-    implementation("androidx.compose.foundation:foundation:1.7.7")
-    implementation("androidx.compose.material3:material3:1.3.1")
-    implementation("androidx.compose.ui:ui-tooling-preview:1.7.7")
     implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("androidx.compose.material:material-icons-extended:1.7.7")
+    implementation("androidx.compose.material3:material3:$material3")
+    implementation("androidx.compose.ui:ui:$composeVersion")
+    implementation("androidx.compose.foundation:foundation:$composeVersion")
+    implementation("androidx.compose.ui:ui-tooling-preview:$composeVersion")
+    implementation("androidx.compose.material:material-icons-extended:$composeVersion")
+    debugImplementation("androidx.compose.ui:ui-tooling:$composeVersion")
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.8.6")
@@ -246,7 +251,6 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     testImplementation("androidx.work:work-testing:2.9.1")
-    debugImplementation("androidx.compose.ui:ui-tooling:1.7.7")
 }
 
 configurations.all {
