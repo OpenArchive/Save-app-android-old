@@ -25,6 +25,9 @@ import net.opendasharchive.openarchive.databinding.ActivityMainBinding
 import net.opendasharchive.openarchive.db.Project
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.features.core.BaseActivity
+import net.opendasharchive.openarchive.features.core.asUiImage
+import net.opendasharchive.openarchive.features.core.asUiText
+import net.opendasharchive.openarchive.features.core.dialog.showInfoDialog
 import net.opendasharchive.openarchive.features.folders.AddFolderActivity
 import net.opendasharchive.openarchive.features.media.AddMediaDialogFragment
 import net.opendasharchive.openarchive.features.media.AddMediaType
@@ -439,12 +442,15 @@ class MainActivity : BaseActivity() {
                     AddMediaType.FILES -> Picker.pickFiles(mediaLaunchers.filePickerLauncher)
                 }
             } else {
-                AlertHelper.show(
-                    context = this,
-                    message = R.string.press_and_hold_options_media_screen_message,
-                    title = R.string.press_and_hold_options_media_screen_title,
+
+                dialogManager.showInfoDialog(
+                    icon = R.drawable.perm_media_24px.asUiImage(),
+                    title = R.string.press_and_hold_options_media_screen_title.asUiText(),
+                    message = R.string.press_and_hold_options_media_screen_message.asUiText(),
+                    onDone = {
+                        Prefs.addMediaHint = true
+                    }
                 )
-                Prefs.addMediaHint = true
             }
 
 

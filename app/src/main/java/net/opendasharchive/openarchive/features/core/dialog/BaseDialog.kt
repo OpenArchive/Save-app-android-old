@@ -17,18 +17,17 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -41,28 +40,27 @@ import net.opendasharchive.openarchive.core.presentation.theme.DefaultBoxPreview
 import net.opendasharchive.openarchive.features.core.BaseButton
 import net.opendasharchive.openarchive.features.core.BaseDestructiveButton
 import net.opendasharchive.openarchive.features.core.BaseNeutralButton
+import net.opendasharchive.openarchive.features.core.UiImage
 import net.opendasharchive.openarchive.features.core.UiText
-
-
-data class ButtonConfig(
-    val text: UiText, val action: () -> Unit = {}
-)
+import net.opendasharchive.openarchive.features.core.asUiImage
 
 @Composable
 fun BaseDialog(
     onDismiss: () -> Unit,
-    icon: ImageVector? = null,
+    icon: UiImage? = null,
     iconColor: Color? = null,
     title: String,
     message: String,
     hasCheckbox: Boolean = false,
     onCheckBoxStateChanged: (Boolean) -> Unit = {},
     checkBoxHint: String = "Do not show me this again",
-    positiveButton: ButtonConfig,
-    neutralButton: ButtonConfig? = null,
-    destructiveButton: ButtonConfig? = null,
+    positiveButton: ButtonData,
+    neutralButton: ButtonData? = null,
+    destructiveButton: ButtonData? = null,
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh
 ) {
+
+    val (isCheckedState, setCheckedState) = remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = { onDismiss.invoke() },
@@ -79,7 +77,7 @@ fun BaseDialog(
                 .background(backgroundColor)
         ) {
 
-            Card() {
+            Card {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -89,12 +87,11 @@ fun BaseDialog(
                 ) {
 
                     icon?.let { icon ->
-                        Icon(
-                            modifier = Modifier.size(24.dp),
-                            imageVector = icon,
+                        icon.asIcon(
                             contentDescription = null,
+                            modifier = Modifier.size(24.dp),
                             tint = iconColor ?: Color.Unspecified
-                        )
+                        ).invoke()
 
                         Spacer(modifier = Modifier.height(18.dp))
                     }
@@ -104,9 +101,10 @@ fun BaseDialog(
                     Spacer(Modifier.height(4.dp))
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        BaseDialogContent(message)
+                        BaseDialogMessage(message)
                     }
 
                     if (hasCheckbox) {
@@ -118,10 +116,14 @@ fun BaseDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
-                                checked = false,
-                                onCheckedChange = { onCheckBoxStateChanged.invoke(it) })
+                                checked = isCheckedState,
+                                onCheckedChange = { isChecked ->
+                                    setCheckedState(isChecked)
+                                    onCheckBoxStateChanged.invoke(isChecked)
+                                }
+                            )
 
-                            BaseDialogContent(checkBoxHint)
+                            BaseDialogMessage(checkBoxHint)
                         }
 
                     }
@@ -139,7 +141,9 @@ fun BaseDialog(
                     neutralButton?.let { btn ->
                         Spacer(modifier = Modifier.height(4.dp))
                         BaseNeutralButton(
-                            modifier = Modifier.fillMaxWidth(), text = btn.text.asString(), onClick = {
+                            modifier = Modifier.fillMaxWidth(),
+                            text = btn.text.asString(),
+                            onClick = {
                                 btn.action()
                                 onDismiss()
                             })
@@ -181,7 +185,7 @@ fun BaseDialogTitle(
 }
 
 @Composable
-fun BaseDialogContent(
+fun BaseDialogMessage(
     text: String,
     modifier: Modifier = Modifier
 ) {
@@ -198,7 +202,7 @@ fun BaseDialogContent(
 }
 
 
-class DialogStateManager : ViewModel() {
+class DialogStateManager(private val resourceProvider: ResourceProvider) : ViewModel() {
     private val _dialogConfig = mutableStateOf<DialogConfig?>(null)
     val dialogConfig: State<DialogConfig?> = _dialogConfig
 
@@ -209,6 +213,12 @@ class DialogStateManager : ViewModel() {
     fun dismissDialog() {
         _dialogConfig.value = null
     }
+
+    /**
+     * Helper to get the ResourceProvider. This will throw if one wasn’t provided.
+     */
+    fun requireResourceProvider(): ResourceProvider =
+        resourceProvider
 }
 
 @Composable
@@ -221,13 +231,14 @@ fun DialogHost(dialogStateManager: DialogStateManager) {
                 dialogStateManager.dismissDialog()
             },
             icon = config.icon,
-            iconColor = config.iconColor.invoke(),
+            iconColor = config.iconColor,
             title = config.title.asString(),
             message = config.message.asString(),
             positiveButton = config.positiveButton,
-            destructiveButton = config.negativeButton,
+            neutralButton = config.neutralButton,
+            destructiveButton = config.destructiveButton,
             hasCheckbox = config.showCheckbox,
-            onCheckBoxStateChanged = { config.checkboxState = it },
+            onCheckBoxStateChanged = { config.onCheckboxChanged(it) },
             checkBoxHint = config.checkboxText?.asString() ?: "",
         )
     }
@@ -240,11 +251,11 @@ private fun BaseDialogPreview() {
 
         BaseDialog(
             onDismiss = {},
-            icon = Icons.Filled.Check,
+            icon = Icons.Filled.Check.asUiImage(),
             iconColor = MaterialTheme.colorScheme.primary,
             title = "Success",
             message = "You have added a folder successfully",
-            positiveButton = ButtonConfig(UiText.DynamicString("OK")),
+            positiveButton = ButtonData(UiText.DynamicString("OK")),
         )
 
     }
@@ -257,12 +268,12 @@ private fun WarningDialogPreview() {
 
         BaseDialog(
             onDismiss = {},
-            icon = Icons.Default.Warning,
+            icon = Icons.Default.Warning.asUiImage(),
             iconColor = MaterialTheme.colorScheme.primary,
             title = "Warning",
             message = "Once uploaded, you will not be able to edit media",
-            positiveButton = ButtonConfig(UiText.DynamicString("OK")),
-            neutralButton = ButtonConfig(UiText.DynamicString("Cancel")),
+            positiveButton = ButtonData(UiText.DynamicString("OK")),
+            neutralButton = ButtonData(UiText.DynamicString("Cancel")),
             hasCheckbox = true,
             checkBoxHint = "Do not show me this again",
             onCheckBoxStateChanged = { },
@@ -277,12 +288,12 @@ private fun ErrorDialogPreview() {
 
         BaseDialog(
             onDismiss = {},
-            icon = Icons.Default.ErrorOutline,
+            icon = Icons.Default.ErrorOutline.asUiImage(),
             iconColor = MaterialTheme.colorScheme.error,
             title = "Image upload unsuccessful",
             message = "Give a reason here? Lorem Ipsum text can go here if needed",
-            positiveButton = ButtonConfig(UiText.DynamicString("Retry")),
-            destructiveButton = ButtonConfig(UiText.DynamicString("Remove Image")),
+            positiveButton = ButtonData(UiText.DynamicString("Retry")),
+            destructiveButton = ButtonData(UiText.DynamicString("Remove Image")),
         )
     }
 }

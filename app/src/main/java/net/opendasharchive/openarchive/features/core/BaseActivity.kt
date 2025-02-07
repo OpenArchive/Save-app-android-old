@@ -4,7 +4,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.ui.platform.ComposeView
 import com.google.android.material.appbar.MaterialToolbar
@@ -13,10 +12,12 @@ import net.opendasharchive.openarchive.core.presentation.theme.SaveAppTheme
 import net.opendasharchive.openarchive.features.core.dialog.DialogHost
 import net.opendasharchive.openarchive.features.core.dialog.DialogStateManager
 import net.opendasharchive.openarchive.util.Prefs
+import org.koin.androidx.compose.koinViewModel
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 abstract class BaseActivity : AppCompatActivity() {
 
-    val dialogManager: DialogStateManager by viewModels()
+    val dialogManager: DialogStateManager by viewModel()
 
     companion object {
         const val EXTRA_DATA_SPACE = "space"
@@ -50,7 +51,7 @@ abstract class BaseActivity : AppCompatActivity() {
                 setContent {
                     SaveAppTheme {
                         // Get ViewModel scoped to this activity
-                        val dialogManager: DialogStateManager by viewModels()
+                        val dialogManager: DialogStateManager = koinViewModel()
                         DialogHost(dialogStateManager = dialogManager)
                     }
                 }

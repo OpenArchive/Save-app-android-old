@@ -11,6 +11,7 @@ import net.opendasharchive.openarchive.databinding.ActivityCreateNewFolderBindin
 import net.opendasharchive.openarchive.db.Project
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.features.core.BaseActivity
+import net.opendasharchive.openarchive.features.core.dialog.showSuccessDialog
 import net.opendasharchive.openarchive.features.settings.CcSelector
 import net.opendasharchive.openarchive.util.extensions.hide
 import java.util.Date
@@ -99,8 +100,26 @@ class CreateNewFolderActivity : BaseActivity() {
         val project = Project(name, Date(), space.id, licenseUrl = license)
         project.save()
 
+        showFolderCreated(project.id)
+
+
+    }
+
+    private fun showFolderCreated(projectId: Long) {
+
+        dialogManager.showSuccessDialog(
+            title = R.string.label_success_title,
+            message = R.string.create_folder_ok_message,
+            positiveButtonText = R.string.label_got_it,
+            onDone = {
+                navigateBackWithResult(projectId)
+            }
+        )
+    }
+
+    private fun navigateBackWithResult(projectId: Long) {
         val i = Intent()
-        i.putExtra(AddFolderActivity.EXTRA_FOLDER_ID, project.id)
+        i.putExtra(AddFolderActivity.EXTRA_FOLDER_ID, projectId)
 
         setResult(RESULT_OK, i)
         finish()
