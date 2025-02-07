@@ -12,8 +12,8 @@ import net.opendasharchive.openarchive.features.internetarchive.presentation.com
 import net.opendasharchive.openarchive.features.internetarchive.presentation.components.bundleWithNewSpace
 import net.opendasharchive.openarchive.features.internetarchive.presentation.components.bundleWithSpaceId
 import net.opendasharchive.openarchive.features.internetarchive.presentation.components.getSpace
-import net.opendasharchive.openarchive.features.onboarding.BaseFragment
-import net.opendasharchive.openarchive.features.onboarding.ToolbarConfigurable
+import net.opendasharchive.openarchive.features.core.BaseFragment
+import net.opendasharchive.openarchive.features.core.ToolbarConfigurable
 
 @Deprecated("only used for backward compatibility")
 class InternetArchiveFragment : BaseFragment(), ToolbarConfigurable {

@@ -14,8 +14,7 @@ import net.opendasharchive.openarchive.db.SnowbirdGroup
 import net.opendasharchive.openarchive.db.SnowbirdRepo
 import net.opendasharchive.openarchive.extensions.getQueryParameter
 import net.opendasharchive.openarchive.extensions.showKeyboard
-import net.opendasharchive.openarchive.features.onboarding.BaseFragment
-import net.opendasharchive.openarchive.features.settings.SpaceSetupSuccessFragment
+import net.opendasharchive.openarchive.features.core.BaseFragment
 import net.opendasharchive.openarchive.util.FullScreenOverlayCreateGroupManager
 import net.opendasharchive.openarchive.util.Utility
 import timber.log.Timber

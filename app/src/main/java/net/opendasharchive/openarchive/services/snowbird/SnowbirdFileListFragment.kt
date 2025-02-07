@@ -21,7 +21,7 @@ import net.opendasharchive.openarchive.db.FileUploadResult
 import net.opendasharchive.openarchive.db.SnowbirdError
 import net.opendasharchive.openarchive.db.SnowbirdFileItem
 import net.opendasharchive.openarchive.extensions.androidViewModel
-import net.opendasharchive.openarchive.features.onboarding.BaseFragment
+import net.opendasharchive.openarchive.features.core.BaseFragment
 import net.opendasharchive.openarchive.util.SpacingItemDecoration
 import net.opendasharchive.openarchive.util.Utility
 import timber.log.Timber

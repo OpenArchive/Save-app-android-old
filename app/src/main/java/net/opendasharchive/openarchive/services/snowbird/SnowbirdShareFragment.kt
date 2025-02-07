@@ -8,7 +8,7 @@ import net.opendasharchive.openarchive.databinding.FragmentSnowbirdShareGroupBin
 import net.opendasharchive.openarchive.db.SnowbirdGroup
 import net.opendasharchive.openarchive.extensions.asQRCode
 import net.opendasharchive.openarchive.extensions.urlEncode
-import net.opendasharchive.openarchive.features.onboarding.BaseFragment
+import net.opendasharchive.openarchive.features.core.BaseFragment
 
 class SnowbirdShareFragment private constructor(): BaseFragment() {
     private lateinit var viewBinding: FragmentSnowbirdShareGroupBinding

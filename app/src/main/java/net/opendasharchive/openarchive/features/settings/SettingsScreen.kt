@@ -3,12 +3,8 @@ package net.opendasharchive.openarchive.features.settings
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -19,7 +15,7 @@ import me.zhanghai.compose.preference.listPreference
 import me.zhanghai.compose.preference.preference
 import me.zhanghai.compose.preference.preferenceCategory
 import me.zhanghai.compose.preference.switchPreference
-import net.opendasharchive.openarchive.features.internetarchive.presentation.login.DefaultScaffoldPreview
+import net.opendasharchive.openarchive.core.presentation.theme.DefaultScaffoldPreview
 
 @Composable
 fun SettingsScreen() {

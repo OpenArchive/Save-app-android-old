@@ -11,7 +11,7 @@ import androidx.fragment.app.setFragmentResult
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.FragmentWebdavSetupLicenseBinding
 import net.opendasharchive.openarchive.db.Space
-import net.opendasharchive.openarchive.features.onboarding.BaseFragment
+import net.opendasharchive.openarchive.features.core.BaseFragment
 import net.opendasharchive.openarchive.features.settings.CcSelector
 import kotlin.properties.Delegates
 

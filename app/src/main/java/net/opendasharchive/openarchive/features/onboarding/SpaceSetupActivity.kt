@@ -1,17 +1,14 @@
 package net.opendasharchive.openarchive.features.onboarding
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
-import android.view.inputmethod.InputMethodManager
 import androidx.fragment.app.Fragment
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.ActivitySpaceSetupBinding
-import net.opendasharchive.openarchive.db.SnowbirdError
-import net.opendasharchive.openarchive.extensions.androidViewModel
 import net.opendasharchive.openarchive.extensions.onBackButtonPressed
 import net.opendasharchive.openarchive.features.core.BaseActivity
+import net.opendasharchive.openarchive.features.core.BaseFragment
+import net.opendasharchive.openarchive.features.core.ToolbarConfigurable
 import net.opendasharchive.openarchive.features.internetarchive.presentation.InternetArchiveFragment
 import net.opendasharchive.openarchive.features.main.MainActivity
 import net.opendasharchive.openarchive.features.settings.SpaceSetupFragment
@@ -21,53 +18,11 @@ import net.opendasharchive.openarchive.services.snowbird.SnowbirdCreateGroupFrag
 import net.opendasharchive.openarchive.services.snowbird.SnowbirdFileListFragment
 import net.opendasharchive.openarchive.services.snowbird.SnowbirdFragment
 import net.opendasharchive.openarchive.services.snowbird.SnowbirdGroupListFragment
-import net.opendasharchive.openarchive.services.snowbird.SnowbirdGroupViewModel
 import net.opendasharchive.openarchive.services.snowbird.SnowbirdJoinGroupFragment
 import net.opendasharchive.openarchive.services.snowbird.SnowbirdRepoListFragment
-import net.opendasharchive.openarchive.services.snowbird.SnowbirdRepoViewModel
 import net.opendasharchive.openarchive.services.snowbird.SnowbirdShareFragment
 import net.opendasharchive.openarchive.services.webdav.WebDavFragment
 import net.opendasharchive.openarchive.services.webdav.WebDavSetupLicenseFragment
-import net.opendasharchive.openarchive.util.FullScreenOverlayManager
-import net.opendasharchive.openarchive.util.Utility
-import kotlin.getValue
-
-interface ToolbarConfigurable {
-    fun getToolbarTitle(): String
-    fun getToolbarSubtitle(): String? = null
-    fun shouldShowBackButton(): Boolean = true
-}
-
-abstract class BaseFragment : Fragment(), ToolbarConfigurable {
-
-    val snowbirdGroupViewModel: SnowbirdGroupViewModel by androidViewModel()
-    val snowbirdRepoViewModel: SnowbirdRepoViewModel by androidViewModel()
-
-    open fun dismissKeyboard(view: View) {
-        val imm = view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.hideSoftInputFromWindow(view.windowToken, 0)
-    }
-
-    open fun handleError(error: SnowbirdError) {
-        Utility.showMaterialWarning(
-            requireContext(),
-            error.friendlyMessage
-        )
-    }
-
-    open fun handleLoadingStatus(isLoading: Boolean) {
-        if (isLoading) {
-            FullScreenOverlayManager.show(this@BaseFragment)
-        } else {
-            FullScreenOverlayManager.hide()
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        (activity as? SpaceSetupActivity)?.updateToolbarFromFragment(this)
-    }
-}
 
 class SpaceSetupActivity : BaseActivity() {
 
