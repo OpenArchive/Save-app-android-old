@@ -154,12 +154,6 @@ class WebDavFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         mSnackbar = binding.root.makeSnackBar(getString(R.string.login_activity_logging_message))
-
-        if (BuildConfig.DEBUG) {
-            binding.server.setText("https://nx27277.your-storageshare.de/")
-            binding.username.setText("Upul")
-            binding.password.setText("J7wc(ka_4#9!13h&")
-        }
     }
 
     private fun fixSpaceUrl(url: CharSequence?): Uri? {
