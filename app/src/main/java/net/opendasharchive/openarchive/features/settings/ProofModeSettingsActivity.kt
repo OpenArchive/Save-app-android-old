@@ -3,6 +3,7 @@ package net.opendasharchive.openarchive.features.settings
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -10,9 +11,8 @@ import android.provider.Settings
 import android.view.MenuItem
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
@@ -45,6 +45,21 @@ class ProofModeSettingsActivity: BaseActivity() {
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.prefs_proof_mode, rootKey)
+
+            val proofModeSwitch = findPreference<SwitchPreferenceCompat>(Prefs.USE_PROOFMODE)
+
+            // Check if permission is granted
+            val hasPermission = ContextCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.READ_PHONE_STATE
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!hasPermission) {
+                proofModeSwitch?.isChecked = false // Uncheck if permission not granted
+                Prefs.putBoolean(Prefs.USE_PROOFMODE, false)
+                Toast.makeText(requireContext(), "Phone permission required", Toast.LENGTH_LONG).show()
+            } else {
+                proofModeSwitch?.isChecked = Prefs.getBoolean(Prefs.USE_PROOFMODE, false)
+            }
 
             findPreference<Preference>("share_proofmode")?.onPreferenceClickListener =
                 Preference.OnPreferenceClickListener {

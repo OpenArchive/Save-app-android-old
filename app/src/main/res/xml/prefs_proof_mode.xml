@@ -2,8 +2,7 @@
 <PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <SwitchPreferenceCompat
-        android:layout="@layout/custom_preference_switch"
+    <net.opendasharchive.openarchive.util.CustomSwitchPreference
         app:layout="@layout/custom_preference_switch"
         app:key="use_proofmode"
         app:defaultValue="false"
