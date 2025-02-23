@@ -100,11 +100,43 @@
         </activity>
 
         <activity
-            android:name=".features.folders.BrowseFoldersActivity"
-            android:exported="false"
-            android:label="@string/browse_existing"
-            android:taskAffinity=""
-            android:theme="@style/SaveAppTheme.NoActionBar" />
+            android:name=".features.main.HomeActivity"
+            android:exported="true"
+            android:theme="@style/SaveAppTheme.NoActionBar"
+            android:screenOrientation="portrait">
+<!--            <intent-filter>-->
+<!--                <action android:name="android.intent.action.MAIN" />-->
+
+<!--                <category android:name="android.intent.category.LAUNCHER" />-->
+<!--            </intent-filter>-->
+
+            <!-- filter for sending text or images; accepts SEND action and audio/photo/video data -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="application/*" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="message/*" />
+                <data android:mimeType="multipart/*" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="video/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="save+dweb" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".upload.UploadManagerActivity"
@@ -129,12 +161,6 @@
 
         <activity
             android:name=".services.gdrive.GDriveActivity"
-            android:theme="@style/SaveAppTheme.NoActionBar" />
-
-        <activity
-            android:name=".features.spaces.SpacesActivity"
-            android:exported="true"
-            android:label="@string/servers"
             android:theme="@style/SaveAppTheme.NoActionBar" />
 
         <activity
@@ -199,11 +225,11 @@
             android:taskAffinity=""
             android:theme="@style/SaveAppTheme.NoActionBar" />
 
-        <activity
-            android:name=".features.folders.CreateNewFolderActivity"
-            android:label="@string/new_folder"
-            android:taskAffinity=""
-            android:theme="@style/SaveAppTheme.NoActionBar" />
+<!--        <activity-->
+<!--            android:name=".features.folders.CreateNewFolderActivity"-->
+<!--            android:label="@string/new_folder"-->
+<!--            android:taskAffinity=""-->
+<!--            android:theme="@style/SaveAppTheme.NoActionBar" />-->
 
         <activity
             android:name=".features.folders.AddFolderActivity"

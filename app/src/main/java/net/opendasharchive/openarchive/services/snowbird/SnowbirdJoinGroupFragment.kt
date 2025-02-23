@@ -19,7 +19,7 @@ import net.opendasharchive.openarchive.util.FullScreenOverlayCreateGroupManager
 import net.opendasharchive.openarchive.util.Utility
 import timber.log.Timber
 
-class SnowbirdJoinGroupFragment private constructor(): BaseFragment() {
+class SnowbirdJoinGroupFragment: BaseFragment() {
 
     private lateinit var viewBinding: FragmentSnowbirdJoinGroupBinding
     private lateinit var uriString: String

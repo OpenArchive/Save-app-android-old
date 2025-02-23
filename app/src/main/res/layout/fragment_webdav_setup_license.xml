@@ -11,7 +11,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="8dp"
+        android:paddingHorizontal="16dp"
         android:paddingTop="@dimen/activity_vertical_margin"
         android:paddingBottom="@dimen/activity_vertical_margin">
 
@@ -28,11 +28,11 @@
                 android:id="@+id/description_text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="20dp"
-                android:gravity="center"
+                android:layout_margin="24dp"
                 android:autoLink="web"
-                android:text="Tell us a little more\nabout your new server"
-
+                android:gravity="center"
+                android:text="Name your server and choose a license"
+                android:textFontWeight="600"
                 android:textSize="18sp" />
 
             <com.google.android.material.textfield.TextInputLayout
@@ -79,12 +79,12 @@
 
                 <Button
                     android:id="@+id/bt_cancel"
-                    android:visibility="invisible"
                     style="?android:attr/buttonBarButtonStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/back"
-                    android:textColor="@color/colorText" />
+                    android:textColor="@color/colorText"
+                    android:visibility="visible" />
 
             </LinearLayout>
 
@@ -99,12 +99,10 @@
 
                 <Button
                     android:id="@+id/bt_next"
-                    style="@style/Widget.Material3.Button"
+                    android:paddingHorizontal="32dp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:backgroundTint="@color/buttonBackground"
-                    android:paddingHorizontal="24dp"
-                    android:paddingVertical="16dp"
                     android:text="@string/action_next" />
             </LinearLayout>
 

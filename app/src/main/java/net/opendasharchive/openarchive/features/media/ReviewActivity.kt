@@ -17,6 +17,8 @@ import net.opendasharchive.openarchive.databinding.ActivityReviewBinding
 import net.opendasharchive.openarchive.db.Media
 import net.opendasharchive.openarchive.db.MediaViewHolder
 import net.opendasharchive.openarchive.features.core.BaseActivity
+import net.opendasharchive.openarchive.features.core.UiText
+import net.opendasharchive.openarchive.features.core.dialog.showDialog
 import net.opendasharchive.openarchive.fragments.VideoRequestHandler
 import net.opendasharchive.openarchive.util.AlertHelper
 import net.opendasharchive.openarchive.util.Prefs
@@ -286,11 +288,10 @@ class ReviewActivity : BaseActivity(), View.OnClickListener {
     private fun showFirstTimeFlag() {
         if (Prefs.flagHintShown) return
 
-        AlertHelper.show(
-            context = this,
-            message = R.string.popup_flag_desc,
-            title = R.string.popup_flag_title
-        )
+        dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+            title = UiText.StringResource(R.string.popup_flag_title)
+            message = UiText.StringResource(R.string.popup_flag_desc)
+        }
 
         Prefs.flagHintShown = true
     }

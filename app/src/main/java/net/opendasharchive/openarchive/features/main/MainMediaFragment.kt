@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
@@ -22,12 +21,11 @@ import net.opendasharchive.openarchive.databinding.FragmentMainMediaBinding
 import net.opendasharchive.openarchive.databinding.ViewSectionBinding
 import net.opendasharchive.openarchive.db.Collection
 import net.opendasharchive.openarchive.db.Media
-import net.opendasharchive.openarchive.db.MediaAdapter
-import net.opendasharchive.openarchive.db.MediaViewHolder
 import net.opendasharchive.openarchive.db.Space
+import net.opendasharchive.openarchive.features.main.adapters.MainMediaAdapter
 import net.opendasharchive.openarchive.upload.BroadcastManager
-import net.opendasharchive.openarchive.util.AlertHelper
 import net.opendasharchive.openarchive.util.extensions.toggle
+import org.koin.androidx.viewmodel.ext.android.activityViewModel
 import kotlin.collections.set
 
 class MainMediaFragment : Fragment() {
@@ -47,10 +45,15 @@ class MainMediaFragment : Fragment() {
         }
     }
 
-    private var mAdapters = HashMap<Long, MediaAdapter>()
+    private val viewModel by activityViewModel<MainViewModel>()
+
+    private var mAdapters = HashMap<Long, MainMediaAdapter>()
     private var mSection = HashMap<Long, SectionViewHolder>()
     private var mProjectId = -1L
     private var mCollections = mutableMapOf<Long, Collection>()
+
+    private var selectedMediaIds = mutableSetOf<Long>()
+    private var isSelecting = false
 
     private lateinit var binding: FragmentMainMediaBinding
 
@@ -80,11 +83,6 @@ class MainMediaFragment : Fragment() {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setHasOptionsMenu(true)
-    }
-
     override fun onStart() {
         super.onStart()
         BroadcastManager.register(requireContext(), mMessageReceiver)
@@ -95,23 +93,9 @@ class MainMediaFragment : Fragment() {
         BroadcastManager.unregister(requireContext(), mMessageReceiver)
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.menu_delete -> {
-                AlertHelper.show(
-                    requireContext(), R.string.confirm_remove_media, null, buttons = listOf(
-                        AlertHelper.positiveButton(R.string.remove) { _, _ ->
-                            deleteSelected()
-                        },
-                        AlertHelper.negativeButton()
-                    )
-                )
-                true
-            }
-
-            else -> super.onOptionsItemSelected(item)
-        }
+    override fun onPause() {
+        cancelSelection()
+        super.onPause()
     }
 
     override fun onCreateView(
@@ -128,13 +112,13 @@ class MainMediaFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
+        viewModel.log("MainMediaFragment onCreateView called for project Id $mProjectId")
         if (mProjectId == -1L) {
             val space = Space.current
             val text: String = if (space != null) {
                 val projects = space.projects
                 if (projects.isNotEmpty()) {
-                     getString(R.string.tap_to_add)
+                    getString(R.string.tap_to_add)
                 } else {
                     "Tap the button below to add media folder."
                 }
@@ -151,7 +135,6 @@ class MainMediaFragment : Fragment() {
     fun updateProjectItem(collectionId: Long, mediaId: Long, progress: Int, isUploaded: Boolean) {
         AppLogger.i("Current progress for $collectionId: ", progress)
         mAdapters[collectionId]?.apply {
-
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
                 updateItem(mediaId, progress, isUploaded)
                 if (progress == -1) {
@@ -209,6 +192,13 @@ class MainMediaFragment : Fragment() {
         binding.addMediaHint.toggle(mCollections.isEmpty())
     }
 
+    fun cancelSelection() {
+        isSelecting = false
+        selectedMediaIds.clear()
+        mAdapters.values.forEach { it.clearSelections() }
+        updateSelectionCount()
+    }
+
     fun deleteSelected() {
         val toDelete = ArrayList<Long>()
 
@@ -229,26 +219,36 @@ class MainMediaFragment : Fragment() {
 
     private fun createMediaList(collection: Collection, media: List<Media>): View {
         val holder = SectionViewHolder(ViewSectionBinding.inflate(layoutInflater))
-
         holder.recyclerView.setHasFixedSize(true)
         holder.recyclerView.layoutManager = GridLayoutManager(activity, COLUMN_COUNT)
 
         holder.setHeader(collection, media)
 
-        val mediaAdapter = MediaAdapter(
-            requireActivity(),
-            { MediaViewHolder.Box(it) },
-            media,
-            holder.recyclerView
-        ) {
-            (activity as? MainActivity)?.updateAfterDelete(mAdapters.values.firstOrNull { it.selecting } == null)
-        }
+        val mediaAdapter = MainMediaAdapter(
+            activity = requireActivity(),
+            data = media,
+            recyclerView = holder.recyclerView,
+            checkSelecting = { updateSelectionState() },
+        )
 
         holder.recyclerView.adapter = mediaAdapter
         mAdapters[collection.id] = mediaAdapter
         mSection[collection.id] = holder
 
         return holder.root
+    }
+
+    //update selection UI by summing selected counts from all adapters.
+    fun updateSelectionState() {
+        val isSelecting = mAdapters.values.any { it.selecting }
+        (activity as? MainActivity)?.setSelectionMode(isSelecting)
+        val totalSelected = mAdapters.values.sumOf { it.getSelectedCount() }
+        (activity as? MainActivity)?.updateSelectedCount(totalSelected)
+    }
+
+
+    private fun updateSelectionCount() {
+        (activity as? MainActivity)?.updateSelectedCount(selectedMediaIds.size)
     }
 
     private fun deleteCollections(collectionIds: List<Long>, cleanup: Boolean) {

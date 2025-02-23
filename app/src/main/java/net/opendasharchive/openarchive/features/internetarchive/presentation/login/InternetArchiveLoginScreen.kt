@@ -28,6 +28,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -276,7 +277,7 @@ fun CustomTextField(
     imeAction: ImeAction = ImeAction.Next,
 ) {
 
-    TextField(
+    OutlinedTextField(
         modifier = modifier.fillMaxWidth(),
         value = value,
         enabled = !isLoading,
@@ -302,8 +303,10 @@ fun CustomTextField(
         ),
         isError = isError,
         colors = TextFieldDefaults.colors(
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
+            focusedContainerColor = MaterialTheme.colorScheme.background,
+            unfocusedContainerColor = MaterialTheme.colorScheme.background
+            //focusedIndicatorColor = Color.Transparent,
+            //unfocusedIndicatorColor = Color.Transparent,
         ),
     )
 }
@@ -325,7 +328,7 @@ fun CustomSecureField(
         mutableStateOf(false)
     }
 
-    TextField(
+    OutlinedTextField(
         modifier = modifier.fillMaxWidth(),
         value = value,
         enabled = !isLoading,
@@ -350,8 +353,10 @@ fun CustomSecureField(
         visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
         isError = isError,
         colors = TextFieldDefaults.colors(
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
+            focusedContainerColor = MaterialTheme.colorScheme.background,
+            unfocusedContainerColor = MaterialTheme.colorScheme.background
+            //focusedIndicatorColor = Color.Transparent,
+            //unfocusedIndicatorColor = Color.Transparent,
         ),
         trailingIcon = {
             IconButton(

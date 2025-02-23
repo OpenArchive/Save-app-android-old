@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.features.core.UiImage
 import net.opendasharchive.openarchive.features.core.UiText
+import net.opendasharchive.openarchive.features.core.asUiText
 
 // --------------------------------------------------------------------
 // 1. Dialog Types
@@ -34,16 +35,17 @@ data class DialogConfig(
     val type: DialogType,
     val title: UiText,
     val message: UiText,
-    val icon: UiImage?,
-    val iconColor: Color?,
+    val icon: UiImage? = null,
+    val iconColor: Color? = null,
     val positiveButton: ButtonData,
     val neutralButton: ButtonData? = null,
     val destructiveButton: ButtonData? = null,
     val showCheckbox: Boolean = false,
     val checkboxText: UiText? = null,
     val onCheckboxChanged: (Boolean) -> Unit = {},
-    val backgroundColor: Color,
-    val cornerRadius: Dp
+    val backgroundColor: Color? = null,
+    val cornerRadius: Dp? = null,
+    val onDismissAction: (() -> Unit)? = null,
 )
 
 // --------------------------------------------------------------------
@@ -93,6 +95,9 @@ class DialogBuilder {
     var checkboxText: UiText? = null
     var onCheckboxChanged: (Boolean) -> Unit = {}
 
+    private var _onDismissAction: (() -> Unit)? = null
+
+    // Button DSL functions – simple and concise
     fun positiveButton(block: ButtonBuilder.() -> Unit) {
         _positiveButton = ButtonBuilder().apply(block)
             .build(defaultText = defaultPositiveTextFor(type))
@@ -167,7 +172,8 @@ class DialogBuilder {
             checkboxText = checkboxText,
             onCheckboxChanged = onCheckboxChanged,
             backgroundColor = finalBackgroundColor,
-            cornerRadius = finalCornerRadius
+            cornerRadius = finalCornerRadius,
+            onDismissAction = _onDismissAction
         )
     }
 
@@ -236,7 +242,7 @@ fun DialogStateManager.showDialog(block: DialogBuilder.() -> Unit) {
 }
 
 // --- View extension: pass a Context so that resource colors are used.
-fun DialogStateManager.showDialog(resourceProvider: ResourceProvider, block: DialogBuilder.() -> Unit) {
+fun DialogStateManager.showDialog(resourceProvider: ResourceProvider = this.requireResourceProvider(), block: DialogBuilder.() -> Unit) {
     val config = DialogBuilder().apply(block).build(resourceProvider)
     showDialog(config)
 }
@@ -328,6 +334,33 @@ fun DialogStateManager.showInfoDialog(
         positiveButton {
             text = UiText.StringResource(R.string.lbl_got_it)
             action = onDone
+        }
+    }
+}
+
+// View helper for an info/hint dialog.
+fun DialogStateManager.showWarningDialog(
+    title: UiText?,
+    message: UiText,
+    icon: UiImage? = null,
+    positiveButtonText: UiText? = null,
+    onDone: () -> Unit = {},
+    onCancel: () -> Unit = {}
+) {
+    val resourceProvider = this.requireResourceProvider()
+
+    showDialog(resourceProvider) {
+        type = DialogType.Warning
+        this.title = title
+        this.icon = icon
+        this.message = message
+        positiveButton {
+            text = positiveButtonText ?: UiText.StringResource(R.string.lbl_got_it)
+            action = onDone
+        }
+        destructiveButton {
+            text = UiText.StringResource(R.string.lbl_Cancel)
+            action = onCancel
         }
     }
 }

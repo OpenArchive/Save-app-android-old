@@ -8,6 +8,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import net.opendasharchive.openarchive.core.presentation.theme.SaveAppTheme
 import net.opendasharchive.openarchive.features.core.BaseActivity
+import net.opendasharchive.openarchive.features.internetarchive.presentation.login.ComposeAppBar
 import net.opendasharchive.openarchive.features.settings.passcode.components.DefaultScaffold
 
 class PasscodeSetupActivity : BaseActivity() {
@@ -31,7 +32,16 @@ class PasscodeSetupActivity : BaseActivity() {
 
         setContent {
             SaveAppTheme {
-                DefaultScaffold {
+                DefaultScaffold(
+                    topAppBar = {
+                        ComposeAppBar(
+                            title = "Lock app with passcode",
+                            onNavigationAction = {
+                                 onBackPressedCallback.handleOnBackPressed()
+                            }
+                        )
+                    }
+                ) {
                     PasscodeSetupScreen(
                         onPasscodeSet = {
                             // Passcode successfully set

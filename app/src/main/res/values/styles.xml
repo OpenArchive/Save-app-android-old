@@ -2,17 +2,9 @@
 
     <!-- themes -->
     <style name="Theme.SaveApp.Starting" parent="Theme.SplashScreen">
-
         <item name="windowSplashScreenBackground">@color/colorBackground</item>
-
-        <!-- Use windowSplashScreenAnimatedIcon to add a drawable or an animated
-             drawable. One of these is required. -->
         <item name="windowSplashScreenAnimatedIcon">@drawable/avd_splash_animator</item>
-        <!-- Required for animated icons. -->
         <item name="windowSplashScreenAnimationDuration">1000</item>
-
-        <!-- Set the theme of the Activity that directly follows your splash
-        screen. This is required. -->
         <item name="postSplashScreenTheme">@style/SaveAppTheme.NoActionBar</item>
     </style>
 
@@ -27,8 +19,9 @@
 
         <item name="android:textViewStyle">@style/OATextViewStyle</item>
 
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:statusBarColor">@color/colorPrimary</item>
-        <item name="android:windowLightStatusBar">@bool/dayMode</item>
+        <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">@bool/dayMode</item>
         <item name="navigationViewStyle">@style/NavigationViewStyle</item>
         <item name="dialogTheme">@style/AppDialogTheme</item>
@@ -57,7 +50,7 @@
         <item name="android:actionMenuTextColor">@color/white</item>
 
         <!--        Input Layout Style-->
-        <item name="textInputStyle">@style/Widget.SaveApp.TextInputLayout</item>
+        <item name="textInputStyle">@style/OATextInputLayoutStyle</item>
 
         <item name="textAppearanceTitleLarge">@style/TextAppearance.App.TitleLarge</item>
         <item name="textAppearanceTitleMedium">@style/TextAppearance.App.TitleMedium</item>
@@ -83,30 +76,27 @@
     </style>
 
     <style name="SaveApp.Preference.SwitchPreference" parent="@style/Preference.SwitchPreferenceCompat.Material">
-<!--        <item name="android:widgetLayout">@layout/custom_preference_widget_switch</item>-->
         <item name="android:textSize">12sp</item>
     </style>
 
 
-    <!--    <style name="MainTheme.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">-->
-    <!--        <item name="colorPrimary">@color/colorPrimary</item>-->
-    <!--        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>-->
-    <!--        <item name="colorOnPrimary">@color/colorOnPrimary</item>-->
-    <!--        <item name="android:colorBackground">@color/colorBackground</item>-->
-    <!--        <item name="android:textColor">@color/colorOnBackground</item>-->
-    <!--        <item name="android:statusBarColor">@color/colorBackground</item>-->
-    <!--        <item name="android:navigationBarColor">@color/colorBottomNavbar</item>-->
-    <!--        <item name="android:windowLightStatusBar" tools:targetApi="m">@bool/dayMode</item>-->
-    <!--        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">@bool/dayMode</item>-->
-    <!--        <item name="navigationViewStyle">@style/NavigationViewStyle</item>-->
-    <!--        <item name="appBarLayoutStyle">@style/AppBarStyle</item>-->
-    <!--        <item name="android:textViewStyle">@style/OATextViewStyle</item>-->
-    <!--    </style>-->
 
     <style name="SaveAppBottomSheetTheme" parent="ThemeOverlay.Material3.DayNight.BottomSheetDialog">
         <item name="shapeAppearanceOverlay">@style/CustomShapeAppearanceBottomSheetDialog</item>
         <item name="buttonStyle">@style/OAButtonStyle</item>
         <item name="materialButtonStyle">@style/OAMaterialButtonStyle</item>
+    </style>
+
+    <style name="SaveAppFullBottomSheetTheme" parent="ThemeOverlay.Material3.DayNight.BottomSheetDialog">
+        <item name="shapeAppearanceOverlay">@style/CustomShapeAppearanceBottomSheetDialog</item>
+        <item name="buttonStyle">@style/OAButtonStyle</item>
+        <item name="materialButtonStyle">@style/OAMaterialButtonStyle</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:layout_gravity">bottom</item>
+        <item name="behavior_peekHeight">0dp</item>
+        <item name="behavior_expandedOffset">0dp</item>
     </style>
 
     <style name="CustomShapeAppearanceBottomSheetDialog" parent="">
@@ -299,12 +289,12 @@
         <item name="cursorColor">@color/c23_teal</item>
     </style>
 
-    <style name="Widget.SaveApp.TextInputLayout" parent="Widget.Material3.TextInputLayout.FilledBox">
+    <style name="Widget.SaveApp.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
         <item name="materialThemeOverlay">@style/ThemeOverlay.App.TextInputLayout</item>
         <item name="shapeAppearance">@style/ShapeAppearance.SaveApp.SmallComponent</item>
         <item name="hintTextColor">?attr/colorOnSurface</item>
 
-        <item name="boxStrokeWidth">0dp</item>
+        <item name="boxStrokeWidth">1dp</item>
         <item name="boxStrokeWidthFocused">0dp</item>
         <item name="boxBackgroundColor">@color/inputBackground</item>
         <item name="boxCornerRadiusTopStart">8dp</item>
@@ -363,5 +353,10 @@
 
     <style name="ThinProgressBar" parent="Widget.MaterialComponents.CircularProgressIndicator">
         <item name="android:thickness">2dp</item>
+    </style>
+
+    <style name="popup_window_animation">
+        <item name="android:windowEnterAnimation">@anim/popup_anim</item>
+        <item name="android:windowExitAnimation">@anim/popdown_anim</item>
     </style>
 </resources>

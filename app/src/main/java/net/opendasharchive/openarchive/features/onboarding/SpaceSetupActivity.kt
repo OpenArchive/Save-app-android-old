@@ -3,6 +3,16 @@ package net.opendasharchive.openarchive.features.onboarding
 import android.content.Intent
 import android.os.Bundle
 import androidx.fragment.app.Fragment
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
+import androidx.navigation.NavGraph
+import androidx.navigation.NavOptions
+import androidx.navigation.Navigator
+import androidx.navigation.findNavController
+import androidx.navigation.fragment.FragmentNavigator
+import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.setupActionBarWithNavController
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.ActivitySpaceSetupBinding
 import net.opendasharchive.openarchive.extensions.onBackButtonPressed
@@ -24,53 +34,74 @@ import net.opendasharchive.openarchive.services.snowbird.SnowbirdShareFragment
 import net.opendasharchive.openarchive.services.webdav.WebDavFragment
 import net.opendasharchive.openarchive.services.webdav.WebDavSetupLicenseFragment
 
+enum class StartDestination {
+    SPACE_TYPE,
+    SPACE_LIST,
+    DWEB_DASHBOARD,
+    ADD_FOLDER
+}
+
 class SpaceSetupActivity : BaseActivity() {
 
     companion object {
         const val FRAGMENT_TAG = "ssa_fragment"
     }
 
-    private lateinit var mBinding: ActivitySpaceSetupBinding
+    private lateinit var binding: ActivitySpaceSetupBinding
+
+    private lateinit var navController: NavController
+    private lateinit var navGraph: NavGraph
+    private lateinit var appBarConfiguration: AppBarConfiguration
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        mBinding = ActivitySpaceSetupBinding.inflate(layoutInflater)
-        setContentView(mBinding.root)
+        binding = ActivitySpaceSetupBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         setupToolbar(
-            title = "Servers",
             showBackButton = true
         )
 
-        initSpaceSetupFragmentBindings()
-        initWebDavFragmentBindings()
-        initWebDavCreativeLicenseBindings()
-        initSpaceSetupSuccessFragmentBindings()
-        initInternetArchiveFragmentBindings()
-        initGDriveFragmentBindings()
-        initRavenBindings()
+
+//        onBackButtonPressed {
+//
+//            if (supportFragmentManager.backStackEntryCount > 1) {
+//                // We still have fragments in the back stack to pop
+//                supportFragmentManager.popBackStack()
+//                true // fully handled here
+//            } else {
+//                // No more fragments left in back stack, let the system finish Activity
+//                false
+//            }
+//        }
 
 
-        onBackButtonPressed {
-            // Return "true" if you fully handle the back press yourself
-            // Return "false" if you want to let the system handle it (i.e., finish the Activity)
+        initSpaceSetupNavigation()
+    }
 
-            if (supportFragmentManager.backStackEntryCount > 1) {
-                // We still have fragments in the back stack to pop
-                supportFragmentManager.popBackStack()
-                true // fully handled here
-            } else {
-                // No more fragments left in back stack, let the system finish Activity
-                false
-            }
+    private fun initSpaceSetupNavigation() {
+        val navHostFragment =
+            supportFragmentManager.findFragmentById(R.id.space_nav_host_fragment) as NavHostFragment
+
+        navController = navHostFragment.navController
+        navGraph = navController.navInflater.inflate(R.navigation.space_setup_navigation)
+
+        val startDestinationString = intent.getStringExtra("start_destination") ?: StartDestination.SPACE_TYPE.name
+        val startDestination = StartDestination.valueOf(startDestinationString)
+        if (startDestination == StartDestination.SPACE_LIST) {
+            navGraph.setStartDestination(R.id.fragment_space_list)
+        } else if (startDestination == StartDestination.ADD_FOLDER) {
+            navGraph.setStartDestination(R.id.fragment_add_folder)
+        }else {
+            navGraph.setStartDestination(R.id.fragment_space_setup)
         }
+        navController.graph = navGraph
 
-        intent.getBooleanExtra("snowbird", false).let {
-            if (it) {
-                navigateToFragment(SnowbirdFragment.newInstance())
-            }
-        }
+        appBarConfiguration = AppBarConfiguration(emptySet())
+
+        setupActionBarWithNavController(navController, appBarConfiguration)
+
     }
 
     fun updateToolbarFromFragment(fragment: Fragment) {
@@ -87,240 +118,7 @@ class SpaceSetupActivity : BaseActivity() {
         }
     }
 
-    private fun initSpaceSetupSuccessFragmentBindings() {
-        supportFragmentManager.setFragmentResultListener(
-            SpaceSetupSuccessFragment.RESP_DONE,
-            this
-        ) { key, bundle ->
-            finishAffinity()
-            startActivity(Intent(this, MainActivity::class.java))
-        }
-    }
-
-    private fun initSpaceSetupFragmentBindings() {
-        supportFragmentManager.setFragmentResultListener(
-            SpaceSetupFragment.RESULT_REQUEST_KEY,
-            this
-        ) { _, bundle ->
-            when (bundle.getString(SpaceSetupFragment.RESULT_BUNDLE_KEY)) {
-                SpaceSetupFragment.RESULT_VAL_INTERNET_ARCHIVE -> {
-                    navigateToFragment(InternetArchiveFragment.newInstance())
-                }
-
-                SpaceSetupFragment.RESULT_VAL_WEBDAV -> {
-                    navigateToFragment(WebDavFragment.newInstance())
-                }
-
-                SpaceSetupFragment.RESULT_VAL_GDRIVE -> {
-                    navigateToFragment(GDriveFragment())
-                }
-
-                SpaceSetupFragment.RESULT_VAL_RAVEN -> {
-                    navigateToFragment(SnowbirdFragment.newInstance())
-                }
-            }
-        }
-    }
-
-    /**
-     * Init NextCloud credentials
-     *
-     */
-    private fun initWebDavFragmentBindings() {
-        supportFragmentManager.setFragmentResultListener(
-            WebDavFragment.RESP_SAVED,
-            this
-        ) { key, bundle ->
-            val spaceId = bundle.getLong(WebDavFragment.ARG_SPACE_ID)
-            val fragment =
-                WebDavSetupLicenseFragment.newInstance(spaceId = spaceId, isEditing = false)
-            navigateToFragment(fragment)
-        }
-
-
-        supportFragmentManager.setFragmentResultListener(
-            WebDavFragment.RESP_CANCEL,
-            this
-        ) { key, bundle ->
-            navigateToFragment(SpaceSetupFragment())
-        }
-    }
-
-    /**
-     * Init select Creative Commons Licensing
-     *
-     */
-    private fun initWebDavCreativeLicenseBindings() {
-        supportFragmentManager.setFragmentResultListener(
-            WebDavSetupLicenseFragment.RESP_SAVED,
-            this
-        ) { key, bundle ->
-            val message = getString(R.string.you_have_successfully_connected_to_a_private_server)
-            val fragment = SpaceSetupSuccessFragment.newInstance(message)
-            navigateToFragment(fragment)
-        }
-
-        supportFragmentManager.setFragmentResultListener(
-            WebDavSetupLicenseFragment.RESP_CANCEL,
-            this
-        ) { key, bundle ->
-            navigateToFragment(SpaceSetupFragment())
-        }
-    }
-
-    private fun initInternetArchiveFragmentBindings() {
-        supportFragmentManager.setFragmentResultListener(
-            InternetArchiveFragment.RESP_SAVED,
-            this
-        ) { key, bundle ->
-            val fragment =
-                SpaceSetupSuccessFragment.newInstance(getString(R.string.you_have_successfully_connected_to_the_internet_archive))
-            navigateToFragment(fragment)
-        }
-
-        supportFragmentManager.setFragmentResultListener(
-            InternetArchiveFragment.RESP_CANCEL,
-            this
-        ) { key, bundle ->
-            navigateToFragment(SpaceSetupFragment())
-        }
-    }
-
-    private fun initGDriveFragmentBindings() {
-        supportFragmentManager.setFragmentResultListener(
-            GDriveFragment.RESP_CANCEL,
-            this
-        ) { key, bundle ->
-
-            navigateToFragment(SpaceSetupFragment())
-        }
-
-        supportFragmentManager.setFragmentResultListener(
-            GDriveFragment.RESP_AUTHENTICATED,
-            this
-        ) { key, bundle ->
-            val fragment =
-                SpaceSetupSuccessFragment.newInstance(getString(R.string.you_have_successfully_connected_to_gdrive))
-            navigateToFragment(fragment)
-        }
-    }
-
-    private fun initRavenBindings() {
-
-        initSnowbirdFragmentBindings()
-
-        initSnowbirdGroupListFragmentBindings()
-
-        initSnowbirdCreateGroupFragmentBindings()
-
-        initSnowbirdRepoListFragmentBindings()
-
-    }
-
-    private fun initSnowbirdFragmentBindings() {
-        supportFragmentManager.setFragmentResultListener(
-            SnowbirdFragment.RESULT_REQUEST_KEY,
-            this
-        ) { key, bundle ->
-            when (bundle.getString(SnowbirdFragment.RESULT_BUNDLE_KEY)) {
-
-                SnowbirdFragment.RESULT_VAL_RAVEN_MY_GROUPS -> {
-                    navigateToFragment(SnowbirdGroupListFragment.newInstance())
-                }
-
-                SnowbirdFragment.RESULT_VAL_RAVEN_CREATE_GROUP -> {
-                    val fragment = SnowbirdCreateGroupFragment.newInstance()
-                    navigateToFragment(fragment)
-                }
-
-                SnowbirdFragment.RESULT_VAL_RAVEN_JOIN_GROUPS -> {
-                    val uriString = bundle.getString(SnowbirdFragment.RESULT_VAL_RAVEN_JOIN_GROUPS_ARG) ?: ""
-                    navigateToFragment(SnowbirdJoinGroupFragment.newInstance(uriString))
-                }
-            }
-        }
-    }
-
-    private fun initSnowbirdGroupListFragmentBindings() {
-        supportFragmentManager.setFragmentResultListener(
-            SnowbirdGroupListFragment.RESULT_REQUEST_KEY,
-            this
-        ) { key, bundle ->
-
-            when (bundle.getString(SnowbirdGroupListFragment.RESULT_BUNDLE_NAVIGATION_KEY)) {
-                SnowbirdGroupListFragment.RESULT_VAL_RAVEN_CREATE_GROUP_SCREEN -> {
-                    val fragment = SnowbirdCreateGroupFragment.newInstance()
-                    navigateToFragment(fragment)
-                }
-                SnowbirdGroupListFragment.RESULT_VAL_RAVEN_REPO_LIST_SCREEN -> {
-                    val groupKey = bundle.getString(SnowbirdGroupListFragment.RESULT_BUNDLE_GROUP_KEY) ?: ""
-                    val fragment = SnowbirdRepoListFragment.newInstance(groupKey)
-                    navigateToFragment(fragment)
-                }
-                SnowbirdGroupListFragment.RESULT_VAL_RAVEN_SHARE_SCREEN -> {
-                    val groupKey = bundle.getString(SnowbirdGroupListFragment.RESULT_BUNDLE_GROUP_KEY) ?: ""
-                    val fragment = SnowbirdShareFragment.newInstance(groupKey)
-                    navigateToFragment(fragment)
-                }
-            }
-        }
-    }
-
-    private fun initSnowbirdCreateGroupFragmentBindings() {
-        supportFragmentManager.setFragmentResultListener(
-            SnowbirdCreateGroupFragment.RESULT_REQUEST_KEY,
-            this
-        ) { key, bundle ->
-            when(bundle.getString(SnowbirdCreateGroupFragment.RESULT_NAVIGATION_KEY)) {
-                SnowbirdCreateGroupFragment.RESULT_NAVIGATION_VAL_SHARE_SCREEN -> {
-                    val groupKey =
-                        bundle.getString(SnowbirdCreateGroupFragment.RESULT_BUNDLE_GROUP_KEY) ?: ""
-                    val fragment = SnowbirdShareFragment.newInstance(groupKey)
-                    navigateToFragment(fragment)
-                }
-            }
-        }
-    }
-
-    private fun initSnowbirdRepoListFragmentBindings() {
-        supportFragmentManager.setFragmentResultListener(
-            SnowbirdRepoListFragment.RESULT_REQUEST_KEY,
-            this
-        ) { key, bundle ->
-            val groupKey = bundle.getString(SnowbirdRepoListFragment.RESULT_VAL_RAVEN_GROUP_KEY) ?: ""
-            val repoKey = bundle.getString(SnowbirdRepoListFragment.RESULT_VAL_RAVEN_REPO_KEY) ?: ""
-            val fragment = SnowbirdFileListFragment.newInstance(
-                groupKey = groupKey,
-                repoKey = repoKey
-            )
-            navigateToFragment(fragment)
-        }
-    }
-
-
-//    @Deprecated("Deprecated in Java")
-//    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-//        super.onActivityResult(requestCode, resultCode, data)
-//        supportFragmentManager.findFragmentByTag(FRAGMENT_TAG)?.let {
-//            onActivityResult(requestCode, resultCode, data)
-//        }
-//    }
-
-    private fun navigateToFragment(
-        fragment: BaseFragment,
-        addToBackstack: Boolean = true
-    ) {
-        supportFragmentManager
-            .beginTransaction()
-            .setCustomAnimations(
-                R.anim.slide_in_right,
-                R.anim.slide_out_left,
-                R.anim.slide_in_left,
-                R.anim.slide_out_right
-            )
-            .replace(mBinding.spaceSetupFragment.id, fragment, FRAGMENT_TAG)
-            .apply {
-                if (addToBackstack) addToBackStack(null)
-            }.commit()
+    override fun onSupportNavigateUp(): Boolean {
+        return findNavController(R.id.space_nav_host_fragment).navigateUp() || super.onSupportNavigateUp()
     }
 }

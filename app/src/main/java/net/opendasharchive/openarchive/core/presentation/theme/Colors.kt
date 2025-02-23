@@ -47,18 +47,18 @@ data class ColorTheme(
 internal fun lightColorScheme() = ColorTheme(
     material = lightColorScheme(
 
-        primary = c23_teal,
+        primary = colorResource(R.color.colorPrimary),
         onPrimary = Color.Black,
-        primaryContainer = c23_teal,
-        onPrimaryContainer = Color.Black,
+        primaryContainer = colorResource(R.color.colorPrimaryContainer),
+        onPrimaryContainer = colorResource(R.color.colorOnPrimaryContainer),
 
-        secondary = c23_teal,
-        onSecondary = Color.Black,
-        secondaryContainer = c23_teal_90,
-        onSecondaryContainer = Color.Black,
+        secondary = colorResource(R.color.colorSecondary),
+        onSecondary = colorResource(R.color.colorOnSecondary),
+        secondaryContainer = colorResource(R.color.colorSecondaryContainer),
+        onSecondaryContainer = colorResource(R.color.colorOnSecondaryContainer),
 
-        tertiary = c23_powder_blue,
-        onTertiary = Color.Black,
+        tertiary = colorResource(R.color.colorTertiary),
+        onTertiary = colorResource(R.color.colorSecondary),
         tertiaryContainer = c23_powder_blue,
         onTertiaryContainer = Color.Black,
 
@@ -70,8 +70,8 @@ internal fun lightColorScheme() = ColorTheme(
         background = colorResource(R.color.colorBackground),
         onBackground = colorResource(R.color.colorOnBackground),
 
-        surface = c23_light_grey,
-        onSurface = Color.Black,
+        surface = Color.White,
+        onSurface = colorResource(R.color.colorOnSurface),
         surfaceVariant = c23_grey,
         onSurfaceVariant = c23_darker_grey,
 
@@ -92,18 +92,19 @@ internal fun lightColorScheme() = ColorTheme(
 @Composable
 internal fun darkColorScheme() = ColorTheme(
     material = darkColorScheme(
-        primary = darkPrimary,
+
+        primary = colorResource(R.color.colorPrimary),
         onPrimary = Color.White,
-        primaryContainer = c23_teal,
-        onPrimaryContainer = Color.White,
+        primaryContainer = colorResource(R.color.colorPrimaryContainer),
+        onPrimaryContainer = colorResource(R.color.colorOnPrimaryContainer),
 
-        secondary = c23_teal,
-        onSecondary = Color.Black,
-        secondaryContainer = c23_teal_20,
-        onSecondaryContainer = Color.White,
+        secondary = colorResource(R.color.colorSecondary),
+        onSecondary = colorResource(R.color.colorOnSecondary),
+        secondaryContainer = colorResource(R.color.colorSecondaryContainer),
+        onSecondaryContainer = colorResource(R.color.colorOnSecondaryContainer),
 
-        tertiary = c23_powder_blue,
-        onTertiary = Color.Black,
+        tertiary = colorResource(R.color.colorTertiary),
+        onTertiary = colorResource(R.color.colorSecondary),
         tertiaryContainer = c23_powder_blue,
         onTertiaryContainer = Color.Black,
 

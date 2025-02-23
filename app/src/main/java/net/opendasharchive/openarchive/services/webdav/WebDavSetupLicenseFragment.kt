@@ -8,11 +8,12 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
 import androidx.fragment.app.setFragmentResult
+import androidx.navigation.fragment.findNavController
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.FragmentWebdavSetupLicenseBinding
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.features.core.BaseFragment
-import net.opendasharchive.openarchive.features.settings.CcSelector
+import net.opendasharchive.openarchive.features.settings.CreativeCommonsLicenseManager
 import kotlin.properties.Delegates
 
 class WebDavSetupLicenseFragment: BaseFragment() {
@@ -43,14 +44,23 @@ class WebDavSetupLicenseFragment: BaseFragment() {
 
 
         binding.btNext.setOnClickListener {
-            setFragmentResult(RESP_SAVED, bundleOf())
+            if (isJetpackNavigation) {
+                val action = WebDavSetupLicenseFragmentDirections.actionFragmentWebDavSetupLicenseToFragmentSpaceSetupSuccess(message = getString(R.string.you_have_successfully_connected_to_a_private_server))
+                findNavController().navigate(action)
+            } else {
+                setFragmentResult(RESP_SAVED, bundleOf())
+            }
         }
 
         binding.btCancel.setOnClickListener {
-            setFragmentResult(RESP_CANCEL, bundleOf())
+            if (isJetpackNavigation) {
+                findNavController().popBackStack()
+            } else {
+                setFragmentResult(RESP_CANCEL, bundleOf())
+            }
         }
 
-        binding.cc.tvCc.setText(R.string.set_creative_commons_license_for_all_folders_on_this_server)
+        binding.cc.tvCcLabel.setText(R.string.set_creative_commons_license_for_all_folders_on_this_server)
 
         return binding.root
     }
@@ -82,8 +92,8 @@ class WebDavSetupLicenseFragment: BaseFragment() {
             }
         })
 
-        CcSelector.init(binding.cc, Space.current?.license) {
-            val space = Space.current ?: return@init
+        CreativeCommonsLicenseManager.initialize(binding.cc, Space.current?.license) {
+            val space = Space.current ?: return@initialize
 
             space.license = it
             space.save()
@@ -97,7 +107,7 @@ class WebDavSetupLicenseFragment: BaseFragment() {
         const val RESP_CANCEL = "webdav_setup_license_fragment_resp_cancel"
 
         const val ARG_SPACE_ID = "space_id"
-        const val ARG_IS_EDITING = "isEditing"
+        const val ARG_IS_EDITING = "is_editing"
 
         @JvmStatic
         fun newInstance(spaceId: Long, isEditing: Boolean) = WebDavSetupLicenseFragment().apply {

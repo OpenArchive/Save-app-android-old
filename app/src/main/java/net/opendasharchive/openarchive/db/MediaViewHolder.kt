@@ -83,55 +83,6 @@ abstract class MediaViewHolder(protected val binding: ViewBinding) :
             get() = null
     }
 
-    class BigRow(parent: ViewGroup) : MediaViewHolder(
-        RvMediaRowBigBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-    ) {
-        override val image: ImageView
-            get() = (binding as RvMediaRowBigBinding).image
-
-        override val waveform: SimpleWaveformView
-            get() = (binding as RvMediaRowBigBinding).waveform
-
-        override val videoIndicator: ImageView
-            get() = (binding as RvMediaRowBigBinding).videoIndicator
-
-        override val overlayContainer: View?
-            get() = null
-
-        override val progress: CircularProgressIndicator?
-            get() = null
-
-        override val progressText: TextView?
-            get() = null
-
-        override val error: ImageView?
-            get() = null
-
-        override val title: TextView
-            get() = (binding as RvMediaRowBigBinding).title
-
-        override val fileInfo: TextView
-            get() = (binding as RvMediaRowBigBinding).fileInfo
-
-        override val locationIndicator: ImageView
-            get() = (binding as RvMediaRowBigBinding).locationIndicator
-
-        override val tagsIndicator: ImageView
-            get() = (binding as RvMediaRowBigBinding).tagsIndicator
-
-        override val descIndicator: ImageView
-            get() = (binding as RvMediaRowBigBinding).descIndicator
-
-        override val flagIndicator: ImageView
-            get() = (binding as RvMediaRowBigBinding).flagIndicator
-
-        override val selectedIndicator: View?
-            get() = null
-
-        override val handle: ImageView?
-            get() = null
-    }
-
     class SmallRow(parent: ViewGroup) : MediaViewHolder(
         RvMediaRowSmallBinding.inflate(LayoutInflater.from(parent.context), parent, false)
     ) {

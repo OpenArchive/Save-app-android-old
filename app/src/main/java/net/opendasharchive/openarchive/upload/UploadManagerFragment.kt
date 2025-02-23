@@ -1,5 +1,6 @@
 package net.opendasharchive.openarchive.upload
 
+import android.app.Dialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -10,15 +11,18 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.FragmentUploadManagerBinding
 import net.opendasharchive.openarchive.db.Media
 import net.opendasharchive.openarchive.db.MediaAdapter
 import net.opendasharchive.openarchive.db.MediaViewHolder
 
-open class UploadManagerFragment : Fragment() {
+open class UploadManagerFragment : BottomSheetDialogFragment() {
 
     companion object {
+        const val TAG = "ModalBottomSheet-UploadManagerFragment"
         private val STATUSES = listOf(Media.Status.Uploading, Media.Status.Queued, Media.Status.Error)
     }
 
@@ -27,6 +31,10 @@ open class UploadManagerFragment : Fragment() {
     private lateinit var mBinding: FragmentUploadManagerBinding
 
     private lateinit var mItemTouchHelper: ItemTouchHelper
+
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        return BottomSheetDialog(requireContext(), R.style.SaveAppFullBottomSheetTheme)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,

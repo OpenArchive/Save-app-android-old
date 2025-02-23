@@ -62,7 +62,7 @@ class EditFolderActivity : BaseActivity() {
             archiveProject()
         }
 
-        CcSelector.init(mBinding.cc, null) {
+        CreativeCommonsLicenseManager.initialize(mBinding.cc, null) {
             mProject.licenseUrl = it
             mProject.save()
         }
@@ -101,10 +101,10 @@ class EditFolderActivity : BaseActivity() {
         val global = mProject.space?.license != null
 
         if (global) {
-            mBinding.cc.tvCc.setText(R.string.set_the_same_creative_commons_license_for_all_folders_on_this_server)
+            mBinding.cc.tvCcLabel.setText(R.string.set_the_same_creative_commons_license_for_all_folders_on_this_server)
         }
 
-        CcSelector.set(mBinding.cc, mProject.licenseUrl, !mProject.isArchived && !global)
+        CreativeCommonsLicenseManager.initialize(mBinding.cc, mProject.licenseUrl, !mProject.isArchived && !global)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

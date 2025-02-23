@@ -15,24 +15,17 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_gravity="top"
-            android:layout_marginTop="6dp"
             android:gravity="top"
             android:orientation="vertical">
 
         </LinearLayout>
     </ScrollView>
 
-    <!-- RecyclerView -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:visibility="gone"
-        android:id="@+id/media_recycler_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/add_media_hint"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:elevation="1dp">
 
         <TextView
             android:id="@+id/tv_welcome"
@@ -70,7 +63,8 @@
             app:layout_constraintTop_toBottomOf="@id/tv_welcome"
             tools:targetApi="p" />
 
-        <ImageView
+        <LinearLayout
+            android:id="@+id/img_welcome_arrow_layout"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_marginStart="50dp"
@@ -78,13 +72,32 @@
             android:layout_marginEnd="50dp"
             android:layout_marginBottom="40dp"
             android:contentDescription="@string/title_welcome"
+            android:orientation="vertical"
             android:scaleType="fitEnd"
+            android:src="@drawable/welcome_arrow"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tv_welcome_descr"
-            app:srcCompat="@drawable/welcome_arrow"
-            app:tint="@color/c23_medium_grey" />
+            app:tint="@color/c23_medium_grey">
+
+            <ImageView
+                android:id="@+id/img_welcome_arrow"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginStart="50dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginEnd="50dp"
+                android:layout_marginBottom="40dp"
+                android:contentDescription="@string/title_welcome"
+                android:scaleType="fitEnd"
+                android:src="@drawable/welcome_arrow"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_welcome_descr"
+                app:tint="@color/c23_medium_grey" />
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

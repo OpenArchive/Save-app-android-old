@@ -4,6 +4,7 @@
     <!-- legacy color value definitions -->
 
     <color name="red">#ff0000</color>
+    <color name="red_bg">#DC341E</color>
     <color name="green">#00ff00</color>
     <color name="blue">#0000ff</color>
     <color name="black">#000000</color>
@@ -74,7 +75,7 @@
 
     <!-- theme day colors -->
 
-    <color name="colorBackground">#F5F1E7</color>
+    <color name="colorBackground">@color/white</color>
     <color name="colorOnBackground">@color/black</color>
     <color name="colorOnBackgroundTonedDown">@color/c23_grey</color>
     <color name="colorOnBackgroundLowContrast">@color/c23_grey</color>
@@ -97,7 +98,7 @@
     <color name="colorSurface">#F5F1E7</color>
     <color name="colorOnSurface">@color/c23_dark_grey</color>
 
-    <color name="colorTertiary">@color/c23_teal_50</color>
+    <color name="colorTertiary">@color/c23_teal</color>
     <color name="colorText">@color/c23_dark_grey</color>
 
     <color name="colorError">@color/red</color>

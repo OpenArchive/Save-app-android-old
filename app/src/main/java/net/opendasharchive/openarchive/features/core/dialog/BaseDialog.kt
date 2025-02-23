@@ -1,8 +1,8 @@
 package net.opendasharchive.openarchive.features.core.dialog
 
-import androidx.compose.foundation.background
+import android.content.res.Configuration
+import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,7 +27,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,7 +57,7 @@ fun BaseDialog(
     positiveButton: ButtonData,
     neutralButton: ButtonData? = null,
     destructiveButton: ButtonData? = null,
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh
+    backgroundColor: Color = MaterialTheme.colorScheme.surface
 ) {
 
     val (isCheckedState, setCheckedState) = remember { mutableStateOf(false) }
@@ -70,14 +70,18 @@ fun BaseDialog(
             usePlatformDefaultWidth = true
         )
     ) {
-        Box(
-            Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .fillMaxWidth()
-                .background(backgroundColor)
-        ) {
 
-            Card {
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 4.dp
+                ),
+                colors = CardDefaults.cardColors(
+                    containerColor = backgroundColor
+                )
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -165,7 +169,7 @@ fun BaseDialog(
             }
 
 
-        }
+
     }
 }
 
@@ -245,6 +249,7 @@ fun DialogHost(dialogStateManager: DialogStateManager) {
 }
 
 @Preview
+@Preview(uiMode = UI_MODE_NIGHT_YES)
 @Composable
 private fun BaseDialogPreview() {
     DefaultBoxPreview {
@@ -262,6 +267,7 @@ private fun BaseDialogPreview() {
 }
 
 @Preview
+@Preview(uiMode = UI_MODE_NIGHT_YES)
 @Composable
 private fun WarningDialogPreview() {
     DefaultBoxPreview {
@@ -282,6 +288,7 @@ private fun WarningDialogPreview() {
 }
 
 @Preview
+@Preview(uiMode = UI_MODE_NIGHT_YES)
 @Composable
 private fun ErrorDialogPreview() {
     DefaultBoxPreview {

@@ -1,9 +1,12 @@
 package net.opendasharchive.openarchive.features.internetarchive.presentation.details
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.core.presentation.theme.SaveAppTheme
 import net.opendasharchive.openarchive.core.presentation.theme.ThemeColors
@@ -79,7 +83,7 @@ private fun InternetArchiveDetailsContent(
 
         Column {
 
-            InternetArchiveHeader()
+            //InternetArchiveHeader()
 
             Spacer(Modifier.height(ThemeDimensions.spacing.large))
 
@@ -108,22 +112,32 @@ private fun InternetArchiveDetailsContent(
                 onValueChange = {},
                 enabled = false,
             )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                TextButton(
+                    onClick = {
+                        isRemoving = true
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text(
+                        stringResource(id = R.string.remove_from_app),
+                        fontSize = 18.sp
+                    )
+                }
+            }
+
+
         }
 
-        Button(
-            modifier = Modifier
-                .padding(12.dp)
-                .align(Alignment.BottomCenter),
-            onClick = {
-                isRemoving = true
-            },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ThemeColors.material.error,
-                contentColor = Color.White
-            )
-        ) {
-            Text(stringResource(id = R.string.menu_delete))
-        }
+
     }
 
     if (isRemoving) {

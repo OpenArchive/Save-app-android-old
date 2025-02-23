@@ -11,17 +11,26 @@ import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.features.core.BaseActivity
+import net.opendasharchive.openarchive.features.core.UiText
+import net.opendasharchive.openarchive.features.core.dialog.DialogStateManager
+import net.opendasharchive.openarchive.features.core.dialog.DialogType
+import net.opendasharchive.openarchive.features.core.dialog.showDialog
+import net.opendasharchive.openarchive.features.onboarding.SpaceSetupActivity
+import net.opendasharchive.openarchive.features.onboarding.StartDestination
 import net.opendasharchive.openarchive.features.settings.passcode.PasscodeRepository
 import net.opendasharchive.openarchive.features.settings.passcode.passcode_setup.PasscodeSetupActivity
-import net.opendasharchive.openarchive.features.spaces.SpacesActivity
+import net.opendasharchive.openarchive.features.spaces.SpaceListFragment
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.Theme
 import net.opendasharchive.openarchive.util.extensions.getVersionName
 import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 class SettingsFragment : PreferenceFragmentCompat() {
 
     private val passcodeRepository by inject<PasscodeRepository>()
+
+    private val dialogManager: DialogStateManager by activityViewModel()
 
 
     private var passcodePreference: SwitchPreferenceCompat? = null
@@ -71,20 +80,26 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 activityResultLauncher.launch(intent)
             } else {
                 // Show confirmation dialog
-                AlertDialog.Builder(requireContext())
-                    .setTitle("Disable Passcode")
-                    .setMessage("Are you sure you want to disable the passcode?")
-                    .setPositiveButton("Yes") { _, _ ->
-                        passcodeRepository.clearPasscode()
-                        passcodePreference?.isChecked = false
+                dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+                    type = DialogType.Warning
+                    title = UiText.StringResource(R.string.disable_passcode_dialog_title)
+                    message = UiText.StringResource(R.string.disable_passcode_dialog_msg)
+                    positiveButton {
+                        text = UiText.StringResource(R.string.answer_yes)
+                        action = {
+                            passcodeRepository.clearPasscode()
+                            passcodePreference?.isChecked = false
 
-                        // Update the FLAG_SECURE dynamically
-                        (activity as? BaseActivity)?.updateScreenshotPrevention()
+                            // Update the FLAG_SECURE dynamically
+                            (activity as? BaseActivity)?.updateScreenshotPrevention()
+                        }
                     }
-                    .setNegativeButton("No") { _, _ ->
-                        passcodePreference?.isChecked = true
+                    neutralButton {
+                        action = {
+                            passcodePreference?.isChecked = true
+                        }
                     }
-                    .show()
+                }
             }
             // Return false to avoid the preference updating immediately
             false
@@ -101,7 +116,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
 
         getPrefByKey<Preference>(R.string.pref_media_servers)?.setOnPreferenceClickListener {
-            startActivity(Intent(context, SpacesActivity::class.java))
+            val intent = Intent(context, SpaceSetupActivity::class.java)
+            intent.putExtra("start_destination", StartDestination.SPACE_LIST.name)
+            startActivity(intent)
             true
         }
 
@@ -110,15 +127,15 @@ class SettingsFragment : PreferenceFragmentCompat() {
             true
         }
 
-        findPreference<Preference>("proof_mode")?.setOnPreferenceClickListener {
+        getPrefByKey<Preference>(R.string.pref_key_proof_mode)?.setOnPreferenceClickListener {
             startActivity(Intent(context, ProofModeSettingsActivity::class.java))
             true
         }
 
         findPreference<Preference>(Prefs.USE_TOR)?.setOnPreferenceChangeListener { _, newValue ->
-            //Prefs.useTor = (newValue as Boolean)
+            Prefs.useTor = (newValue as Boolean)
             //torViewModel.updateTorServiceState()
-            false
+            true
         }
 
         findPreference<Preference>(Prefs.THEME)?.setOnPreferenceChangeListener { _, newValue ->
