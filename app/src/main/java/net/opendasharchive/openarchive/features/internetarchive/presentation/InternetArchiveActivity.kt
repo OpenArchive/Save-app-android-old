@@ -11,13 +11,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import net.opendasharchive.openarchive.core.presentation.theme.SaveAppTheme
 import net.opendasharchive.openarchive.db.Space
+import net.opendasharchive.openarchive.features.core.dialog.DialogHost
+import net.opendasharchive.openarchive.features.core.dialog.DialogStateManager
 import net.opendasharchive.openarchive.features.internetarchive.presentation.components.IAResult
 import net.opendasharchive.openarchive.features.internetarchive.presentation.components.getSpace
 import net.opendasharchive.openarchive.features.internetarchive.presentation.login.ComposeAppBar
 import net.opendasharchive.openarchive.features.main.MainActivity
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 @Deprecated("use jetpack compose")
 class InternetArchiveActivity : AppCompatActivity() {
+
+    val dialogManager: DialogStateManager by viewModel()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -26,10 +32,13 @@ class InternetArchiveActivity : AppCompatActivity() {
         setContent {
 
             SaveAppTheme {
+
+                DialogHost(dialogManager)
+
                 Scaffold(
                     topBar = {
                         ComposeAppBar(
-                            title = if (isNewSpace) "Add Internet Archive" else "Edit Internet Archive",
+                            title = if (isNewSpace) "Internet Archive" else "Internet Archive",
                             onNavigationAction = { finish(IAResult.Cancelled) }
                         )
                     }

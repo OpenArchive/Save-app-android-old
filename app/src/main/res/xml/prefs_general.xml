@@ -118,12 +118,6 @@
             app:iconSpaceReserved="false"
             app:useSimpleSummaryProvider="true" />
 
-    </PreferenceCategory>
-
-    <PreferenceCategory
-        android:layout="@layout/custom_preference_category"
-        android:title="About">
-
         <Preference
             android:iconSpaceReserved="false"
             android:key="@string/pref_key_about_app"
@@ -160,5 +154,13 @@
             tools:summary="0.7.2.4783" />
 
     </PreferenceCategory>
+
+<!--    <PreferenceCategory-->
+<!--        android:layout="@layout/custom_preference_category"-->
+<!--        android:title="About">-->
+
+
+
+<!--    </PreferenceCategory>-->
 
 </PreferenceScreen>

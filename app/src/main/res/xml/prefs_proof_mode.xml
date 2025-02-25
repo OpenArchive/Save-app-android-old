@@ -3,7 +3,6 @@
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <SwitchPreferenceCompat
-        android:layout="@layout/custom_preference_switch"
         app:layout="@layout/custom_preference_switch"
         app:key="@string/pref_key_use_proof_mode"
         app:allowDividerBelow="false"

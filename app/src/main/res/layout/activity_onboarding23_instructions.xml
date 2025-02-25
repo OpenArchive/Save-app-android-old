@@ -34,9 +34,9 @@
             android:layout_gravity="bottom|end"
             android:layout_margin="24dp"
             android:contentDescription="@string/next"
-            app:backgroundTint="@color/colorPrimaryContainer"
+            app:backgroundTint="@color/colorPrimaryBright"
             app:srcCompat="@drawable/ic_arrow_right"
-            app:tint="@color/colorOnPrimary" />
+            app:tint="@color/colorOnBackground" />
     </FrameLayout>
 
     <LinearLayout

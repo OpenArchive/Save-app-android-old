@@ -38,7 +38,8 @@ enum class StartDestination {
     SPACE_TYPE,
     SPACE_LIST,
     DWEB_DASHBOARD,
-    ADD_FOLDER
+    ADD_FOLDER,
+    ADD_NEW_FOLDER
 }
 
 class SpaceSetupActivity : BaseActivity() {
@@ -87,14 +88,22 @@ class SpaceSetupActivity : BaseActivity() {
         navController = navHostFragment.navController
         navGraph = navController.navInflater.inflate(R.navigation.space_setup_navigation)
 
-        val startDestinationString = intent.getStringExtra("start_destination") ?: StartDestination.SPACE_TYPE.name
+        val startDestinationString =
+            intent.getStringExtra("start_destination") ?: StartDestination.SPACE_TYPE.name
         val startDestination = StartDestination.valueOf(startDestinationString)
-        if (startDestination == StartDestination.SPACE_LIST) {
-            navGraph.setStartDestination(R.id.fragment_space_list)
-        } else if (startDestination == StartDestination.ADD_FOLDER) {
-            navGraph.setStartDestination(R.id.fragment_add_folder)
-        }else {
-            navGraph.setStartDestination(R.id.fragment_space_setup)
+        when (startDestination) {
+            StartDestination.SPACE_LIST -> {
+                navGraph.setStartDestination(R.id.fragment_space_list)
+            }
+            StartDestination.ADD_FOLDER -> {
+                navGraph.setStartDestination(R.id.fragment_add_folder)
+            }
+            StartDestination.ADD_NEW_FOLDER -> {
+                navGraph.setStartDestination(R.id.fragment_create_new_folder)
+            }
+            else -> {
+                navGraph.setStartDestination(R.id.fragment_space_setup)
+            }
         }
         navController.graph = navGraph
 

@@ -37,13 +37,14 @@
                 android:paddingBottom="8dp"
                 android:text="title"
                 android:textAllCaps="true"
-                android:textFontWeight="900"
+                android:textFontWeight="800"
                 android:textSize="28sp"
                 android:textStyle="bold"
                 tools:ignore="HardcodedText" />
 
             <TextView
                 android:id="@+id/summary"
+                android:lineSpacingExtra="3sp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 tools:text="@tools:sample/lorem/random"

@@ -14,10 +14,13 @@ import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.compose.material3.MaterialTheme
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.drawerlayout.widget.DrawerLayout
@@ -37,11 +40,13 @@ import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.extensions.getMeasurments
 import net.opendasharchive.openarchive.features.core.BaseActivity
 import net.opendasharchive.openarchive.features.core.UiImage
+import net.opendasharchive.openarchive.features.core.UiText
 import net.opendasharchive.openarchive.features.core.asUiImage
 import net.opendasharchive.openarchive.features.core.asUiText
 import net.opendasharchive.openarchive.features.core.dialog.ButtonData
 import net.opendasharchive.openarchive.features.core.dialog.DialogConfig
 import net.opendasharchive.openarchive.features.core.dialog.DialogType
+import net.opendasharchive.openarchive.features.core.dialog.showDialog
 import net.opendasharchive.openarchive.features.core.dialog.showInfoDialog
 import net.opendasharchive.openarchive.features.folders.AddFolderActivity
 import net.opendasharchive.openarchive.features.main.adapters.FolderDrawerAdapter
@@ -344,20 +349,32 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
         }
         // Listen for the "done" action to commit a rename.
         binding.contentMain.etFolderName.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
                 val newName = binding.contentMain.etFolderName.text.toString().trim()
                 if (newName.isNotEmpty()) {
                     renameCurrentFolder(newName)
                     setFolderBarMode(FolderBarMode.INFO)
                 } else {
-                    Snackbar.make(binding.root, "Folder name cannot be empty", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(
+                        binding.root,
+                        "Folder name cannot be empty",
+                        Snackbar.LENGTH_SHORT
+                    ).show()
                 }
+                // Hide the keyboard
+                val imm =
+                    binding.contentMain.etFolderName.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(binding.contentMain.etFolderName.windowToken, 0)
+
+                // Remove focus from the EditText
+                binding.contentMain.etFolderName.clearFocus()
+
                 true
             } else false
         }
 
         binding.contentMain.btnRemoveSelected.setOnClickListener {
-            showDeleteConfirmDialog()
+            showDeleteSelectedMediaConfirmDialog()
         }
     }
 
@@ -395,6 +412,16 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
             setFolderBarMode(FolderBarMode.EDIT)
         }
 
+        // Remove folder
+        popupBinding.menuFolderBarRemove.setOnClickListener {
+            popup.dismiss()
+            if (getSelectedProject() != null) {
+                showDeleteFolderConfirmDialog()
+            } else {
+                Snackbar.make(binding.root, "Folder not found", Snackbar.LENGTH_LONG).show()
+            }
+        }
+
         // Adjust popup position if needed
         val x = 200
         val y = 60
@@ -415,7 +442,7 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
         //binding.contentMain.tvSelectedCount.text = if (count > 0) "Selected: $count" else "Select Media"
     }
 
-    private fun showDeleteConfirmDialog() {
+    private fun showDeleteSelectedMediaConfirmDialog() {
         dialogManager.showDialog(
             config = DialogConfig(
                 type = DialogType.Warning,
@@ -431,6 +458,28 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
                 )
             )
         )
+    }
+
+    private fun showDeleteFolderConfirmDialog() {
+        dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+            type = DialogType.Warning
+            title = UiText.StringResource(R.string.remove_from_app)
+            message = UiText.StringResource(R.string.action_remove_project)
+            positiveButton {
+                text = UiText.StringResource(R.string.remove)
+                action = {
+                    getSelectedProject()?.delete()
+                    refreshProjects()
+                    Snackbar.make(binding.root, "Folder removed", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+            neutralButton {
+                text = UiText.StringResource(R.string.lbl_Cancel)
+                action = {
+                    dialogManager.dismissDialog()
+                }
+            }
+        }
     }
 
     private fun getCurrentMediaFragment(): MainMediaFragment? {
@@ -538,8 +587,16 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
                 binding.contentMain.folderSelectionContainer.visibility = View.GONE
                 binding.contentMain.folderEditContainer.visibility = View.VISIBLE
                 // Prepopulate the rename field with the current folder name
-                binding.contentMain.etFolderName.text = getSelectedProject()?.description ?: ""
+                binding.contentMain.etFolderName.setText(getSelectedProject()?.description ?: "")
                 binding.contentMain.etFolderName.requestFocus()
+
+                // Show the keyboard
+                val imm =
+                    binding.contentMain.etFolderName.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInput(
+                    binding.contentMain.etFolderName,
+                    InputMethodManager.SHOW_IMPLICIT
+                )
             }
         }
     }
@@ -559,7 +616,8 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
     }
 
     private fun updateBottomNavbar(position: Int) {
-        binding.contentMain.bottomNavBar.updateSelectedItem(isSettings = position == mPagerAdapter.settingsIndex)
+        val isSettings = position == mPagerAdapter.settingsIndex
+        binding.contentMain.bottomNavBar.updateSelectedItem(isSettings = isSettings)
         updateCurrentFolderVisibility()
     }
 
@@ -629,7 +687,13 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
 
     private fun navigateToAddFolder() {
         val intent = Intent(this, SpaceSetupActivity::class.java)
-        intent.putExtra("start_destination", StartDestination.ADD_FOLDER.name)
+        if (Space.current?.tType == Space.Type.INTERNET_ARCHIVE) {
+            // We cannot browse the Internet Archive. Directly forward to creating a project,
+            // as it doesn't make sense to show a one-option menu.
+            intent.putExtra("start_destination", StartDestination.ADD_NEW_FOLDER.name)
+        } else {
+            intent.putExtra("start_destination", StartDestination.ADD_FOLDER.name)
+        }
         mNewFolderResultLauncher.launch(intent)
 //        mNewFolderResultLauncher.launch(Intent(this, AddFolderActivity::class.java))
     }
@@ -727,6 +791,12 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
         return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
+        val shouldShowSideMenu = Space.current != null
+        menu?.findItem(R.id.menu_folders)?.isVisible = shouldShowSideMenu
+        return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

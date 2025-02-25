@@ -164,6 +164,24 @@ private fun NumberButton(
         label = ""
     )
 
+    // Determine background color based on button type and pressed state
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            isPressed -> when (label) {
+                "delete" -> colorResource(R.color.red_bg).copy(alpha = 0.7f)
+                "submit" -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f)
+                else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+            }
+            else -> when (label) {
+                "delete" -> colorResource(R.color.red_bg).copy(alpha = 0.5f)
+                "submit" -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
+                else -> Color.Transparent
+            }
+        },
+        animationSpec = spring(),
+        label = ""
+    )
+
     Box(
         modifier = Modifier
             .background(color = backgroundColor, shape = CircleShape)

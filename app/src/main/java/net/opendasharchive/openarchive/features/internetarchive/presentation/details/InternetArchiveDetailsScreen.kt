@@ -42,6 +42,10 @@ import net.opendasharchive.openarchive.features.internetarchive.presentation.com
 import net.opendasharchive.openarchive.features.internetarchive.presentation.details.InternetArchiveDetailsViewModel.Action
 import net.opendasharchive.openarchive.features.internetarchive.presentation.login.CustomTextField
 import net.opendasharchive.openarchive.core.presentation.theme.DefaultScaffoldPreview
+import net.opendasharchive.openarchive.features.core.UiText
+import net.opendasharchive.openarchive.features.core.dialog.DialogStateManager
+import net.opendasharchive.openarchive.features.core.dialog.showSuccessDialog
+import net.opendasharchive.openarchive.features.core.dialog.showWarningDialog
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -69,7 +73,8 @@ fun InternetArchiveDetailsScreen(space: Space, onResult: (IAResult) -> Unit) {
 @Composable
 private fun InternetArchiveDetailsContent(
     state: InternetArchiveDetailsState,
-    dispatch: Dispatch<Action>
+    dispatch: Dispatch<Action>,
+    dialogManager: DialogStateManager = koinViewModel()
 ) {
 
     var isRemoving by remember { mutableStateOf(false) }
@@ -121,7 +126,11 @@ private fun InternetArchiveDetailsContent(
             ) {
                 TextButton(
                     onClick = {
-                        isRemoving = true
+                        //isRemoving = true
+                        dialogManager.showWarningDialog(
+                            title = UiText.StringResource(R.string.remove_from_app),
+                            message = UiText.StringResource(R.string.are_you_sure_you_want_to_remove_this_server_from_the_app),
+                        )
                     },
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
@@ -192,8 +201,9 @@ private fun InternetArchiveScreenPreview() {
                 email = "abc@example.com",
                 userName = "@abc_name",
                 screenName = "ABC Name"
-            )
-        ) {}
+            ),
+            dispatch = {}
+        )
     }
 }
 

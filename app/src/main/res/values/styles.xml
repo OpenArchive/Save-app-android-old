@@ -220,7 +220,7 @@
 
     <style name="ShapeAppearanceOverlay.App.FloatingActionButton" parent="ShapeAppearance.MaterialComponents.SmallComponent">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">64dp</item>
+        <item name="cornerSize">8dp</item>
     </style>
 
     <style name="OAMaterialButtonStyle" parent="Widget.Material3.Button">

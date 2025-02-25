@@ -64,7 +64,7 @@ fun PasscodeSetupScreen(
                 PasscodeSetupUiEvent.PasscodeSet -> onPasscodeSet()
                 PasscodeSetupUiEvent.PasscodeDoNotMatch -> {
                     hapticManager.performHapticFeedback(AppHapticFeedbackType.Error)
-                    MessageManager.showMessage("Passcodes do not match. Try again.")
+                    MessageManager.showMessage("Passcodes do not match. Try againss.")
                 }
 
                 PasscodeSetupUiEvent.PasscodeCancelled -> onCancel()

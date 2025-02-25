@@ -47,7 +47,7 @@ class MainMediaViewHolder(val binding: RvMediaBoxBinding) : RecyclerView.ViewHol
 
 
     fun bind(media: Media? = null, isInSelectionMode: Boolean = false, doImageFade: Boolean = true) {
-        AppLogger.i("Binding media item ${media?.id} with status ${media?.sStatus} and progress ${media?.uploadPercentage}")
+
         itemView.tag = media?.id
 
         // Update selection visuals.

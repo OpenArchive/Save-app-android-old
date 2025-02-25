@@ -31,7 +31,7 @@ import kotlin.collections.set
 class MainMediaFragment : Fragment() {
 
     companion object {
-        private const val COLUMN_COUNT = 4
+        private const val COLUMN_COUNT = 3
         private const val ARG_PROJECT_ID = "project_id"
 
         fun newInstance(projectId: Long): MainMediaFragment {

@@ -193,7 +193,7 @@ class WebDavFragment : BaseFragment() {
         if (mSpaceId != ARG_VAL_NEW_SPACE) {
             val menuProvider = object : MenuProvider {
                 override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                    menuInflater.inflate(R.menu.menu_confirm, menu)
+                    //menuInflater.inflate(R.menu.menu_confirm, menu)
                 }
 
                 override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
