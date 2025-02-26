@@ -7,18 +7,19 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
     id("androidx.navigation.safeargs.kotlin")
+    alias(libs.plugins.detekt.plugin)
 }
 android {
 
     compileSdk = 34
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
 
     defaultConfig {
@@ -113,7 +114,7 @@ dependencies {
     val material = "1.12.0"
     val material3 = "1.3.1"
     val lifecycle = "2.8.7"
-    val navigation = "2.8.7"
+    val navigation = "2.8.8"
     val fragment = "1.8.6"
     val koin = "4.1.0-Beta5"
 
@@ -282,10 +283,31 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     testImplementation("androidx.work:work-testing:2.9.1")
+
+    // Dotenv Kotlin
+    implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
+
+    // Detekt
+    detektPlugins(libs.detekt.formatting)
+    detektPlugins(libs.detekt.rules.authors)
+    detektPlugins(libs.detekt.rules.libraries)
+    detektPlugins(libs.detekt.compose)
 }
 
 configurations.all {
     exclude(group = "com.google.guava", module = "listenablefuture")
+}
+
+detekt {
+    config.setFrom(file("$rootDir/config/detekt-config.yml"))
+    baseline = file("$rootDir/config/baseline.xml")
+    source.setFrom(
+        files("$rootDir/app/src")
+    )
+    buildUponDefaultConfig = true
+    allRules = false
+    autoCorrect = false
+    ignoreFailures = true
 }
 
 /**
@@ -294,4 +316,3 @@ password '$bbpassword'
 deviceGroup 'gpdevices'
 mode "FULL_RUN"
 projectName "OASave"}**/
-
