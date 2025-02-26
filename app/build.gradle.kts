@@ -68,10 +68,10 @@ android {
                 localPropsFile.inputStream().use { props.load(it) }
             }
 
-            storeFile = file(props["storeFile"] as? String ?: "")
-            storePassword = props["storePassword"] as? String ?: ""
-            keyAlias = props["keyAlias"] as? String ?: ""
-            keyPassword = props["keyPassword"] as? String ?: ""
+//            storeFile = file(props["storeFile"] as? String ?: "")
+//            storePassword = props["storePassword"] as? String ?: ""
+//            keyAlias = props["keyAlias"] as? String ?: ""
+//            keyPassword = props["keyPassword"] as? String ?: ""
         }
     }
 
