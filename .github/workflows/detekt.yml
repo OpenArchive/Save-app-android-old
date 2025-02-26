@@ -3,7 +3,7 @@ name: Detekt Analysis
 on:
   # Triggers on push to key branches
   push:
-    branches: [ "master", "stable", "next" "feature/major-refactor-ui-changes" ]
+    branches: [ "master", "stable", "next", "feature/major-refactor-ui-changes" ]
   pull_request:
     branches:
       - '**' # Triggers on pull requests to any branch
