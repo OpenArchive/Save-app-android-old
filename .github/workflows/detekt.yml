@@ -48,24 +48,11 @@ jobs:
       run: |
         bundle exec fastlane detekt
 
-      # ✅ Debug Step: Check if SARIF Report Exists
-    - name: Debug - Check Detekt Report Location
-      run: |
-        echo "🔍 Checking SARIF report in app/build/reports/detekt/"
-        ls -la app/build/reports/detekt || echo "❌ Directory does not exist"
-        if [ -f app/build/reports/detekt/detekt.sarif ]; then
-          echo "✅ SARIF report found!"
-        else
-          echo "❌ SARIF report NOT found!"
-          exit 1
-        fi
-      
-
       # ✅ Step 6: Upload SARIF report for GitHub Security Code Scanning
     - name: Upload SARIF report for GitHub Code Scanning
       uses: github/codeql-action/upload-sarif@v3
       with:
-        sarif_file: "*/build/reports/detekt/*.sarif"
+        sarif_file: "app/build/reports/detekt/detekt.sarif"
         category: detekt-analysis
 
     # ✅ Step 7: Upload Detekt Reports as Artifacts for Download
