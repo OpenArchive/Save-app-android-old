@@ -62,47 +62,50 @@ fun ServerOptionItem(
         shape = RoundedCornerShape(8.dp)
     ) {
 
-        ListItem(
+        Row(
             modifier = Modifier
-                .height(100.dp),
-            colors = ListItemDefaults.colors(
-                containerColor = MaterialTheme.colorScheme.background
-            ),
-            leadingContent = {
-                Icon(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = null,
-                    tint = colorResource(R.color.colorTertiary),
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            headlineContent = {
+                .fillMaxWidth()
+                .height(100.dp)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                tint = colorResource(R.color.colorTertiary),
+                modifier = Modifier
+                    .size(24.dp)
+                    .align(Alignment.Top)
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier
+                    .weight(1f) // Takes remaining space
+            ) {
                 Text(
                     text = title,
                     fontWeight = FontWeight.Black,
                     fontSize = 18.sp
                 )
-            },
-            supportingContent = {
+
                 Text(
                     text = subtitle,
                     fontWeight = FontWeight.Normal,
                     fontSize = 14.sp
                 )
-            },
-            trailingContent = {
-                Box(
-                    modifier = Modifier.fillMaxHeight(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        modifier = Modifier.size(24.dp),
-                        imageVector = Icons.Default.ArrowForward,
-                        contentDescription = null,
-                    )
-                }
             }
-        )
+
+            Icon(
+                modifier = Modifier
+                    .size(24.dp)
+                    .align(Alignment.CenterVertically), // Vertically centered
+                imageVector = Icons.Default.ArrowForward,
+                contentDescription = null,
+            )
+        }
 
 
     }

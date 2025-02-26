@@ -13,6 +13,7 @@ import net.opendasharchive.openarchive.R
 private val c23_nav_drawer_night = Color(0xff101010)
 private val c23_darker_grey = Color(0xff212021)
 private val c23_dark_grey = Color(0xff333333)
+private val c23_darker_medium_grey = Color(0xff434343)
 private val c23_medium_grey = Color(0xff696666)
 private val c23_grey = Color(0xff9f9f9f)
 private val c23_grey_50 = Color(0xff777979)
@@ -73,7 +74,7 @@ internal fun lightColorScheme() = ColorTheme(
         surface = Color.White,
         onSurface = colorResource(R.color.colorOnSurface),
         surfaceVariant = c23_grey,
-        onSurfaceVariant = c23_darker_grey,
+        onSurfaceVariant = c23_darker_medium_grey,
 
         outline = Color.Black,
         inverseOnSurface = Color.White,

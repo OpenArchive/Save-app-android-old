@@ -54,7 +54,7 @@ fun BaseDialog(
     hasCheckbox: Boolean = false,
     onCheckBoxStateChanged: (Boolean) -> Unit = {},
     checkBoxHint: String = "Do not show me this again",
-    positiveButton: ButtonData,
+    positiveButton: ButtonData? = null,
     neutralButton: ButtonData? = null,
     destructiveButton: ButtonData? = null,
     backgroundColor: Color = MaterialTheme.colorScheme.surface
@@ -93,11 +93,11 @@ fun BaseDialog(
                     icon?.let { icon ->
                         icon.asIcon(
                             contentDescription = null,
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(30.dp),
                             tint = iconColor ?: Color.Unspecified
                         ).invoke()
 
-                        Spacer(modifier = Modifier.height(18.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
 
                     BaseDialogTitle(title)
@@ -112,7 +112,7 @@ fun BaseDialog(
                     }
 
                     if (hasCheckbox) {
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(8.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -132,19 +132,11 @@ fun BaseDialog(
 
                     }
 
-                    Spacer(Modifier.height(18.dp))
 
-                    BaseButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = positiveButton.text.asString(),
-                        onClick = {
-                            positiveButton.action()
-                            onDismiss()
-                        })
 
-                    neutralButton?.let { btn ->
-                        Spacer(modifier = Modifier.height(4.dp))
-                        BaseNeutralButton(
+                    positiveButton?.let { btn ->
+                        Spacer(Modifier.height(18.dp))
+                        BaseButton(
                             modifier = Modifier.fillMaxWidth(),
                             text = btn.text.asString(),
                             onClick = {
@@ -163,6 +155,17 @@ fun BaseDialog(
                             },
                             text = btn.text.asString()
                         )
+                    }
+
+                    neutralButton?.let { btn ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        BaseNeutralButton(
+                            modifier = Modifier.fillMaxWidth(),
+                            text = btn.text.asString(),
+                            onClick = {
+                                btn.action()
+                                onDismiss()
+                            })
                     }
                 }
 

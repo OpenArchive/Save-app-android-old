@@ -231,10 +231,10 @@
     <string name="proofmode">ProofMode</string>
     <string name="no_webbrowser_found_error">No application can handle this request. Please install a webbrowser.</string>
 
-    <string name="intro_header_secure" translatable="false">SECURE</string>
-    <string name="intro_header_archive" translatable="false">ARCHIVE</string>
-    <string name="intro_header_verify" translatable="false">VERIFY</string>
-    <string name="intro_header_encrypt" translatable="false">ENCRYPT</string>
+    <string name="intro_header_secure" translatable="false">Secure</string>
+    <string name="intro_header_archive" translatable="false">Archive</string>
+    <string name="intro_header_verify" translatable="false">Verify</string>
+    <string name="intro_header_encrypt" translatable="false">Encrypt</string>
     <string name="intro_text_secure">
         Send your media securely to private servers and lock the app with a pin.
     </string>
@@ -365,6 +365,10 @@
     <string name="pref_title_secure">Secure</string>
     <string name="pref_title_archive">Archive</string>
     <string name="pref_title_privacy_policy">Read our Terms &amp; Privacy Policy</string>
+    <string name="pref_title_media_servers">Media Servers</string>
+    <string name="pref_title_media_folders">Media Folders</string>
+    <string name="pref_summary_media_servers">Manage your servers</string>
+    <string name="pref_summary_media_folders">Manage your folders</string>
     <string name="pref_summary_privacy_policy">Read our Terms &amp; Privacy Policy</string>
 
     <string name="pref_app_passcode" translatable="false">passcode_enabled</string>

@@ -63,7 +63,7 @@
                         android:textFontWeight="700"
                         android:textStyle="bold"
                         android:visibility="gone"
-                        tools:targetApi="p" />
+                         />
 
                     <TextView
                         android:paddingEnd="32dp"
@@ -93,7 +93,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
-                    android:hint="@string/enter_url"
+                    app:hintEnabled="false"
                     android:paddingVertical="4dp">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -101,6 +101,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textUri"
+                        android:hint="@string/enter_url"
                         android:maxLines="1"
                         android:singleLine="true" />
 

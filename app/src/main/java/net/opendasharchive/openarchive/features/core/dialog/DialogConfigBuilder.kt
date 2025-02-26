@@ -37,7 +37,7 @@ data class DialogConfig(
     val message: UiText,
     val icon: UiImage? = null,
     val iconColor: Color? = null,
-    val positiveButton: ButtonData,
+    val positiveButton: ButtonData? = null,
     val neutralButton: ButtonData? = null,
     val destructiveButton: ButtonData? = null,
     val showCheckbox: Boolean = false,
@@ -53,7 +53,7 @@ data class DialogConfig(
 // --------------------------------------------------------------------
 data class ButtonData(
     val text: UiText,
-    val action: () -> Unit = {}
+    val action: () -> Unit = {},
 )
 
 // --------------------------------------------------------------------
@@ -165,7 +165,7 @@ class DialogBuilder {
             message = message ?: UiText.DynamicString(""),
             icon = icon,
             iconColor = finalIconColor,
-            positiveButton = _positiveButton ?: ButtonData(defaultPositiveTextFor(type)),
+            positiveButton = _positiveButton, //?: ButtonData(defaultPositiveTextFor(type)),
             neutralButton = _neutralButton,
             destructiveButton = _destructiveButton,
             showCheckbox = showCheckbox,
@@ -218,7 +218,7 @@ class DialogBuilder {
             message = message ?: UiText.DynamicString(""),
             icon = icon,
             iconColor = finalIconColor,
-            positiveButton = _positiveButton ?: ButtonData(defaultPositiveTextFor(type)),
+            positiveButton = _positiveButton, //?: ButtonData(defaultPositiveTextFor(type)),
             neutralButton = _neutralButton,
             destructiveButton = _destructiveButton,
             showCheckbox = showCheckbox,
@@ -340,6 +340,33 @@ fun DialogStateManager.showInfoDialog(
 
 // View helper for an info/hint dialog.
 fun DialogStateManager.showWarningDialog(
+    title: UiText?,
+    message: UiText,
+    icon: UiImage? = null,
+    positiveButtonText: UiText? = null,
+    onDone: () -> Unit = {},
+    onCancel: () -> Unit = {}
+) {
+    val resourceProvider = this.requireResourceProvider()
+
+    showDialog(resourceProvider) {
+        type = DialogType.Warning
+        this.title = title
+        this.icon = icon
+        this.message = message
+        positiveButton {
+            text = positiveButtonText ?: UiText.StringResource(R.string.lbl_got_it)
+            action = onDone
+        }
+        destructiveButton {
+            text = UiText.StringResource(R.string.lbl_Cancel)
+            action = onCancel
+        }
+    }
+}
+
+// For Destructive Actions confirmation (Removing folder or server etc)
+fun DialogStateManager.showDestructiveDialog(
     title: UiText?,
     message: UiText,
     icon: UiImage? = null,

@@ -155,7 +155,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         val packageManager = requireActivity().packageManager
         val versionText = packageManager.getVersionName(requireActivity().packageName)
 
-        findPreference<Preference>("app_version")?.summary = versionText
+        getPrefByKey<Preference>(R.string.pref_key_app_version)?.summary = versionText
     }
 
     private fun <T: Preference> getPrefByKey(key: Int): T? {

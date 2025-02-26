@@ -49,7 +49,7 @@ class SpaceSetupSuccessFragment : BaseFragment() {
     companion object {
         const val RESP_DONE = "space_setup_success_fragment_resp_done"
 
-        const val ARG_MESSAGE = "space_setup_success_fragment_arg_message"
+        const val ARG_MESSAGE = "message"
 
         @JvmStatic
         fun newInstance(message: String) =

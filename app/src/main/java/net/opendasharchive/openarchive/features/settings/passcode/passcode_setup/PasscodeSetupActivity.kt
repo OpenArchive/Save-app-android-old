@@ -17,18 +17,18 @@ class PasscodeSetupActivity : BaseActivity() {
         const val EXTRA_PASSCODE_ENABLED = "passcode_enabled"
     }
 
-    private val onBackPressedCallback = object : OnBackPressedCallback(enabled = true) {
-        override fun handleOnBackPressed() {
-            setResult(RESULT_CANCELED)
-            finish()
-        }
-    }
+//    private val onBackPressedCallback = object : OnBackPressedCallback(enabled = true) {
+//        override fun handleOnBackPressed() {
+//            setResult(RESULT_CANCELED)
+//            finish()
+//        }
+//    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        onBackPressedDispatcher.addCallback(onBackPressedCallback)
+        //onBackPressedDispatcher.addCallback(onBackPressedCallback)
 
         setContent {
             SaveAppTheme {
@@ -37,7 +37,7 @@ class PasscodeSetupActivity : BaseActivity() {
                         ComposeAppBar(
                             title = "Lock app with passcode",
                             onNavigationAction = {
-                                 onBackPressedCallback.handleOnBackPressed()
+                                 //onBackPressedCallback.handleOnBackPressed()
                             }
                         )
                     }

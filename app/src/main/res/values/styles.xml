@@ -60,6 +60,10 @@
         <item name="materialSwitchStyle">@style/Widget.SaveApp.Switch</item>
     </style>
 
+    <style name="SaveAppTheme.NoActionBar.Onboarding" parent="SaveAppTheme.NoActionBar">
+        <item name="android:statusBarColor">@color/colorBackground</item>
+    </style>
+
 
     <style name="ThemeOverlay.SaveApp.Preference" parent="PreferenceThemeOverlay">
         <item name="android:listDivider">@drawable/save_list_item_spacing_small</item>

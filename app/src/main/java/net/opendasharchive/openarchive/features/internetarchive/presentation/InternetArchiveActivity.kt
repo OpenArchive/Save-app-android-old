@@ -39,7 +39,7 @@ class InternetArchiveActivity : AppCompatActivity() {
                     topBar = {
                         ComposeAppBar(
                             title = if (isNewSpace) "Internet Archive" else "Internet Archive",
-                            onNavigationAction = { finish(IAResult.Cancelled) }
+                            onNavigationAction = { onComplete(IAResult.Cancelled) }
                         )
                     }
                 ) { paddingValues ->
@@ -47,7 +47,7 @@ class InternetArchiveActivity : AppCompatActivity() {
                         .fillMaxSize()
                         .padding(paddingValues)) {
                         InternetArchiveScreen(space, isNewSpace) {
-                            finish(it)
+                            onComplete(it)
                         }
                     }
                 }
@@ -57,7 +57,7 @@ class InternetArchiveActivity : AppCompatActivity() {
         }
     }
 
-    private fun finish(result: IAResult) {
+    private fun onComplete(result: IAResult) {
         when (result) {
             IAResult.Saved -> {
                 startActivity(Intent(this, MainActivity::class.java))

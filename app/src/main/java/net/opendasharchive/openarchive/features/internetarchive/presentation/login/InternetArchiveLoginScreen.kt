@@ -228,6 +228,7 @@ private fun InternetArchiveLoginContent(
 }
 
 @Composable
+@Preview
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 private fun InternetArchiveLoginPreview() {
     DefaultScaffoldPreview {
