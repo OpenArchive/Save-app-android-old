@@ -284,9 +284,6 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.6.2")
     testImplementation("androidx.work:work-testing:2.9.1")
 
-    // Dotenv Kotlin
-    implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
-
     // Detekt
     detektPlugins(libs.detekt.formatting)
     detektPlugins(libs.detekt.rules.authors)
