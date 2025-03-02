@@ -1,7 +1,6 @@
 package net.opendasharchive.openarchive.features.settings
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -19,7 +18,6 @@ import net.opendasharchive.openarchive.features.onboarding.SpaceSetupActivity
 import net.opendasharchive.openarchive.features.onboarding.StartDestination
 import net.opendasharchive.openarchive.features.settings.passcode.PasscodeRepository
 import net.opendasharchive.openarchive.features.settings.passcode.passcode_setup.PasscodeSetupActivity
-import net.opendasharchive.openarchive.features.spaces.SpaceListFragment
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.Theme
 import net.opendasharchive.openarchive.util.extensions.getVersionName
@@ -140,7 +138,24 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
         findPreference<Preference>(Prefs.THEME)?.setOnPreferenceChangeListener { _, newValue ->
             Theme.set(Theme.get(newValue as? String))
+            true
+        }
 
+        // Retrieve the switch preference
+        val darkModeSwitch = getPrefByKey<SwitchPreferenceCompat>(R.string.pref_key_use_dark_mode)
+
+        // Get the saved dark mode preference
+        val isDarkModeEnabled = Prefs.getBoolean(getString(R.string.pref_key_use_dark_mode), false)
+
+        // Set the switch state based on the saved preference
+        darkModeSwitch?.isChecked = isDarkModeEnabled
+
+        getPrefByKey<SwitchPreferenceCompat>(R.string.pref_key_use_dark_mode)?.setOnPreferenceChangeListener { pref, newValue ->
+            val useDarkMode = newValue as Boolean
+            val theme = if (useDarkMode) Theme.DARK else Theme.LIGHT
+            Theme.set(theme)
+            // Save the preference
+            Prefs.putBoolean(getString(R.string.pref_key_use_dark_mode), useDarkMode)
             true
         }
 

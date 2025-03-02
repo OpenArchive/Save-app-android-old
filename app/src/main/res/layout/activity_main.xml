@@ -59,14 +59,13 @@
                     app:layout_constraintTop_toTopOf="parent">
 
                     <ImageView
-                        android:id="@+id/space_icon"
+                        android:id="@+id/current_space_icon"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/ic_private_server"
-                        tools:src="@drawable/ic_private_server" />
+                        tools:src="@drawable/ic_internet_archive" />
 
                     <TextView
-                        android:id="@+id/space_name"
+                        android:id="@+id/current_space_name"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginHorizontal="12dp"
@@ -142,7 +141,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:alpha="0"
-                android:background="@color/colorBackground"
+                android:background="@color/c23_light_grey"
                 android:elevation="8dp"
                 android:visibility="gone"
                 app:layout_constraintEnd_toEndOf="parent"

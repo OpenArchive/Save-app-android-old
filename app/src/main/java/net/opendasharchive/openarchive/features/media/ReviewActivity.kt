@@ -15,12 +15,11 @@ import com.squareup.picasso.Picasso
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.ActivityReviewBinding
 import net.opendasharchive.openarchive.db.Media
-import net.opendasharchive.openarchive.db.MediaViewHolder
+import net.opendasharchive.openarchive.db.UploadMediaViewHolder
 import net.opendasharchive.openarchive.features.core.BaseActivity
 import net.opendasharchive.openarchive.features.core.UiText
 import net.opendasharchive.openarchive.features.core.dialog.showDialog
 import net.opendasharchive.openarchive.fragments.VideoRequestHandler
-import net.opendasharchive.openarchive.util.AlertHelper
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.extensions.hide
 import net.opendasharchive.openarchive.util.extensions.show
@@ -328,7 +327,7 @@ class ReviewActivity : BaseActivity(), View.OnClickListener {
             imageView.setImageResource(R.drawable.audio_waveform)
 
             if (waveform != null) {
-                val soundFile = MediaViewHolder.soundCache[media.originalFilePath]
+                val soundFile = UploadMediaViewHolder.soundCache[media.originalFilePath]
                 if (soundFile != null) {
                     waveform.setAudioFile(soundFile)
                     waveform.show()

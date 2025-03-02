@@ -7,7 +7,10 @@ import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.ActivityEditFolderBinding
 import net.opendasharchive.openarchive.db.Project
 import net.opendasharchive.openarchive.features.core.BaseActivity
-import net.opendasharchive.openarchive.util.AlertHelper
+import net.opendasharchive.openarchive.features.core.UiImage
+import net.opendasharchive.openarchive.features.core.UiText
+import net.opendasharchive.openarchive.features.core.dialog.DialogType
+import net.opendasharchive.openarchive.features.core.dialog.showDialog
 import net.opendasharchive.openarchive.util.extensions.Position
 import net.opendasharchive.openarchive.util.extensions.setDrawable
 
@@ -55,7 +58,7 @@ class EditFolderActivity : BaseActivity() {
 
         mBinding.btRemove.setDrawable(R.drawable.ic_delete, Position.Start, 0.5)
         mBinding.btRemove.setOnClickListener {
-            removeProject()
+            showDeleteFolderConfirmDialog()
         }
 
         mBinding.btArchive.setOnClickListener {
@@ -70,14 +73,26 @@ class EditFolderActivity : BaseActivity() {
         updateUi()
     }
 
-    private fun removeProject() {
-        AlertHelper.show(this, R.string.action_remove_project, R.string.remove_from_app, buttons = listOf(
-            AlertHelper.positiveButton(R.string.remove) { _, _ ->
-                mProject.delete()
-
-                finish()
-            },
-            AlertHelper.negativeButton()))
+    private fun showDeleteFolderConfirmDialog() {
+        dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+            type = DialogType.Error
+            icon = UiImage.DrawableResource(R.drawable.ic_trash)
+            title = UiText.StringResource(R.string.remove_from_app)
+            message = UiText.StringResource(R.string.action_remove_project)
+            destructiveButton {
+                text = UiText.StringResource(R.string.remove)
+                action = {
+                    mProject.delete()
+                    finish()
+                }
+            }
+            neutralButton {
+                text = UiText.StringResource(R.string.lbl_Cancel)
+                action = {
+                    dialogManager.dismissDialog()
+                }
+            }
+        }
     }
 
     private fun archiveProject() {

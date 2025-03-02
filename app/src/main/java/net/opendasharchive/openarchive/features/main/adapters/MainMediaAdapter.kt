@@ -12,6 +12,7 @@ import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.databinding.RvMediaBoxBinding
 import net.opendasharchive.openarchive.db.Media
+import net.opendasharchive.openarchive.features.main.MainActivity
 import net.opendasharchive.openarchive.features.media.PreviewActivity
 import net.opendasharchive.openarchive.upload.BroadcastManager
 import net.opendasharchive.openarchive.upload.UploadManagerActivity
@@ -20,24 +21,24 @@ import net.opendasharchive.openarchive.util.AlertHelper
 import java.lang.ref.WeakReference
 
 class MainMediaAdapter(
-    activity: Activity?,
-    data: List<Media>,
+    private val activity: Activity?,
+    private val mediaList: List<Media>,
     private val recyclerView: RecyclerView,
-    private val supportedStatuses: List<Media.Status> = listOf(
-        Media.Status.Local,
-        Media.Status.Uploading,
-        Media.Status.Error
-    ),
     private val checkSelecting: () -> Unit,
     private val allowMultiProjectSelection: Boolean = false,
+    private val onDeleteClick: (Media, Int) -> Unit,
 ) : RecyclerView.Adapter<MainMediaViewHolder>() {
 
     companion object {
         private const val PAYLOAD_SELECTION = "selection"
         private const val PAYLOAD_PROGRESS = "progress"
+
+        private val supportedStatuses: List<Media.Status> = listOf(
+            Media.Status.Local, Media.Status.Uploading, Media.Status.Error
+        )
     }
 
-    var media: ArrayList<Media> = ArrayList(data)
+    var media: ArrayList<Media> = ArrayList(mediaList)
         private set
 
     var doImageFade = true
@@ -96,13 +97,16 @@ class MainMediaAdapter(
         holder.bind(media[position], selecting, doImageFade)
     }
 
-    override fun onBindViewHolder(holder: MainMediaViewHolder, position: Int, payloads: MutableList<Any>) {
+    override fun onBindViewHolder(
+        holder: MainMediaViewHolder, position: Int, payloads: MutableList<Any>
+    ) {
         if (payloads.isNotEmpty()) {
             val payload = payloads[0]
             when (payload) {
                 "progress" -> {
                     holder.updateProgress(media[position].uploadPercentage ?: 0)
                 }
+
                 "full" -> {
                     holder.bind(media[position], selecting, doImageFade)
                 }
@@ -125,48 +129,21 @@ class MainMediaAdapter(
 
     private fun handleNormalClick(position: Int) {
         val item = media[position]
-        when (item.sStatus) {
-            Media.Status.Local -> {
-                if (supportedStatuses.contains(Media.Status.Local)) {
-                    mActivity.get()?.let {
-                        PreviewActivity.start(it, item.projectId)
-                    }
+        val mediaStatus = item.sStatus
+        // Default behavior if needed.
+        if (mediaStatus == Media.Status.Local) {
+            if (supportedStatuses.contains(Media.Status.Local)) {
+                mActivity.get()?.let {
+                    PreviewActivity.start(it, item.projectId)
                 }
             }
-            Media.Status.Queued, Media.Status.Uploading -> {
-                if (supportedStatuses.contains(Media.Status.Uploading)) {
-                    mActivity.get()?.startActivity(Intent(mActivity.get(), UploadManagerActivity::class.java))
-                }
+        } else if (mediaStatus == Media.Status.Queued || mediaStatus == Media.Status.Uploading) {
+            if (supportedStatuses.contains(Media.Status.Uploading)) {
+                (mActivity.get() as? MainActivity)?.showUploadManagerFragment()
             }
-            Media.Status.Error -> {
-                if (supportedStatuses.contains(Media.Status.Error)) {
-                    mActivity.get()?.let { activity ->
-                        AlertHelper.show(
-                            activity,
-                            activity.getString(R.string.upload_unsuccessful_description),
-                            R.string.upload_unsuccessful,
-                            R.drawable.ic_error,
-                            listOf(
-                                AlertHelper.positiveButton(R.string.retry) { _, _ ->
-                                    item.apply {
-                                        sStatus = Media.Status.Queued
-                                        statusMessage = ""
-                                        save()
-                                        BroadcastManager.postChange(activity, item.collectionId, item.id)
-                                    }
-                                    UploadService.startUploadService(activity)
-                                },
-                                AlertHelper.negativeButton(R.string.remove) { _, _ ->
-                                    deleteItem(position)
-                                },
-                                AlertHelper.neutralButton()
-                            )
-                        )
-                    }
-                }
-            }
-            else -> {
-                // Default behavior if needed.
+        } else if (mediaStatus == Media.Status.Error) {
+            if (supportedStatuses.contains(Media.Status.Error)) {
+                onDeleteClick.invoke(item, position)
             }
         }
     }
@@ -317,8 +294,7 @@ class MainMediaAdapter(
 }
 
 private class MediaDiffCallback(
-    private val oldList: List<Media>,
-    private val newList: List<Media>
+    private val oldList: List<Media>, private val newList: List<Media>
 ) : DiffUtil.Callback() {
 
     override fun getOldListSize() = oldList.size
@@ -335,10 +311,7 @@ private class MediaDiffCallback(
         val oldItem = oldList[oldItemPosition]
         val newItem = newList[newItemPosition]
 
-        return oldItem.status == newItem.status &&
-                oldItem.uploadPercentage == newItem.uploadPercentage &&
-                oldItem.selected == newItem.selected &&
-                oldItem.title == newItem.title
+        return oldItem.status == newItem.status && oldItem.uploadPercentage == newItem.uploadPercentage && oldItem.selected == newItem.selected && oldItem.title == newItem.title
     }
 
     override fun getChangePayload(oldItemPosition: Int, newItemPosition: Int): Any? {

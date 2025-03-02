@@ -23,7 +23,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -128,19 +131,27 @@ private fun InternetArchiveLoginContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(top = 32.dp, bottom = 16.dp)
+            .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
         InternetArchiveHeader(
-            modifier = Modifier.padding(bottom = ThemeDimensions.spacing.large)
+            modifier = Modifier.padding(vertical = ThemeDimensions.spacing.large)
+                .padding(end = 40.dp)
         )
+
+
+
+        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            Text("Account")
+        }
 
         CustomTextField(
             value = state.username,
             onValueChange = { dispatch(UpdateUsername(it)) },
             label = stringResource(R.string.label_username),
-            placeholder = stringResource(R.string.placeholder_email_or_username),
+            placeholder = stringResource(R.string.prompt_email),
             isError = state.isUsernameError,
             isLoading = state.isBusy,
             keyboardType = KeyboardType.Email,
@@ -153,29 +164,33 @@ private fun InternetArchiveLoginContent(
             value = state.password,
             onValueChange = { dispatch(UpdatePassword(it)) },
             label = stringResource(R.string.label_password),
-            placeholder = stringResource(R.string.placeholder_password),
+            placeholder = stringResource(R.string.prompt_password),
             isError = state.isPasswordError,
             isLoading = state.isBusy,
             keyboardType = KeyboardType.Password,
             imeAction = ImeAction.Done,
         )
 
-        Spacer(Modifier.height(ThemeDimensions.spacing.large))
-
-        AnimatedVisibility(
-            visible = state.isLoginError,
-            enter = fadeIn(),
-            exit = fadeOut()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
         ) {
-            Text(
-                text = stringResource(R.string.error_incorrect_username_or_password),
-                color = MaterialTheme.colorScheme.error
-            )
+            AnimatedVisibility(
+                visible = state.isLoginError,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Text(
+                    text = stringResource(R.string.error_incorrect_username_or_password),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
+
+        Spacer(Modifier.height(ThemeDimensions.spacing.large))
         Row(
             modifier = Modifier
-                .padding(top = ThemeDimensions.spacing.small)
-                .weight(1f),
+                .padding(top = ThemeDimensions.spacing.small),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -196,8 +211,9 @@ private fun InternetArchiveLoginContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .weight(1f)
                 .padding(top = ThemeDimensions.spacing.medium),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             TextButton(
@@ -205,9 +221,12 @@ private fun InternetArchiveLoginContent(
                     .weight(1f)
                     .heightIn(ThemeDimensions.touchable)
                     .padding(ThemeDimensions.spacing.small),
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = colorResource(R.color.colorOnBackground)
+                ),
                 shape = RoundedCornerShape(ThemeDimensions.roundedCorner),
                 onClick = { dispatch(Action.Cancel) }) {
-                Text(stringResource(R.string.action_cancel))
+                Text(stringResource(R.string.back))
             }
             Button(
                 modifier = Modifier
@@ -283,9 +302,6 @@ fun CustomTextField(
         value = value,
         enabled = !isLoading,
         onValueChange = onValueChange,
-        label = {
-            Text(label)
-        },
         placeholder = {
             placeholder?.let {
                 Text(placeholder)
@@ -334,9 +350,6 @@ fun CustomSecureField(
         value = value,
         enabled = !isLoading,
         onValueChange = onValueChange,
-        label = {
-            Text(label)
-        },
         placeholder = {
             Text(placeholder)
         },

@@ -8,12 +8,30 @@
     android:filterTouchesWhenObscured="true"
     android:orientation="vertical">
 
+    <LinearLayout
+        android:id="@+id/btn_delete_layout"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:gravity="center"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageButton
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:id="@+id/btn_delete"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_trash" />
+    </LinearLayout>
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/container"
         android:layout_width="80dp"
         android:layout_height="80dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/btn_delete_layout"
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageView
@@ -42,19 +60,19 @@
 
             <com.google.android.material.progressindicator.CircularProgressIndicator
                 android:id="@+id/progress"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:indeterminate="true"
                 android:indeterminateBehavior="cycle"
                 android:indeterminateTint="@color/colorPrimary"
                 android:max="100"
                 app:indicatorColor="@color/colorPrimary"
-                app:indicatorSize="48dp"
+                app:indicatorSize="32dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:trackThickness="3dp" />
+                app:trackThickness="4dp" />
 
             <ImageView
                 android:id="@+id/error"
@@ -114,11 +132,11 @@
         android:layout_height="match_parent"
         android:layout_alignParentEnd="true"
         android:layout_gravity="center_vertical|end"
+        android:importantForAccessibility="no"
         android:scaleType="center"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/ic_reorder_black_24dp"
-        android:importantForAccessibility="no" />
+        app:srcCompat="@drawable/ic_reorder_black_24dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

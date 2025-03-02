@@ -80,7 +80,7 @@
                 <Button
                     android:id="@+id/bt_cancel"
                     style="?android:attr/buttonBarButtonStyle"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/back"
                     android:textColor="@color/colorText"
@@ -100,7 +100,7 @@
                 <Button
                     android:id="@+id/bt_next"
                     android:paddingHorizontal="32dp"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:backgroundTint="@color/buttonBackground"
                     android:text="@string/action_next" />

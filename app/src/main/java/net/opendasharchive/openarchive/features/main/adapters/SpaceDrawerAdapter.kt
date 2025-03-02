@@ -60,7 +60,7 @@ class SpaceDrawerAdapter(private val listener: SpaceDrawerAdapterListener) : Lis
             val space = (item as SpaceItem.SpaceItemData).space
 
             val isSelected = listener.getSelectedSpace()?.id == space.id
-            val backgroundColor = if(isSelected) R.color.colorTertiary else R.color.colorBackground
+            val backgroundColor = if(isSelected) R.color.colorTertiary else R.color.c23_light_grey
             val textColor = if (isSelected) R.color.colorOnBackground else R.color.colorText
 
             binding.root.setBackgroundColor(binding.root.context.getColor(backgroundColor))

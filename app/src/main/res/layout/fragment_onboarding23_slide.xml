@@ -44,6 +44,8 @@
 
             <TextView
                 android:id="@+id/summary"
+                android:textColor="@color/colorOnBackground"
+                android:textColorLink="@color/colorOnBackground"
                 android:lineSpacingExtra="3sp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

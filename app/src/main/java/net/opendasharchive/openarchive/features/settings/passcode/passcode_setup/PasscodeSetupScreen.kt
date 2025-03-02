@@ -122,6 +122,16 @@ private fun PasscodeSetupScreenContent(
             )
         }
 
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Passcode dots display
+        PasscodeDots(
+            passcodeLength = state.passcodeLength,
+            currentPasscodeLength = state.passcode.length,
+            shouldShake = state.shouldShake
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
 
         // Middle section with prompt and passcode dots
         Column(
@@ -131,19 +141,6 @@ private fun PasscodeSetupScreenContent(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Passcode dots display
-            PasscodeDots(
-                passcodeLength = state.passcodeLength,
-                currentPasscodeLength = state.passcode.length,
-                shouldShake = state.shouldShake
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
 
             // Custom numeric keypad
             NumericKeypad(
@@ -159,9 +156,8 @@ private fun PasscodeSetupScreenContent(
                 }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(64.dp))
 
-            Spacer(modifier = Modifier.height(16.dp))
 
 //            Row(
 //                modifier = Modifier.fillMaxWidth(),

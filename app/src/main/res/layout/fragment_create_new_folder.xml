@@ -15,7 +15,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="@dimen/activity_horizontal_margin"
-        android:layout_marginTop="64dp"
+        android:layout_marginVertical="64dp"
         android:gravity="center"
         android:orientation="vertical"
         android:text="@string/folder_name"
@@ -38,28 +38,32 @@
             android:text="@string/create_new_folder_subtitle"
             android:textAlignment="center"
             android:textSize="14sp" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/folder_name_container"
+            style="@style/ThemeOverlay.Material3.TextInputEditText.OutlinedBox"
+            android:layout_width="match_parent"
+            android:paddingVertical="24dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/activity_horizontal_margin"
+            android:layout_marginVertical="@dimen/activity_vertical_margin"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/label">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/new_folder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/create_new_folder_hint"
+                android:imeOptions="actionDone"
+                android:inputType="textNoSuggestions" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
     </LinearLayout>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/folder_name_container"
-        style="@style/ThemeOverlay.Material3.TextInputEditText.OutlinedBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/activity_horizontal_margin"
-        android:layout_marginVertical="@dimen/activity_vertical_margin"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/label">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/new_folder"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/create_new_folder_hint"
-            android:imeOptions="actionDone"
-            android:inputType="textNoSuggestions" />
-
-    </com.google.android.material.textfield.TextInputLayout>
 
     <!--    This is hidden since we are gonna set Creative Commons License in folder level-->
     <RelativeLayout
@@ -69,7 +73,7 @@
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/folder_name_container">
+        app:layout_constraintTop_toBottomOf="@id/label">
 
         <include
             android:id="@+id/cc"

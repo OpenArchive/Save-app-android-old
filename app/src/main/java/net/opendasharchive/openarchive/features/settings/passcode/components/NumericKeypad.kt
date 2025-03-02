@@ -140,7 +140,7 @@ private fun NumberButton(
     label: String,
     enabled: Boolean = true,
     onClick: () -> Unit,
-    hapticManager: HapticManager = koinInject()
+    //hapticManager: HapticManager = koinInject()
 ) {
 
     val interactionSource = remember { MutableInteractionSource() }
@@ -150,12 +150,12 @@ private fun NumberButton(
     val backgroundColor by animateColorAsState(
         targetValue = when {
             isPressed -> when (label) {
-                "delete" -> colorResource(R.color.red_bg).copy(alpha = 0.7f)
+                "delete" -> colorResource(R.color.red_bg).copy(alpha = 0.5f)
                 "submit" -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f)
                 else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
             }
             else -> when (label) {
-                "delete" -> colorResource(R.color.red_bg).copy(alpha = 0.5f)
+                "delete" -> colorResource(R.color.red_bg).copy(alpha = 0.3f)
                 "submit" -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
                 else -> Color.Transparent
             }
@@ -168,14 +168,14 @@ private fun NumberButton(
     val borderColor by animateColorAsState(
         targetValue = when {
             isPressed -> when (label) {
-                "delete" -> colorResource(R.color.red_bg).copy(alpha = 0.7f)
-                "submit" -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f)
-                else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                "delete" -> Color.Transparent
+                "submit" -> Color.Transparent
+                else -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
             }
             else -> when (label) {
-                "delete" -> colorResource(R.color.red_bg).copy(alpha = 0.5f)
-                "submit" -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
-                else -> Color.Transparent
+                "delete" -> Color.Transparent
+                "submit" -> Color.Transparent
+                else -> MaterialTheme.colorScheme.tertiary
             }
         },
         animationSpec = spring(),
@@ -190,11 +190,11 @@ private fun NumberButton(
                 indication = null,
                 enabled = enabled,
                 onClick = {
-                    hapticManager.performHapticFeedback(AppHapticFeedbackType.KeyPress)
+                    //hapticManager.performHapticFeedback(AppHapticFeedbackType.KeyPress)
                     onClick()
                 }
             )
-            .border(width = 2.dp, color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f), shape = CircleShape)
+            .border(width = 2.dp, color = borderColor, shape = CircleShape)
             .size(72.dp),
         contentAlignment = Alignment.Center
     ) {

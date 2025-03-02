@@ -231,6 +231,12 @@ class PreviewActivity : BaseActivity(), View.OnClickListener, PreviewAdapter.Lis
             icon = R.drawable.perm_media_24px.asUiImage()
             title = R.string.edit_multiple.asUiText()
             message = R.string.press_and_hold_to_select_and_edit_multiple_media.asUiText()
+            positiveButton {
+                text = UiText.StringResource(R.string.lbl_got_it)
+                action = {
+                    dialogManager.dismissDialog()
+                }
+            }
         }
 
 

@@ -44,20 +44,22 @@
 
             <com.google.android.material.progressindicator.CircularProgressIndicator
                 android:id="@+id/progress"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:indeterminate="true"
                 android:indeterminateBehavior="cycle"
                 android:max="100"
+                tools:visibility="visible"
                 app:indicatorColor="@color/colorPrimary"
-                app:indicatorSize="48dp"
+                app:indicatorSize="32dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:trackThickness="3dp" />
+                app:trackThickness="4dp" />
 
             <ImageView
+                tools:visibility="invisible"
                 android:id="@+id/error"
                 android:layout_width="32dp"
                 android:layout_height="32dp"

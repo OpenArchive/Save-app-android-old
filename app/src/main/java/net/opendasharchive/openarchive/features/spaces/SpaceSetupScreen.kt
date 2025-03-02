@@ -48,8 +48,10 @@ fun SpaceSetupScreen(
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(6.dp))
+
+            val description = if (isDwebEnabled) stringResource(R.string.to_get_started_more_hint_dweb) else stringResource(R.string.to_get_started_more_hint)
             Text(
-                text = stringResource(R.string.to_get_started_more_hint),
+                text = description,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )

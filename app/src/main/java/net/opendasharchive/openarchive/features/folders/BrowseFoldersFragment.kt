@@ -18,6 +18,7 @@ import net.opendasharchive.openarchive.databinding.FragmentBrowseFoldersBinding
 import net.opendasharchive.openarchive.db.Project
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.features.core.BaseFragment
+import net.opendasharchive.openarchive.features.core.dialog.showSuccessDialog
 import net.opendasharchive.openarchive.util.extensions.toggle
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.util.Date
@@ -80,8 +81,24 @@ class BrowseFoldersFragment : BaseFragment(), MenuProvider {
         val project = Project(folder.name, Date(), space.id, licenseUrl = license)
         project.save()
 
+        showFolderCreated(project.id)
+    }
+
+    private fun showFolderCreated(projectId: Long) {
+
+        dialogManager.showSuccessDialog(
+            title = R.string.label_success_title,
+            message = R.string.create_folder_ok_message,
+            positiveButtonText = R.string.label_got_it,
+            onDone = {
+                navigateBackWithResult(projectId)
+            }
+        )
+    }
+
+    private fun navigateBackWithResult(projectId: Long) {
         requireActivity().setResult(RESULT_OK, Intent().apply {
-            putExtra(AddFolderActivity.EXTRA_FOLDER_ID, project.id)
+            putExtra(AddFolderActivity.EXTRA_FOLDER_ID, projectId)
         })
         requireActivity().finish()
     }

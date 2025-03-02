@@ -22,13 +22,20 @@ import net.opendasharchive.openarchive.databinding.ViewSectionBinding
 import net.opendasharchive.openarchive.db.Collection
 import net.opendasharchive.openarchive.db.Media
 import net.opendasharchive.openarchive.db.Space
+import net.opendasharchive.openarchive.features.core.BaseFragment
+import net.opendasharchive.openarchive.features.core.UiText
+import net.opendasharchive.openarchive.features.core.dialog.DialogType
+import net.opendasharchive.openarchive.features.core.dialog.showDialog
 import net.opendasharchive.openarchive.features.main.adapters.MainMediaAdapter
 import net.opendasharchive.openarchive.upload.BroadcastManager
+import net.opendasharchive.openarchive.upload.UploadService
+import net.opendasharchive.openarchive.util.AlertHelper
+import net.opendasharchive.openarchive.util.extensions.Position
 import net.opendasharchive.openarchive.util.extensions.toggle
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
 import kotlin.collections.set
 
-class MainMediaFragment : Fragment() {
+class MainMediaFragment : BaseFragment() {
 
     companion object {
         private const val COLUMN_COUNT = 3
@@ -113,21 +120,27 @@ class MainMediaFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         viewModel.log("MainMediaFragment onCreateView called for project Id $mProjectId")
-        if (mProjectId == -1L) {
-            val space = Space.current
-            val text: String = if (space != null) {
-                val projects = space.projects
-                if (projects.isNotEmpty()) {
-                    getString(R.string.tap_to_add)
-                } else {
-                    "Tap the button below to add media folder."
-                }
-            } else {
-                "Tap the button below to add media server."
-            }
 
-            binding.tvWelcomeDescr.text = text
+        val space = Space.current
+        val text: String = if (space != null) {
+            val projects = space.projects
+            if (projects.isNotEmpty()) {
+                getString(R.string.tap_to_add)
+            } else {
+                "Tap the button below to add media folder"
+            }
+        } else {
+            "Tap the button below to add media server"
         }
+
+        binding.tvWelcomeDescr.text = text
+
+        if (space != null) {
+            binding.tvWelcome.visibility = View.INVISIBLE
+        } else {
+            binding.tvWelcome.visibility = View.VISIBLE
+        }
+
 
         refresh()
     }
@@ -226,9 +239,18 @@ class MainMediaFragment : Fragment() {
 
         val mediaAdapter = MainMediaAdapter(
             activity = requireActivity(),
-            data = media,
+            mediaList = media,
             recyclerView = holder.recyclerView,
             checkSelecting = { updateSelectionState() },
+            onDeleteClick = { mediaItem, itemPosition ->
+                showDeleteConfirmationDialog(
+                    mediaItem = mediaItem,
+                    onDeleteItem = {
+                        onDeleteItem(collectionId = collection.id, itemPosition = itemPosition)
+                    }
+                )
+
+            }
         )
 
         holder.recyclerView.adapter = mediaAdapter
@@ -236,6 +258,57 @@ class MainMediaFragment : Fragment() {
         mSection[collection.id] = holder
 
         return holder.root
+    }
+
+    private fun onDeleteItem(collectionId: Long, itemPosition: Int) {
+        val adapter = mAdapters[collectionId]
+        adapter?.deleteItem(itemPosition)
+    }
+
+    private fun showDeleteConfirmationDialog(mediaItem: Media, onDeleteItem: () -> Unit) {
+
+        dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+            type = DialogType.Error
+            title = UiText.StringResource(R.string.upload_unsuccessful)
+            message = UiText.StringResource(R.string.upload_unsuccessful_description)
+            positiveButton {
+                text = UiText.StringResource(R.string.retry)
+                action = {
+                    mediaItem.apply {
+                        sStatus = Media.Status.Queued
+                        statusMessage = ""
+                        save()
+                        BroadcastManager.postChange(
+                            requireActivity(),
+                            mediaItem.collectionId,
+                            mediaItem.id
+                        )
+                    }
+                    UploadService.startUploadService(requireActivity())
+                }
+            }
+            destructiveButton {
+                text = UiText.StringResource(R.string.btn_lbl_remove_media)
+                action = {
+                    onDeleteItem.invoke()
+                }
+            }
+        }
+//        AlertHelper.show(
+//            context = requireContext(),
+//            message = getString(R.string.upload_unsuccessful_description),
+//            title = R.string.upload_unsuccessful,
+//            icon = R.drawable.ic_error,
+//            buttons = listOf(
+//                AlertHelper.positiveButton(R.string.retry) { _, _ ->
+//
+//                },
+//                AlertHelper.negativeButton(R.string.remove) { _, _ ->
+//                    onDeleteItem.invoke()
+//                },
+//                AlertHelper.neutralButton()
+//            )
+//        )
     }
 
     //update selection UI by summing selected counts from all adapters.
@@ -266,4 +339,10 @@ class MainMediaFragment : Fragment() {
             }
         }
     }
+
+    fun showUploadManager() {
+        (activity as? MainActivity)?.showUploadManagerFragment()
+    }
+
+    override fun getToolbarTitle(): String = ""
 }

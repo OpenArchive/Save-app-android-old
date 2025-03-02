@@ -59,18 +59,14 @@
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_welcome"
-             />
+            app:layout_constraintTop_toBottomOf="@id/tv_welcome" />
 
         <LinearLayout
             android:id="@+id/img_welcome_arrow_layout"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginStart="50dp"
-            android:layout_marginTop="10dp"
-            android:layout_marginEnd="50dp"
-            android:layout_marginBottom="40dp"
             android:contentDescription="@string/title_welcome"
+            android:gravity="end"
             android:orientation="vertical"
             android:scaleType="fitEnd"
             android:src="@drawable/welcome_arrow"

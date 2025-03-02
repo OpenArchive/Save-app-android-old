@@ -71,7 +71,7 @@
         <item name="android:dividerHeight">2dp</item>
         <item name="alertDialogTheme">@style/AlertDialogTheme</item>
 <!--        <item name="preferenceInformationStyle">@style/SaveApp.Preference.Information</item>-->
-<!--        <item name="switchPreferenceCompatStyle">@style/SaveApp.Preference.SwitchPreference</item>-->
+        <item name="switchPreferenceCompatStyle">@style/SaveApp.Preference.SwitchPreference</item>
     </style>
 
     <style name="SaveApp.Preference.Information" parent="@style/Preference.Information">
@@ -81,6 +81,7 @@
 
     <style name="SaveApp.Preference.SwitchPreference" parent="@style/Preference.SwitchPreferenceCompat.Material">
         <item name="android:textSize">12sp</item>
+        <item name="android:widgetLayout">@layout/custom_preference_widget_switch</item>
     </style>
 
 
@@ -231,6 +232,7 @@
         <item name="android:textColor">@color/black</item>
         <item name="android:background">@drawable/button</item>
         <item name="android:textAllCaps">false</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.App.Button</item>
     </style>
 
     <style name="Widget.App.Button.TextButton" parent="Widget.Material3.Button.TextButton">
@@ -291,6 +293,7 @@
         <item name="boxCornerRadiusTopStart">@dimen/cornerRadius</item>
         <item name="hintTextColor">@color/c23_teal</item>
         <item name="cursorColor">@color/c23_teal</item>
+        <item name="hintEnabled">false</item>
     </style>
 
     <style name="Widget.SaveApp.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">

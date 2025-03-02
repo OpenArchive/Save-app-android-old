@@ -66,6 +66,7 @@
                 android:id="@+id/batch_img_1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                app:layout_constraintDimensionRatio="4:3"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="16dp"
                 android:scaleType="centerCrop"
@@ -78,7 +79,8 @@
             <ImageView
                 android:id="@+id/batch_img_2"
                 android:layout_width="320dp"
-                android:layout_height="320dp"
+                app:layout_constraintDimensionRatio="4:3"
+                android:layout_height="380dp"
                 android:layout_marginStart="32dp"
                 android:layout_marginTop="32dp"
                 android:scaleType="centerCrop"
@@ -89,7 +91,7 @@
             <ImageView
                 android:id="@+id/batch_img_3"
                 android:layout_width="320dp"
-                android:layout_height="320dp"
+                android:layout_height="380dp"
                 android:layout_marginStart="32dp"
                 android:layout_marginTop="32dp"
                 android:scaleType="centerCrop"
@@ -114,7 +116,9 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
-            android:textColor="@color/white"
+            android:padding="4dp"
+            android:textColor="@color/colorOnBackground"
+            android:background="@drawable/pill_bg"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             tools:text="34/104" />

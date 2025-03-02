@@ -1,72 +1,62 @@
 package net.opendasharchive.openarchive.upload
 
-import android.app.Dialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.FragmentUploadManagerBinding
 import net.opendasharchive.openarchive.db.Media
-import net.opendasharchive.openarchive.db.MediaAdapter
-import net.opendasharchive.openarchive.db.MediaViewHolder
+import net.opendasharchive.openarchive.db.UploadMediaAdapter
+import net.opendasharchive.openarchive.features.main.MainActivity
 
-open class UploadManagerFragment : BottomSheetDialogFragment() {
+open class UploadManagerFragment : SKBottomSheetDialogFragment() {
 
     companion object {
         const val TAG = "ModalBottomSheet-UploadManagerFragment"
-        private val STATUSES = listOf(Media.Status.Uploading, Media.Status.Queued, Media.Status.Error)
+        private val STATUSES =
+            listOf(Media.Status.Uploading, Media.Status.Queued, Media.Status.Error)
     }
 
-    open var mediaAdapter: MediaAdapter? = null
+    open var uploadMediaAdapter: UploadMediaAdapter? = null
 
-    private lateinit var mBinding: FragmentUploadManagerBinding
+    private lateinit var binding: FragmentUploadManagerBinding
 
     private lateinit var mItemTouchHelper: ItemTouchHelper
-
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        return BottomSheetDialog(requireContext(), R.style.SaveAppFullBottomSheetTheme)
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        mBinding = FragmentUploadManagerBinding.inflate(inflater, container, false)
+        binding = FragmentUploadManagerBinding.inflate(inflater, container, false)
 
-        mBinding.uploadList.layoutManager = LinearLayoutManager(activity)
+        binding.uploadList.layoutManager = LinearLayoutManager(activity)
 
-        val decorator = DividerItemDecoration(mBinding.uploadList.context, DividerItemDecoration.VERTICAL)
-        val divider = ContextCompat.getDrawable(mBinding.uploadList.context, R.drawable.divider)
+        val decorator = DividerItemDecoration(binding.uploadList.context, DividerItemDecoration.VERTICAL)
+        val divider = ContextCompat.getDrawable(binding.uploadList.context, R.drawable.divider)
         if (divider != null) decorator.setDrawable(divider)
 
-        mBinding.uploadList.addItemDecoration(decorator)
-        mBinding.uploadList.setHasFixedSize(true)
+        binding.uploadList.addItemDecoration(decorator)
+        binding.uploadList.setHasFixedSize(true)
 
-        mediaAdapter =
-            MediaAdapter(
-                activity,
-                { MediaViewHolder.SmallRow(it) },
-                Media.getByStatus(STATUSES, Media.ORDER_PRIORITY),
-                mBinding.uploadList,
-                listOf(Media.Status.Error)
-            )
+        uploadMediaAdapter = UploadMediaAdapter(
+            activity = activity,
+            mediaItems = Media.getByStatus(STATUSES, Media.ORDER_PRIORITY),
+            recyclerView = binding.uploadList,
+        )
 
-        mediaAdapter?.doImageFade = false
-        mBinding.uploadList.adapter = mediaAdapter
+        uploadMediaAdapter?.doImageFade = false
+        binding.uploadList.adapter = uploadMediaAdapter
 
         mItemTouchHelper = ItemTouchHelper(object : SwipeToDeleteCallback(context) {
             override fun isEditingAllowed(): Boolean {
-                return mediaAdapter?.isEditMode ?: false
+                return uploadMediaAdapter?.isEditMode == true
             }
 
             override fun onMove(
@@ -74,7 +64,7 @@ open class UploadManagerFragment : BottomSheetDialogFragment() {
                 viewHolder: RecyclerView.ViewHolder,
                 target: RecyclerView.ViewHolder
             ): Boolean {
-                mediaAdapter?.onItemMove(
+                uploadMediaAdapter?.onItemMove(
                     viewHolder.bindingAdapterPosition,
                     target.bindingAdapterPosition
                 )
@@ -83,38 +73,49 @@ open class UploadManagerFragment : BottomSheetDialogFragment() {
             }
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-                mediaAdapter?.deleteItem(viewHolder.bindingAdapterPosition)
+                uploadMediaAdapter?.deleteItem(viewHolder.bindingAdapterPosition)
             }
         })
 
-        mItemTouchHelper.attachToRecyclerView(mBinding.uploadList)
+        mItemTouchHelper.attachToRecyclerView(binding.uploadList)
 
-        return mBinding.root
+        binding.root.findViewById<View>(R.id.done_button)?.setOnClickListener {
+            dismiss() // Close the bottom sheet when clicked
+        }
+
+        return binding.root
     }
 
     override fun onResume() {
         super.onResume()
-
         refresh()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+
+        // Notify MainActivity that this fragment is dismissed
+        (activity as? MainActivity)?.uploadManagerFragment = null
+    }
+
     open fun updateItem(mediaId: Long) {
-        mediaAdapter?.updateItem(mediaId, -1)
+        uploadMediaAdapter?.updateItem(mediaId, -1)
     }
 
     open fun removeItem(mediaId: Long) {
-        mediaAdapter?.removeItem(mediaId)
+        uploadMediaAdapter?.removeItem(mediaId)
     }
 
     fun setEditMode(isEditMode: Boolean) {
-        mediaAdapter?.isEditMode = isEditMode
+        uploadMediaAdapter?.isEditMode = isEditMode
+        uploadMediaAdapter?.notifyDataSetChanged()
     }
 
     open fun refresh() {
-        mediaAdapter?.updateData(Media.getByStatus(STATUSES, Media.ORDER_PRIORITY))
+        uploadMediaAdapter?.updateData(Media.getByStatus(STATUSES, Media.ORDER_PRIORITY))
     }
 
     open fun getUploadingCounter(): Int {
-        return mediaAdapter?.media?.size ?: 0
+        return uploadMediaAdapter?.media?.size ?: 0
     }
 }

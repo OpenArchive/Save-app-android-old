@@ -51,7 +51,8 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory {
 
         if (Prefs.useTor) initNetCipher()
 
-        Theme.set(Prefs.theme)
+        val useDarkMode = Prefs.getBoolean(getString(R.string.pref_key_use_dark_mode), false)
+        Theme.darkModeEnabled = useDarkMode
 
         CleanInsightsManager.init(this)
 

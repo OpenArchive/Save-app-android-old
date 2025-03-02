@@ -1,6 +1,6 @@
 package net.opendasharchive.openarchive.features.main.adapters
 
-import android.annotation.SuppressLint
+import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.CircularProgressDrawable
@@ -10,9 +10,7 @@ import coil3.request.crossfade
 import coil3.request.placeholder
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMillis
-import com.bumptech.glide.Glide
 import com.github.derlio.waveform.soundfile.SoundFile
-import com.squareup.picasso.Picasso
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
@@ -21,7 +19,6 @@ import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.databinding.RvMediaBoxBinding
 import net.opendasharchive.openarchive.db.Media
-import net.opendasharchive.openarchive.fragments.VideoRequestHandler
 import net.opendasharchive.openarchive.util.extensions.hide
 import net.opendasharchive.openarchive.util.extensions.show
 import timber.log.Timber
@@ -32,12 +29,7 @@ class MainMediaViewHolder(val binding: RvMediaBoxBinding) : RecyclerView.ViewHol
         val soundCache = HashMap<String, SoundFile>()
     }
 
-
     private val mContext = itemView.context
-//
-//    private val mPicasso = Picasso.Builder(mContext)
-//        .addRequestHandler(VideoRequestHandler(mContext))
-//        .build()
 
     private val imageLoader = ImageLoader.Builder(mContext)
         .components {
@@ -76,14 +68,11 @@ class MainMediaViewHolder(val binding: RvMediaBoxBinding) : RecyclerView.ViewHol
                 })
             }
 
+            binding.image.scaleType = ImageView.ScaleType.CENTER_CROP
             binding.image.show()
             binding.waveform.hide()
             binding.videoIndicator.hide()
         } else if (media?.mimeType?.startsWith("video") == true) {
-//            mPicasso.load(VideoRequestHandler.SCHEME_VIDEO + ":" + media.originalFilePath)
-//                .fit()
-//                .centerCrop()
-//                .into(binding.image)
 
             binding.image.load(media.originalFilePath, imageLoader) {
                 val progress = CircularProgressDrawable(mContext)
@@ -97,6 +86,7 @@ class MainMediaViewHolder(val binding: RvMediaBoxBinding) : RecyclerView.ViewHol
                 listener(onError = { req, res -> AppLogger.e(res.throwable) })
             }
 
+            binding.image.scaleType = ImageView.ScaleType.CENTER_CROP
             binding.image.show()
             binding.waveform.hide()
             binding.videoIndicator.show()
@@ -111,6 +101,7 @@ class MainMediaViewHolder(val binding: RvMediaBoxBinding) : RecyclerView.ViewHol
                 binding.waveform.show()
             } else {
                 binding.image.setImageDrawable(ContextCompat.getDrawable(mContext, R.drawable.no_thumbnail))
+                binding.image.scaleType = ImageView.ScaleType.CENTER_CROP
                 binding.image.show()
                 binding.waveform.hide()
 
@@ -138,12 +129,14 @@ class MainMediaViewHolder(val binding: RvMediaBoxBinding) : RecyclerView.ViewHol
                 }
             }
         } else if (media?.mimeType?.startsWith("application") == true) {
-            binding.image.setImageDrawable(ContextCompat.getDrawable(mContext, R.drawable.ic_pdf))
+            binding.image.setImageDrawable(ContextCompat.getDrawable(mContext, R.drawable.ic_unknown_file))
+            binding.image.scaleType = ImageView.ScaleType.CENTER_INSIDE
             binding.image.show()
             binding.waveform.hide()
             binding.videoIndicator.hide()
         } else {
-            binding.image.setImageDrawable(ContextCompat.getDrawable(mContext, R.drawable.no_thumbnail))
+            binding.image.setImageDrawable(ContextCompat.getDrawable(mContext, R.drawable.ic_unknown_file))
+            binding.image.scaleType = ImageView.ScaleType.CENTER_INSIDE
             binding.image.show()
             binding.waveform.hide()
             binding.videoIndicator.hide()

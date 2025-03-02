@@ -20,6 +20,7 @@ import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.snackbar.Snackbar
+import io.github.cdimascio.dotenv.dotenv
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -109,38 +110,38 @@ class WebDavFragment : BaseFragment() {
 //                setFragmentResult(RESP_LICENSE, bundleOf())
 //            }
 
-            binding.name.setOnEditorActionListener { _, actionId, _ ->
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
-
-                    val enteredName = binding.name.text?.toString()?.trim()
-                    if (!enteredName.isNullOrEmpty()) {
-                        // Update the Space entity and save it using SugarORM
-                        mSpace.name = enteredName
-                        mSpace.save() // Save the entity using SugarORM
-
-                        // Hide the keyboard
-                        val imm =
-                            requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                        imm.hideSoftInputFromWindow(binding.name.windowToken, 0)
-                        binding.name.clearFocus() // Clear focus from the input field
-
-                        // Optional: Provide feedback to the user
-                        Snackbar.make(
-                            binding.root,
-                            "Name saved successfully!",
-                            Snackbar.LENGTH_SHORT
-                        ).show()
-                    } else {
-                        // Notify the user that the name cannot be empty (optional)
-                        Snackbar.make(binding.root, "Name cannot be empty", Snackbar.LENGTH_SHORT)
-                            .show()
-                    }
-
-                    true // Consume the event
-                } else {
-                    false // Pass the event to the next listener
-                }
-            }
+//            binding.name.setOnEditorActionListener { _, actionId, _ ->
+//                if (actionId == EditorInfo.IME_ACTION_DONE) {
+//
+//                    val enteredName = binding.name.text?.toString()?.trim()
+//                    if (!enteredName.isNullOrEmpty()) {
+//                        // Update the Space entity and save it using SugarORM
+//                        mSpace.name = enteredName
+//                        mSpace.save() // Save the entity using SugarORM
+//
+//                        // Hide the keyboard
+//                        val imm =
+//                            requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+//                        imm.hideSoftInputFromWindow(binding.name.windowToken, 0)
+//                        binding.name.clearFocus() // Clear focus from the input field
+//
+//                        // Optional: Provide feedback to the user
+//                        Snackbar.make(
+//                            binding.root,
+//                            "Name saved successfully!",
+//                            Snackbar.LENGTH_SHORT
+//                        ).show()
+//                    } else {
+//                        // Notify the user that the name cannot be empty (optional)
+//                        Snackbar.make(binding.root, "Name cannot be empty", Snackbar.LENGTH_SHORT)
+//                            .show()
+//                    }
+//
+//                    true // Consume the event
+//                } else {
+//                    false // Pass the event to the next listener
+//                }
+//            }
 
             originalName = mSpace.name
 
@@ -475,7 +476,7 @@ class WebDavFragment : BaseFragment() {
             title = R.string.remove_from_app.asUiText(),
             message = R.string.are_you_sure_you_want_to_remove_this_server_from_the_app.asUiText(),
             icon = UiImage.DrawableResource(R.drawable.ic_trash),
-            positiveButton = ButtonData(
+            destructiveButton = ButtonData(
                 text = UiText.StringResource(R.string.lbl_ok),
                 action = {
                     mSpace.delete()
@@ -543,9 +544,9 @@ class WebDavFragment : BaseFragment() {
     }
 
     override fun getToolbarTitle(): String = if (mSpaceId == ARG_VAL_NEW_SPACE) {
-        "Add Private Server"
+        "Private Server"
     } else {
         val space = Space.get(mSpaceId!!)
-        "Edit ${space?.name ?: "Private Server"}"
+        space?.name ?: "Private Server"
     }
 }

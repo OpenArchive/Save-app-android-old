@@ -64,12 +64,6 @@ class CreateNewFolderFragment : BaseFragment() {
             requireActivity().finish()
         }
 
-        if (Space.current?.license != null) {
-            binding.cc.root.hide()
-        } else {
-            CreativeCommonsLicenseManager.initialize(binding.cc)
-        }
-
         setupTextWatchers()
     }
 

@@ -40,6 +40,8 @@ class WebDavSetupLicenseFragment: BaseFragment() {
             // Editing means hide subtitle, bottom bar buttons
             binding.buttonBar.visibility = View.GONE
             binding.descriptionText.visibility = View.GONE
+        } else {
+            binding.btCancel.visibility = View.INVISIBLE
         }
 
 

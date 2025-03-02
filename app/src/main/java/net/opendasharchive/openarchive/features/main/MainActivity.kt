@@ -20,10 +20,13 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.material3.MaterialTheme
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2
@@ -35,6 +38,7 @@ import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.databinding.ActivityMainBinding
 import net.opendasharchive.openarchive.databinding.PopupFolderOptionsBinding
+import net.opendasharchive.openarchive.db.Media
 import net.opendasharchive.openarchive.db.Project
 import net.opendasharchive.openarchive.db.Space
 import net.opendasharchive.openarchive.extensions.getMeasurments
@@ -65,6 +69,7 @@ import net.opendasharchive.openarchive.features.onboarding.StartDestination
 import net.opendasharchive.openarchive.features.settings.passcode.AppConfig
 import net.opendasharchive.openarchive.services.snowbird.SnowbirdBridge
 import net.opendasharchive.openarchive.services.snowbird.service.SnowbirdService
+import net.opendasharchive.openarchive.upload.UploadManagerFragment
 import net.opendasharchive.openarchive.upload.UploadService
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.ProofModeHelper
@@ -89,6 +94,8 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
     private var mMenuDelete: MenuItem? = null
 
     private var mSnackBar: Snackbar? = null
+
+    var uploadManagerFragment: UploadManagerFragment? = null
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var mPagerAdapter: ProjectAdapter
@@ -177,6 +184,7 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
         setupNavigationDrawer()
         setupBottomNavBar()
         setupFolderBar()
+        setupBottomSheetObserver()
 
 
         if (appConfig.isDwebEnabled) {
@@ -197,6 +205,7 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
 
     override fun onResume() {
         super.onResume()
+        AppLogger.i("MainActivity onResume is called.......")
         refreshSpace()
         mCurrentPagerItem = mSelectedPageIndex
         if (!Prefs.didCompleteOnboarding) {
@@ -455,21 +464,31 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
                         getCurrentMediaFragment()?.deleteSelected()
                         updateSelectedCount(0)
                     }
-                )
+                ),
+                neutralButton =
+                    ButtonData(
+                        text = UiText.StringResource(R.string.lbl_Cancel),
+                        action = {
+
+                        }
+                    )
             )
         )
     }
 
     private fun showDeleteFolderConfirmDialog() {
         dialogManager.showDialog(dialogManager.requireResourceProvider()) {
-            type = DialogType.Warning
+            type = DialogType.Error
+            icon = UiImage.DrawableResource(R.drawable.ic_trash)
             title = UiText.StringResource(R.string.remove_from_app)
             message = UiText.StringResource(R.string.action_remove_project)
-            positiveButton {
+            destructiveButton {
                 text = UiText.StringResource(R.string.remove)
                 action = {
                     getSelectedProject()?.delete()
                     refreshProjects()
+                    updateCurrentFolderVisibility()
+                    refreshCurrentProject()
                     Snackbar.make(binding.root, "Folder removed", Snackbar.LENGTH_SHORT).show()
                 }
             }
@@ -553,10 +572,14 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
     }
 
     private fun updateCurrentSpaceAtDrawer() {
-        val drawable = Space.current?.getAvatar(applicationContext)
-            ?.scaled(R.dimen.avatar_size, applicationContext)
-        binding.spaceIcon.setImageDrawable(drawable)
+        Space.current?.setAvatar(binding.currentSpaceIcon)
         mSpaceAdapter.notifyDataSetChanged()
+
+        if (Space.current == null) {
+            binding.btnAddFolder.visibility = View.INVISIBLE
+        } else {
+            binding.btnAddFolder.visibility = View.VISIBLE
+        }
     }
 
     // ----- Refresh & Update Methods -----
@@ -574,6 +597,16 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
                 binding.contentMain.folderInfoContainer.visibility = View.VISIBLE
                 binding.contentMain.folderSelectionContainer.visibility = View.GONE
                 binding.contentMain.folderEditContainer.visibility = View.GONE
+
+                if (Space.current != null) {
+                    if (Space.current?.projects?.isNotEmpty() == true) {
+                        binding.contentMain.folderInfoContainerRight.visibility = View.VISIBLE
+                    } else {
+                        binding.contentMain.folderInfoContainerRight.visibility = View.INVISIBLE
+                    }
+                } else {
+                    binding.contentMain.folderInfoContainerRight.visibility = View.INVISIBLE
+                }
             }
 
             FolderBarMode.SELECTION -> {
@@ -592,7 +625,7 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
 
                 // Show the keyboard
                 val imm =
-                    binding.contentMain.etFolderName.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    binding.contentMain.etFolderName.context.getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.showSoftInput(
                     binding.contentMain.etFolderName,
                     InputMethodManager.SHOW_IMPLICIT
@@ -602,11 +635,17 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
     }
 
     private fun updateCurrentFolderVisibility() {
-        val projects = Space.current?.projects ?: emptyList()
-        if (mCurrentPagerItem == mPagerAdapter.settingsIndex || projects.isEmpty()) {
+        val currentPagerIndex = binding.contentMain.pager.currentItem
+        val settingsIndex = mPagerAdapter.settingsIndex
+        if (currentPagerIndex == settingsIndex) {
             binding.contentMain.folderBar.hide()
             // Reset to default mode
             setFolderBarMode(FolderBarMode.INFO)
+
+            // Force ViewPager2 to re-measure its layout after visibility change
+            binding.contentMain.pager.post {
+                binding.contentMain.pager.requestLayout()
+            }
         } else {
             binding.contentMain.folderBar.show()
             setFolderBarMode(FolderBarMode.INFO)
@@ -619,22 +658,25 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
         val isSettings = position == mPagerAdapter.settingsIndex
         binding.contentMain.bottomNavBar.updateSelectedItem(isSettings = isSettings)
         updateCurrentFolderVisibility()
+        invalidateOptionsMenu()
     }
 
     private fun refreshSpace() {
         val currentSpace = Space.current
         if (currentSpace != null) {
             binding.spaceNameLayout.visibility = View.VISIBLE
-            binding.spaceName.text = currentSpace.friendlyName
+            binding.currentSpaceName.text = currentSpace.friendlyName
+            updateCurrentSpaceAtDrawer()
             currentSpace.setAvatar(binding.contentMain.spaceIcon)
         } else {
+            binding.contentMain.spaceIcon.visibility = View.INVISIBLE
             binding.spaceNameLayout.visibility = View.INVISIBLE
-            binding.contentMain.folderBar.visibility = View.INVISIBLE
         }
 
         mSpaceAdapter.update(Space.getAll().asSequence().toList())
         updateCurrentSpaceAtDrawer()
         refreshProjects()
+        refreshCurrentProject()
         updateCurrentFolderVisibility()
     }
 
@@ -659,6 +701,11 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
             binding.contentMain.folderInfoContainer.visibility = View.VISIBLE
             project.space?.setAvatar(binding.contentMain.spaceIcon)
             binding.contentMain.folderName.text = project.description
+            binding.contentMain.folderNameArrow.visibility = View.VISIBLE
+            binding.contentMain.folderName.visibility = View.VISIBLE
+        } else {
+            binding.contentMain.folderNameArrow.visibility = View.INVISIBLE
+            binding.contentMain.folderName.visibility = View.INVISIBLE
         }
         updateCurrentFolderVisibility()
         refreshCurrentFolderCount()
@@ -794,8 +841,11 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
     }
 
     override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
-        val shouldShowSideMenu = Space.current != null
-        menu?.findItem(R.id.menu_folders)?.isVisible = shouldShowSideMenu
+        val shouldShowSideMenu =
+            Space.current != null && mCurrentPagerItem != mPagerAdapter.settingsIndex
+        menu?.findItem(R.id.menu_folders)?.apply {
+            isVisible = shouldShowSideMenu
+        }
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -860,4 +910,45 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
         }
     }
 
+    /**
+     * Show the UploadManagerFragment as a Bottom Sheet.
+     * Ensures we only show one instance.
+     */
+    fun showUploadManagerFragment() {
+        if (uploadManagerFragment == null) {
+            uploadManagerFragment = UploadManagerFragment()
+            uploadManagerFragment?.show(supportFragmentManager, UploadManagerFragment.TAG)
+
+            // Stop the upload service when the bottom sheet is shown
+            UploadService.stopUploadService(this)
+        }
+    }
+
+    /**
+     * Setup a listener to detect when the UploadManagerFragment is dismissed.
+     * If there are pending uploads, restart the UploadService.
+     */
+    private fun setupBottomSheetObserver() {
+        supportFragmentManager.addFragmentOnAttachListener { _, fragment ->
+            if (fragment is UploadManagerFragment) {
+                uploadManagerFragment = fragment
+
+                // Observe when it gets dismissed
+                fragment.lifecycle.addObserver(object : DefaultLifecycleObserver {
+                    override fun onDestroy(owner: LifecycleOwner) {
+                        uploadManagerFragment = null // Clear reference
+
+                        // Check if there are pending uploads
+                        if (Media.getByStatus(
+                                listOf(Media.Status.Queued, Media.Status.Uploading),
+                                Media.ORDER_PRIORITY
+                            ).isNotEmpty()
+                        ) {
+                            UploadService.startUploadService(this@MainActivity)
+                        }
+                    }
+                })
+            }
+        }
+    }
 }

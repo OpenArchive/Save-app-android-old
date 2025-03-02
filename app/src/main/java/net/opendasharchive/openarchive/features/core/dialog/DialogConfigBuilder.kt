@@ -9,10 +9,12 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -131,17 +133,12 @@ class DialogBuilder {
     fun build(): DialogConfig {
 
         if (icon == null) {
-
-            val defaultIconVector = when (type) {
-                DialogType.Success -> Icons.Filled.Check
-                DialogType.Error -> Icons.Default.Error
-                DialogType.Warning -> Icons.Default.Warning
-                DialogType.Info -> Icons.Filled.Info
+            icon = when (type) {
+                DialogType.Success -> UiImage.DrawableResource(R.drawable.ic_done)
+                DialogType.Error -> UiImage.DynamicVector(Icons.Outlined.Error)
+                DialogType.Warning -> UiImage.DynamicVector(Icons.Default.Warning)
+                DialogType.Info -> UiImage.DynamicVector(Icons.Filled.Info)
                 DialogType.Custom -> null
-            }
-
-            if (defaultIconVector != null) {
-                icon = UiImage.DynamicVector(defaultIconVector)
             }
         }
 
@@ -184,16 +181,12 @@ class DialogBuilder {
 
         if (icon == null) {
 
-            val defaultIconVector = when (type) {
-                DialogType.Success -> Icons.Filled.Check
-                DialogType.Error -> Icons.Default.Error
-                DialogType.Warning -> Icons.Default.Warning
-                DialogType.Info -> Icons.Filled.Info
+            icon = when (type) {
+                DialogType.Success -> UiImage.DrawableResource(R.drawable.ic_done)
+                DialogType.Error -> UiImage.DynamicVector(Icons.Outlined.Error)
+                DialogType.Warning -> UiImage.DynamicVector(Icons.Default.Warning)
+                DialogType.Info -> UiImage.DynamicVector(Icons.Filled.Info)
                 DialogType.Custom -> null
-            }
-
-            if (defaultIconVector != null) {
-                icon = UiImage.DynamicVector(defaultIconVector)
             }
         }
 
@@ -281,7 +274,7 @@ fun DialogStateManager.showSuccessDialog(
     val resourceProvider = this.requireResourceProvider()
 
     showDialog(resourceProvider) {
-        type = DialogType.Info
+        type = DialogType.Success
         if (icon != null) this.icon = icon
         if (title != null) this.title = UiText.StringResource(title)
         this.message = UiText.StringResource(message)

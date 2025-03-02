@@ -29,6 +29,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/prefs_use_proofmode_description"
+            android:textColor="@color/colorOnBackground"
             android:textSize="12sp" />
     </LinearLayout>
 
@@ -65,6 +66,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/proof_mode_warning_text"
                 android:textAlignment="textStart"
+                android:textColor="@color/colorOnBackground"
                 android:textSize="12sp" />
 
         </LinearLayout>

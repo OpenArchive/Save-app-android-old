@@ -72,11 +72,12 @@ fun AddFolderScreenContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding()
             .padding(vertical = 24.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(64.dp))
 
         Text(
             text = stringResource(id = R.string.select_where_to_store_your_media),
@@ -84,10 +85,10 @@ fun AddFolderScreenContent(
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp)
+            modifier = Modifier.padding(horizontal = 64.dp)
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(64.dp))
 
         FolderOption(
             iconRes = R.drawable.ic_create_new_folder,
@@ -110,7 +111,7 @@ fun AddFolderScreenContent(
 fun FolderOption(iconRes: Int, text: String, onClick: () -> Unit) {
 
     Card(
-        modifier = Modifier.padding(24.dp),
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
         onClick = onClick,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.background
@@ -121,7 +122,7 @@ fun FolderOption(iconRes: Int, text: String, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(horizontal = 24.dp, vertical = 24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
