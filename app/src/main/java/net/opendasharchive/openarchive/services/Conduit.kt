@@ -16,10 +16,11 @@ import net.opendasharchive.openarchive.services.internetarchive.IaConduit
 import net.opendasharchive.openarchive.services.webdav.WebDavConduit
 import net.opendasharchive.openarchive.upload.BroadcastManager
 import net.opendasharchive.openarchive.util.Prefs
+import net.opendasharchive.openarchive.util.SecureFileUtil.decryptAndRestore
 import okhttp3.HttpUrl
 import org.witness.proofmode.ProofMode
 import org.witness.proofmode.crypto.HashUtils
-import java.io.File
+import java.io.File // OK
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -36,10 +37,6 @@ abstract class Conduit(
 
     protected var mCancelled = false
 
-    /**
-     * Gives a SiteController a chance to add metadata to the intent resulting from the ChooseAccounts process
-     * that gets passed to each SiteController during publishing
-     */
     @Throws(IOException::class)
     abstract suspend fun upload(): Boolean
 
@@ -49,10 +46,24 @@ abstract class Conduit(
         mCancelled = true
     }
 
+    /**
+     * Retrieves and decrypts the media file before uploading.
+     */
+    protected fun getDecryptedFile(): File? {
+        val encryptedFile = File(mMedia.originalFilePath)
+        val decryptedFile = File(encryptedFile.parent, encryptedFile.name.removeSuffix(".enc"))
+
+        return if (encryptedFile.exists()) {
+            encryptedFile.decryptAndRestore(decryptedFile)
+        } else {
+            AppLogger.e("Encrypted media file not found: ${encryptedFile.absolutePath}")
+            null
+        }
+    }
+
     fun getProof(): Array<out File> {
         if (!Prefs.useProofMode) return emptyArray()
 
-        // Don't use geolocation and network information.
         Prefs.proofModeLocation = false
         Prefs.proofModeNetwork = false
 
@@ -74,24 +85,18 @@ abstract class Conduit(
             return ProofMode.getProofDir(mContext, hash).listFiles() ?: emptyArray()
         } catch (exception: FileNotFoundException) {
             AppLogger.e(exception)
-
             return emptyArray()
         } catch (exception: SecurityException) {
             AppLogger.e(exception)
-
             return emptyArray()
         }
     }
 
-    /**
-     * result is a site specific unique id that we can use to fetch the data,
-     * build an embed tag, etc. for some sites this might be a URL
-     */
     fun jobSucceeded() {
         mMedia.progress = mMedia.contentLength
         mMedia.sStatus = Media.Status.Uploaded
         mMedia.save()
-        AppLogger.i("media item ${mMedia.id} is uploaded and saved")
+        AppLogger.i("Media item ${mMedia.id} is uploaded and saved")
         BroadcastManager.postSuccess(
             context = mContext,
             collectionId = mMedia.collectionId,
@@ -100,14 +105,12 @@ abstract class Conduit(
     }
 
     fun jobFailed(exception: Throwable) {
-        // If an upload was cancelled, ignore the error.
         if (mCancelled) {
             AppLogger.i("Upload cancelled", exception)
             return
         }
 
-        mMedia.statusMessage =
-            exception.localizedMessage ?: exception.message ?: exception.toString()
+        mMedia.statusMessage = exception.localizedMessage ?: exception.message ?: exception.toString()
         mMedia.sStatus = Media.Status.Error
         mMedia.save()
 
@@ -137,11 +140,6 @@ abstract class Conduit(
         }
     }
 
-    /**
-     * workaround to deal with some quirks in our data model?
-     *
-     * reads some values from mMedia and copies them to some other fields of mMedia
-     */
     protected fun sanitize() {
         val length = mMedia.file.length()
         if (length > 0) mMedia.contentLength = length
@@ -155,8 +153,6 @@ abstract class Conduit(
         }
 
         mMedia.tagSet = tags
-
-        // Update to the latest project license.
         mMedia.licenseUrl = mMedia.project?.licenseUrl
     }
 
@@ -188,14 +184,6 @@ abstract class Conduit(
         }
     }
 
-    /**
-     * Constructs, either a full URL or a path from the given arguments, depending if a `base` is given.
-     *
-     * If there's only a path to be constructed, then the path will have a leading slash and will
-     * not be escaped, as the Dropbox client likes it like that.
-     *
-     * If there's a full URL to be constructed, it *will* be escaped properly.
-     */
     protected fun construct(base: HttpUrl?, path: List<String>, file: String? = null): String {
         val builder = base?.newBuilder() ?: HttpUrl.Builder().scheme("http").host("ignored")
 
@@ -214,10 +202,6 @@ abstract class Conduit(
         return construct(null, path, file)
     }
 
-    /**
-     * Generate JSON encoded string of metadata corresponding Media currently
-     * stored in `this.mMedia`.
-     */
     protected fun getMetadata(): String {
         val gson = GsonBuilder()
             .setPrettyPrinting()
@@ -227,9 +211,6 @@ abstract class Conduit(
         return gson.toJson(this.mMedia, Media::class.java)
     }
 
-    /**
-     * Always use english, since this affects the target server, not the local device.
-     */
     private fun getFlagText(): String {
         val conf = Configuration(mContext.resources.configuration)
         conf.setLocale(Locale.US)
@@ -239,25 +220,14 @@ abstract class Conduit(
 
     companion object {
         const val FOLDER_DATETIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss'GMT'ZZZZZ"
-
-        /**
-         * 2 MByte
-         */
         const val CHUNK_SIZE: Long = 2 * 1024 * 1024
-
-        /**
-         * 10 MByte
-         */
         const val CHUNK_FILESIZE_THRESHOLD = 10 * 1024 * 1024
 
         fun get(media: Media, context: Context): Conduit? {
             return when (media.project?.space?.tType) {
                 Space.Type.INTERNET_ARCHIVE -> IaConduit(media, context)
-
                 Space.Type.WEBDAV -> WebDavConduit(media, context)
-
                 Space.Type.GDRIVE -> GDriveConduit(media, context)
-
                 else -> null
             }
         }
@@ -267,28 +237,20 @@ abstract class Conduit(
             if (ext.isNullOrEmpty()) {
                 ext = when {
                     media.mimeType.startsWith("image") -> "jpg"
-
                     media.mimeType.startsWith("video") -> "mp4"
-
                     media.mimeType.startsWith("audio") -> "m4a"
-
                     else -> "txt"
                 }
             }
 
             var title = media.title
-
             if (title.isBlank()) title = media.mediaHashString
 
             if (escapeTitle) {
                 title = UrlEscapers.urlPathSegmentEscaper().escape(title) ?: title
             }
 
-            if (!title.endsWith(".$ext")) {
-                return "$title.$ext"
-            }
-
-            return title
+            return if (!title.endsWith(".$ext")) "$title.$ext" else title
         }
     }
 }

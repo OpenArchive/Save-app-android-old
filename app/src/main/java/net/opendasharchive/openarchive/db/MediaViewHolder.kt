@@ -26,10 +26,11 @@ import net.opendasharchive.openarchive.databinding.RvMediaBoxBinding
 import net.opendasharchive.openarchive.databinding.RvMediaRowBigBinding
 import net.opendasharchive.openarchive.databinding.RvMediaRowSmallBinding
 import net.opendasharchive.openarchive.fragments.VideoRequestHandler
+import net.opendasharchive.openarchive.util.SecureFileUtil.decryptAndRestore
 import net.opendasharchive.openarchive.util.extensions.hide
 import net.opendasharchive.openarchive.util.extensions.show
 import timber.log.Timber
-import java.io.InputStream
+import java.io.File
 
 abstract class MediaViewHolder(protected val binding: ViewBinding) :
     RecyclerView.ViewHolder(binding.root) {
@@ -186,7 +187,6 @@ abstract class MediaViewHolder(protected val binding: ViewBinding) :
         val soundCache = HashMap<String, SoundFile>()
     }
 
-
     abstract val image: ImageView
     abstract val waveform: SimpleWaveformView
     abstract val videoIndicator: ImageView?
@@ -209,7 +209,6 @@ abstract class MediaViewHolder(protected val binding: ViewBinding) :
         .addRequestHandler(VideoRequestHandler(mContext))
         .build()
 
-
     @SuppressLint("SetTextI18n")
     fun bind(media: Media? = null, batchMode: Boolean = false, doImageFade: Boolean = true) {
         AppLogger.i("Binding media item ${media?.id} with status ${media?.sStatus} and progress ${media?.uploadPercentage}")
@@ -225,101 +224,91 @@ abstract class MediaViewHolder(protected val binding: ViewBinding) :
 
         image.alpha = if (media?.sStatus == Media.Status.Uploaded || !doImageFade) 1f else 0.5f
 
-        if (media?.mimeType?.startsWith("image") == true) {
-            val progress = CircularProgressDrawable(mContext)
-            progress.strokeWidth = 5f
-            progress.centerRadius = 30f
-            progress.start()
+        media?.let {
+            val encryptedFile = File(it.originalFilePath)
+            val decryptedFile = File(mContext.cacheDir, encryptedFile.name.removeSuffix(".enc"))
 
-            Glide.with(mContext)
-                .load(media.fileUri)
-                .placeholder(progress)
-                .fitCenter()
-                .into(image)
+            if (encryptedFile.exists()) {
+                encryptedFile.decryptAndRestore(decryptedFile)
+            }
 
-            image.show()
-            waveform.hide()
-            videoIndicator?.hide()
-        } else if (media?.mimeType?.startsWith("video") == true) {
-            mPicasso.load(VideoRequestHandler.SCHEME_VIDEO + ":" + media.originalFilePath)
-                .fit()
-                .centerCrop()
-                .into(image)
+            when {
+                it.mimeType.startsWith("image") -> {
+                    val progress = CircularProgressDrawable(mContext)
+                    progress.strokeWidth = 5f
+                    progress.centerRadius = 30f
+                    progress.start()
 
-            image.show()
-            waveform.hide()
-            videoIndicator?.show()
-        } else if (media?.mimeType?.startsWith("audio") == true) {
-            videoIndicator?.hide()
+                    Glide.with(mContext)
+                        .load(decryptedFile)
+                        .placeholder(progress)
+                        .fitCenter()
+                        .into(image)
 
-            val soundFile = soundCache[media.originalFilePath]
+                    image.show()
+                    waveform.hide()
+                    videoIndicator?.hide()
+                }
+                it.mimeType.startsWith("video") -> {
+                    mPicasso.load(VideoRequestHandler.SCHEME_VIDEO + ":" + decryptedFile.absolutePath)
+                        .fit()
+                        .centerCrop()
+                        .into(image)
 
-            if (soundFile != null) {
-                image.hide()
-                waveform.setAudioFile(soundFile)
-                waveform.show()
-            } else {
-                image.setImageDrawable(ContextCompat.getDrawable(mContext, R.drawable.no_thumbnail))
-                image.show()
-                waveform.hide()
+                    image.show()
+                    waveform.hide()
+                    videoIndicator?.show()
+                }
+                it.mimeType.startsWith("audio") -> {
+                    videoIndicator?.hide()
 
-                CoroutineScope(Dispatchers.IO).launch {
-                    @Suppress("NAME_SHADOWING")
-                    val soundFile = try {
-                        SoundFile.create(media.originalFilePath) {
-                            return@create true
-                        }
-                    } catch (e: Throwable) {
-                        Timber.d(e)
-
-                        null
-                    }
+                    val soundFile = soundCache[decryptedFile.absolutePath]
 
                     if (soundFile != null) {
-                        soundCache[media.originalFilePath] = soundFile
+                        image.hide()
+                        waveform.setAudioFile(soundFile)
+                        waveform.show()
+                    } else {
+                        image.setImageDrawable(ContextCompat.getDrawable(mContext, R.drawable.no_thumbnail))
+                        image.show()
+                        waveform.hide()
 
-                        MainScope().launch {
-                            waveform.setAudioFile(soundFile)
-                            image.hide()
-                            waveform.show()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val soundFile = try {
+                                SoundFile.create(decryptedFile.absolutePath) { true }
+                            } catch (e: Throwable) {
+                                Timber.d(e)
+                                null
+                            }
+
+                            if (soundFile != null) {
+                                soundCache[decryptedFile.absolutePath] = soundFile
+
+                                MainScope().launch {
+                                    waveform.setAudioFile(soundFile)
+                                    image.hide()
+                                    waveform.show()
+                                }
+                            }
                         }
                     }
                 }
+                else -> {
+                    image.setImageDrawable(ContextCompat.getDrawable(mContext, R.drawable.no_thumbnail))
+                    image.show()
+                    waveform.hide()
+                    videoIndicator?.hide()
+                }
             }
-        } else {
-            image.setImageDrawable(ContextCompat.getDrawable(mContext, R.drawable.no_thumbnail))
-            image.show()
-            waveform.hide()
-            videoIndicator?.hide()
         }
 
         if (media != null) {
-            val file = media.file
+            val file = File(media.originalFilePath)
 
             if (file.exists()) {
                 fileInfo?.text = Formatter.formatShortFileSize(mContext, file.length())
             } else {
-                if (media.contentLength == -1L) {
-                    var iStream: InputStream? = null
-                    try {
-                        iStream = mContext.contentResolver.openInputStream(media.fileUri)
-
-                        if (iStream != null) {
-                            media.contentLength = iStream.available().toLong()
-                            media.save()
-                        }
-                    } catch (e: Throwable) {
-                        Timber.e(e)
-                    } finally {
-                        iStream?.close()
-                    }
-                }
-
-                fileInfo?.text = if (media.contentLength > 0) {
-                    Formatter.formatShortFileSize(mContext, media.contentLength)
-                } else {
-                    media.formattedCreateDate
-                }
+                fileInfo?.text = media.formattedCreateDate
             }
 
             fileInfo?.show()
@@ -327,68 +316,10 @@ abstract class MediaViewHolder(protected val binding: ViewBinding) :
             fileInfo?.hide()
         }
 
-        val sbTitle = StringBuffer()
+        updateIndicators(media)
+    }
 
-        if (media?.sStatus == Media.Status.Error) {
-            AppLogger.i("Media Item ${media.id} is error")
-            sbTitle.append(mContext.getString(R.string.error))
-
-            overlayContainer?.show()
-            progress?.hide()
-            progressText?.hide()
-            error?.show()
-
-            if (media.statusMessage.isNotBlank()) {
-                fileInfo?.text = media.statusMessage
-                fileInfo?.show()
-            }
-        } else if (media?.sStatus == Media.Status.Queued) {
-            AppLogger.i("Media Item ${media.id} is queued")
-            overlayContainer?.show()
-            progress?.isIndeterminate = true
-            progress?.show()
-            progressText?.hide()
-            error?.hide()
-        } else if (media?.sStatus == Media.Status.Uploading) {
-//            val progressValue = if (media.contentLength > 0) {
-//                (media.progress.toFloat() / media.contentLength.toFloat() * 100f).roundToInt()
-//            } else 0
-            progress?.isIndeterminate = false
-            val progressValue = media.uploadPercentage ?: 0
-            AppLogger.i("Media Item ${media.id} is uploading")
-
-            overlayContainer?.show()
-            progress?.show()
-            progressText?.show()
-
-            // Make sure to keep spinning until the upload has made some noteworthy progress.
-            if (progressValue > 2) {
-                progress?.setProgressCompat(progressValue, true)
-            }
-//            else {
-//                progress?.isIndeterminate = true
-//            }
-
-            progressText?.text = "${progressValue}%"
-
-            error?.hide()
-        } else {
-            overlayContainer?.hide()
-            progress?.hide()
-            progressText?.hide()
-            error?.hide()
-        }
-
-        if (sbTitle.isNotEmpty()) sbTitle.append(": ")
-        sbTitle.append(media?.title)
-
-        if (sbTitle.isNotBlank()) {
-            title?.text = sbTitle.toString()
-            title?.show()
-        } else {
-            title?.hide()
-        }
-
+    private fun updateIndicators(media: Media?) {
         locationIndicator?.setImageResource(
             if (media?.location.isNullOrBlank()) R.drawable.ic_location_unselected
             else R.drawable.ic_location_selected
@@ -419,11 +350,7 @@ abstract class MediaViewHolder(protected val binding: ViewBinding) :
         }
 
         AppLogger.i("Updating progressText to $progressValue%")
-        if (progressText == null) {
-            AppLogger.e("progressText is null")
-        } else {
-            progressText?.show(animate = true)
-            progressText?.text = "$progressValue%"
-        }
+        progressText?.show(animate = true)
+        progressText?.text = "$progressValue%"
     }
 }

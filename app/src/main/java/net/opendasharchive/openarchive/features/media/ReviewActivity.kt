@@ -20,9 +20,11 @@ import net.opendasharchive.openarchive.features.core.BaseActivity
 import net.opendasharchive.openarchive.fragments.VideoRequestHandler
 import net.opendasharchive.openarchive.util.AlertHelper
 import net.opendasharchive.openarchive.util.Prefs
+import net.opendasharchive.openarchive.util.SecureFileUtil.decryptAndRestore
 import net.opendasharchive.openarchive.util.extensions.hide
 import net.opendasharchive.openarchive.util.extensions.show
 import net.opendasharchive.openarchive.util.extensions.toggle
+import java.io.File
 import java.text.NumberFormat
 import kotlin.math.max
 import kotlin.math.min
@@ -309,34 +311,23 @@ class ReviewActivity : BaseActivity(), View.OnClickListener {
         imageView.show()
         waveform?.hide()
 
-        if (media?.mimeType?.startsWith("image") == true) {
-            Glide.with(this)
-                .load(media.fileUri)
-                .into(imageView)
-        }
-        else if (media?.mimeType?.startsWith("video") == true) {
-            Picasso.Builder(this)
-                .addRequestHandler(VideoRequestHandler(this))
-                .build()
-                .load(VideoRequestHandler.SCHEME_VIDEO + ":" + media.originalFilePath)
-                ?.fit()
-                ?.centerCrop()
-                ?.into(imageView)
-        }
-        else if (media?.mimeType?.startsWith("audio") == true) {
-            imageView.setImageResource(R.drawable.audio_waveform)
+        media?.let {
+            val encryptedFile = File(it.originalFilePath)
+            val decryptedFile = File(cacheDir, encryptedFile.name.removeSuffix(".enc"))
 
-            if (waveform != null) {
-                val soundFile = MediaViewHolder.soundCache[media.originalFilePath]
-                if (soundFile != null) {
-                    waveform.setAudioFile(soundFile)
-                    waveform.show()
-                    imageView.hide()
-                }
+            if (encryptedFile.exists()) {
+                encryptedFile.decryptAndRestore(decryptedFile)
             }
-        }
-        else {
-            imageView.setImageResource(R.drawable.no_thumbnail)
+
+            when {
+                it.mimeType.startsWith("image") -> Glide.with(this).load(decryptedFile).into(imageView)
+                it.mimeType.startsWith("video") ->  Picasso.Builder(this).addRequestHandler(VideoRequestHandler(this)).build().load(VideoRequestHandler.SCHEME_VIDEO + ":" + decryptedFile.absolutePath).fit().centerCrop().into(imageView)
+                it.mimeType.startsWith("audio") -> {
+                    imageView.setImageResource(R.drawable.audio_waveform)
+                    waveform?.apply { show() }
+                }
+                else -> imageView.setImageResource(R.drawable.no_thumbnail)
+            }
         }
     }
 }

@@ -9,13 +9,13 @@ import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.db.Media
 import net.opendasharchive.openarchive.services.Conduit
 import net.opendasharchive.openarchive.services.SaveClient
+import net.opendasharchive.openarchive.util.SecureFileUtil.decryptAndRestore
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import java.io.File
+import java.io.File // OK
 import java.io.IOException
 
 class IaConduit(media: Media, context: Context) : Conduit(media, context) {
-
 
     companion object {
         const val ARCHIVE_BASE_URL = "https://archive.org/"
@@ -38,34 +38,26 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
 
         try {
             val mimeType = mMedia.mimeType
-
             val client = SaveClient.get(mContext)
-
             val fileName = getUploadFileName(mMedia, true)
             val metaJson = gson.toJson(mMedia)
-//            val proof = getProof()
 
             if (mMedia.serverUrl.isBlank()) {
-                // TODO this should make sure we aren't accidentally using one of archive.org's metadata fields by accident
                 val slug = getSlug(mMedia.title)
                 val newIdentifier = "$slug-${Util.RandomString(4).nextString()}"
-                // create an identifier for the upload
                 mMedia.serverUrl = newIdentifier
             }
 
-            // upload content synchronously for progress
-            client.uploadContent(fileName, mimeType)
+            // ✅ **Decrypt file before uploading**
+            val decryptedFile = decryptMediaFile(mMedia) ?: throw IOException("Failed to decrypt media file.")
 
-            // upload metadata and proofs async, and report failures
+            // ✅ **Upload decrypted content**
+            client.uploadContent(decryptedFile, fileName, mimeType)
+
+            // ✅ **Upload metadata**
             client.uploadMetaData(metaJson, fileName)
 
-            /// Upload ProofMode metadata, if enabled and successfully created.
-//            for (file in proof) {
-//                client.uploadProofFiles(file)
-//            }
-
             jobSucceeded()
-
             return true
         } catch (e: Throwable) {
             jobFailed(e)
@@ -78,16 +70,13 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         // Ignored. Not used here.
     }
 
-    private suspend fun OkHttpClient.uploadContent(fileName: String, mimeType: String) {
-        val mediaUri = mMedia.originalFilePath
-
+    private suspend fun OkHttpClient.uploadContent(decryptedFile: File, fileName: String, mimeType: String) {
         val url = "${ARCHIVE_API_ENDPOINT}/${mMedia.serverUrl}/$fileName"
 
         val requestBody = RequestBodyUtil.create(
-            mContext.contentResolver,
-            Uri.parse(mediaUri),
-            mMedia.contentLength,
-            mimeType.toMediaTypeOrNull(),
+            "multipart/form-data".toMediaTypeOrNull(),
+            decryptedFile.inputStream(),
+            decryptedFile.length(),
             createListener(cancellable = { !mCancelled }, onProgress = {
                 jobProgress(it)
             })
@@ -122,14 +111,15 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         enqueue(request)
     }
 
-    /// upload proof mode
+    /// Upload proof files
     @Throws(IOException::class)
     private fun OkHttpClient.uploadProofFiles(uploadFile: File) {
         val requestBody = RequestBodyUtil.create(
             mContext.contentResolver,
             Uri.fromFile(uploadFile),
             uploadFile.length(),
-            textMediaType, createListener(cancellable = { !mCancelled })
+            textMediaType,
+            createListener(cancellable = { !mCancelled })
         )
 
         val url = "$ARCHIVE_API_ENDPOINT/${mMedia.serverUrl}/${uploadFile.name}"
@@ -143,13 +133,25 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         enqueue(request)
     }
 
+    /// **Helper Method: Decrypt Media File Before Upload**
+    private fun decryptMediaFile(media: Media): File? {
+        val encryptedFile = File(media.originalFilePath)
+        val decryptedFile = File(encryptedFile.parent, encryptedFile.name.removeSuffix(".enc"))
+
+        return if (encryptedFile.exists()) {
+            encryptedFile.decryptAndRestore(decryptedFile)
+        } else {
+            null
+        }
+    }
+
     private fun mainHeader(): Headers {
         val builder = Headers.Builder()
             .add("Accept", "*/*")
             .add("x-archive-auto-make-bucket", "1")
             .add("x-amz-auto-make-bucket", "1")
             .add("x-archive-interactive-priority", "1")
-            .add("x-archive-meta-language", "eng") // FIXME set based on locale or selected.
+            .add("x-archive-meta-language", "eng")
             .add("Authorization", "LOW " + mMedia.space?.username + ":" + mMedia.space?.password)
 
         val author = mMedia.author
@@ -199,21 +201,18 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
         }
 
         var licenseUrl = mMedia.licenseUrl
-
         if (licenseUrl.isNullOrEmpty()) {
             licenseUrl = "https://creativecommons.org/licenses/by/4.0/"
         }
 
         builder.add("x-archive-meta-licenseurl", licenseUrl)
-
         return builder.build()
     }
 
-    /// headers for meta-data and proof mode
     private fun metadataHeader(): Headers {
         return Headers.Builder()
             .add("x-amz-auto-make-bucket", "1")
-            .add("x-archive-meta-language", "eng") // FIXME set based on locale or selected
+            .add("x-archive-meta-language", "eng")
             .add("Authorization", "LOW " + mMedia.space?.username + ":" + mMedia.space?.password)
             .add("x-archive-meta-mediatype", "texts")
             .add("x-archive-meta-collection", "opensource")
@@ -222,28 +221,22 @@ class IaConduit(media: Media, context: Context) : Conduit(media, context) {
 
     @Throws(Exception::class)
     private suspend fun OkHttpClient.execute(request: Request) = withContext(Dispatchers.IO) {
-        val result = newCall(request)
-            .execute()
-
-        if (result.isSuccessful.not()) {
-            throw RuntimeException("${result.code}: ${result.message}")
-        }
+        val result = newCall(request).execute()
+        if (!result.isSuccessful) throw RuntimeException("${result.code}: ${result.message}")
     }
 
     @Throws(Exception::class)
     private fun OkHttpClient.enqueue(request: Request) {
-        newCall(request)
-            .enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    jobFailed(e)
-                }
+        newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                jobFailed(e)
+            }
 
-                override fun onResponse(call: Call, response: Response) {
-                    if (!response.isSuccessful) {
-                        jobFailed(Exception("${response.code}: ${response.message}"))
-                    }
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    jobFailed(Exception("${response.code}: ${response.message}"))
                 }
-
-            })
+            }
+        })
     }
 }

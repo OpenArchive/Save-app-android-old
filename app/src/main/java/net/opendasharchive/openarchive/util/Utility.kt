@@ -7,93 +7,96 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import net.opendasharchive.openarchive.util.SecureFileUtil.decryptAndRestore
+import net.opendasharchive.openarchive.util.SecureFileUtil.encryptAndSave
 import timber.log.Timber
-import java.io.File
-import java.io.FileNotFoundException
-import java.io.FileOutputStream
-import java.io.IOException
-import java.io.InputStream
+import java.io.*
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 object Utility {
 
     fun getMimeType(context: Context, uri: Uri?): String? {
-        val cR = context.contentResolver
-        return cR.getType(uri!!)
+        return uri?.let { context.contentResolver.getType(it) }
     }
 
     fun getUriDisplayName(context: Context, uri: Uri): String? {
         val cursor = context.contentResolver.query(uri, null, null, null, null) ?: return null
 
         var result: String? = null
-
-        // Get the column indexes of the data in the Cursor,
-        // move to the first row in the Cursor, get the data, and display it.
         val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
         if (idx >= 0 && cursor.moveToFirst()) {
             result = cursor.getString(idx)
         }
-
         cursor.close()
 
         return result
     }
 
+    /**
+     * Creates a secure encrypted cache file.
+     */
     fun getOutputMediaFileByCache(context: Context, fileName: String): File? {
         val dir = context.cacheDir
-        if (!dir.exists()) {
-            if (!dir.mkdirs()) {
-                return null
-            }
+        if (!dir.exists() && !dir.mkdirs()) {
+            Timber.e("Failed to create cache directory")
+            return null
         }
 
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val file = File(dir, "$timeStamp.$fileName")
 
-        return File(dir, "$timeStamp.$fileName")
+        try {
+            if (!file.exists()) {
+                if (file.createNewFile()) {
+                    Timber.d("File created: ${file.absolutePath}")
+                } else {
+                    Timber.e("Failed to create file: ${file.absolutePath}")
+                    return null
+                }
+            }
+        } catch (e: IOException) {
+            Timber.e(e, "IOException while creating file: ${file.absolutePath}")
+            return null
+        }
+
+        return file
     }
 
-    fun writeStreamToFile(input: InputStream?, file: File?): Boolean {
-        @Suppress("NAME_SHADOWING")
-        val input = input ?: return false
 
-        @Suppress("NAME_SHADOWING")
-        val file = file ?: return false
+    /**
+     * Writes an input stream to an encrypted file.
+     */
+    fun writeStreamToFile(input1: InputStream?, file1: File?): Boolean {
+        val input = input1 ?: return false
+        val file = file1 ?: return false
 
         var success = false
         var output: FileOutputStream? = null
 
         try {
-            output = FileOutputStream(file)
-            val buffer = ByteArray(4 * 1024) // or other buffer size
-            var read: Int
+            val tempFile = File(file.parent, file.name + ".tmp")
+            output = FileOutputStream(tempFile)
 
+            val buffer = ByteArray(4 * 1024)
+            var read: Int
             while (input.read(buffer).also { read = it } != -1) {
                 output.write(buffer, 0, read)
             }
             output.flush()
-
             success = true
-        }
-        catch (e: FileNotFoundException) {
+
+            // Encrypt the file after writing
+            tempFile.encryptAndSave(file)
+            tempFile.delete()
+
+        } catch (e: IOException) {
             Timber.e(e)
-        }
-        catch (e: IOException) {
-            Timber.e(e)
-        }
-        finally {
+        } finally {
             try {
                 output?.close()
-            }
-            catch (e: IOException) {
-                Timber.e(e)
-            }
-
-            try {
                 input.close()
-            }
-            catch (e: IOException) {
+            } catch (e: IOException) {
                 Timber.e(e)
             }
         }
@@ -101,39 +104,69 @@ object Utility {
         return success
     }
 
+    /**
+     * Reads and decrypts a file from cache.
+     */
+    fun getDecryptedCacheFile(context: Context, encryptedFile: File): File? {
+        val decryptedFile = File(context.cacheDir, encryptedFile.name.removeSuffix(".enc"))
+
+        return encryptedFile.decryptAndRestore(decryptedFile)?.also {
+            Timber.d("Decrypted file available at: ${it.absolutePath}")
+        } ?: run {
+            Timber.e("Failed to decrypt file: ${encryptedFile.absolutePath}")
+            null
+        }
+    }
+
+    /**
+     * Opens an app store link securely.
+     */
     fun openStore(context: Context, appId: String) {
-        var i = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${appId}"))
+        var i = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$appId"))
 
         val capableApps = context.packageManager.queryIntentActivities(i, 0)
-
-        // If there are no app stores installed, send to the web.
-        if (capableApps.size < 1) {
-            i = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${appId}"))
+        if (capableApps.isEmpty()) {
+            i = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$appId"))
         }
 
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-                or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         context.startActivity(i)
     }
 
-    fun showMaterialWarning(context: Context, message: String? = null, positiveButtonText: String = "Ok", completion: (() -> Unit)? = null) {
+    /**
+     * Shows a Material UI Warning dialog.
+     */
+    fun showMaterialWarning(
+        context: Context,
+        message: String? = null,
+        positiveButtonText: String = "Ok",
+        completion: (() -> Unit)? = null
+    ) {
         showMaterialMessage(context, "Oops", message, positiveButtonText, completion)
     }
 
-    fun showMaterialMessage(context: Context, title: String = "Oops", message: String? = null, positiveButtonText: String = "Ok", completion: (() -> Unit)? = null) {
+    /**
+     * Shows a Material UI message dialog.
+     */
+    fun showMaterialMessage(
+        context: Context,
+        title: String = "Oops",
+        message: String? = null,
+        positiveButtonText: String = "Ok",
+        completion: (() -> Unit)? = null
+    ) {
         Handler(Looper.getMainLooper()).post {
             MaterialAlertDialogBuilder(context)
                 .setTitle(title)
                 .setMessage(message)
-                .setPositiveButton(positiveButtonText) { _, _ ->
-                    completion?.invoke()
-                }
+                .setPositiveButton(positiveButtonText) { _, _ -> completion?.invoke() }
                 .show()
         }
     }
 
+    /**
+     * Shows a confirmation dialog with positive & negative actions.
+     */
     fun showMaterialPrompt(
         context: Context,
         title: String,
@@ -148,11 +181,11 @@ object Utility {
                 .setMessage(message)
                 .setPositiveButton(positiveButtonText) { dialog, _ ->
                     dialog.dismiss()
-                    completion.invoke(true)
+                    completion(true)
                 }
                 .setNegativeButton(negativeButtonText) { dialog, _ ->
                     dialog.dismiss()
-                    completion.invoke(false)
+                    completion(false)
                 }
                 .show()
         }

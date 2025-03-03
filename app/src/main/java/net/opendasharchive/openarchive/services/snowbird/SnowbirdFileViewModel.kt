@@ -16,9 +16,11 @@ import net.opendasharchive.openarchive.db.FileUploadResult
 import net.opendasharchive.openarchive.db.SnowbirdError
 import net.opendasharchive.openarchive.db.SnowbirdFileItem
 import net.opendasharchive.openarchive.util.BaseViewModel
+import net.opendasharchive.openarchive.util.SecureFileUtil.decryptAndRestore
+import net.opendasharchive.openarchive.util.SecureFileUtil.encryptAndSave
 import net.opendasharchive.openarchive.util.trackProcessingWithTimeout
 import timber.log.Timber
-import java.io.File
+import java.io.File // OK
 
 class SnowbirdFileViewModel(
     private val application: Application,
@@ -73,11 +75,6 @@ class SnowbirdFileViewModel(
         }
     }
 
-    // Example reponse:
-    //    {
-    //        "updated_collection_hash": "7dkgeko3oeyyr5xympsg2mhbicb2k2ba4wqen6lpt6qs7mgza7vq"
-    //    }
-    //
     fun uploadFile(groupKey: String, repoKey: String, uri: Uri) {
         viewModelScope.launch {
             _mediaState.value = State.Loading
@@ -98,25 +95,51 @@ class SnowbirdFileViewModel(
 
     private suspend fun onDownload(bytes: ByteArray, filename: String): State {
         Timber.d("Downloaded ${bytes.size} bytes")
-        return saveByteArrayToFile(application.applicationContext, bytes, filename).fold(
+        return saveByteArrayToEncryptedFile(application.applicationContext, bytes, filename).fold(
             onSuccess = { uri -> State.DownloadSuccess(uri) },
             onFailure = { error -> State.Error(SnowbirdError.GeneralError("Error saving file: ${error.message}")) }
         )
     }
 
-    private suspend fun saveByteArrayToFile(context: Context, byteArray: ByteArray, filename: String): Result<Uri> =
-        withContext(Dispatchers.IO) {
-            runCatching {
-                val directory = File(context.filesDir, "files").apply { mkdirs() }
-                val file = File(directory, filename)
+    private suspend fun saveByteArrayToEncryptedFile(
+        context: Context,
+        byteArray: ByteArray,
+        filename: String
+    ): Result<Uri> = withContext(Dispatchers.IO) {
+        runCatching {
+            val directory = File(context.filesDir, "files").apply { mkdirs() }
+            val encryptedFile = File(directory, "$filename.enc")
+            val decryptedFile = File(directory, filename)
 
-                file.outputStream().use { it.write(byteArray) }
+            // Save raw bytes temporarily before encryption
+            decryptedFile.outputStream().use { it.write(byteArray) }
 
-                FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    file
-                )
-            }
+            // Encrypt the file and delete the unencrypted version
+            decryptedFile.encryptAndSave(encryptedFile)
+            decryptedFile.delete()
+
+            // Return URI of encrypted file (decrypted before access)
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                encryptedFile
+            )
         }
+    }
+
+    private suspend fun getDecryptedFileUri(context: Context, encryptedFile: File): Uri {
+        return withContext(Dispatchers.IO) {
+            val decryptedFile = File(encryptedFile.parent, encryptedFile.name.removeSuffix(".enc"))
+
+            if (encryptedFile.exists()) {
+                encryptedFile.decryptAndRestore(decryptedFile)
+            }
+
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                decryptedFile
+            )
+        }
+    }
 }

@@ -7,14 +7,9 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.SaveApp
 import net.opendasharchive.openarchive.extensions.RetryAttempt
@@ -22,8 +17,10 @@ import net.opendasharchive.openarchive.extensions.retryWithScope
 import net.opendasharchive.openarchive.extensions.suspendToRetry
 import net.opendasharchive.openarchive.features.main.MainActivity
 import net.opendasharchive.openarchive.services.snowbird.SnowbirdBridge
+import net.opendasharchive.openarchive.util.SecureFileUtil.decryptAndRestore
+import net.opendasharchive.openarchive.util.SecureFileUtil.encryptAndSave
 import timber.log.Timber
-import java.io.File
+import java.io.File // OK
 import java.io.IOException
 import java.net.ConnectException
 import java.net.HttpURLConnection
@@ -56,18 +53,22 @@ class SnowbirdService : Service() {
         val backendBaseDirectory = filesDir
         DEFAULT_BACKEND_DIRECTORY = backendBaseDirectory.absolutePath
 
-        val serverSocketFile = File(filesDir, "rust_server.sock")
-        DEFAULT_SOCKET_PATH = serverSocketFile.absolutePath
-
-        val path = Path(serverSocketFile.absolutePath)
+        val serverSocketFile = File(filesDir, "rust_server.sock.enc")
+        val decryptedSocketFile = File(filesDir, "rust_server.sock")
+        DEFAULT_SOCKET_PATH = decryptedSocketFile.absolutePath
 
         try {
-            Files.delete(path)
+            if (serverSocketFile.exists()) {
+                serverSocketFile.decryptAndRestore(decryptedSocketFile)
+                Timber.d("Decrypted server socket file: ${decryptedSocketFile.absolutePath}")
+            } else {
+                Files.deleteIfExists(Path(decryptedSocketFile.absolutePath))
+                Files.createFile(Path(decryptedSocketFile.absolutePath))
+                Timber.d("Created new server socket file: ${decryptedSocketFile.absolutePath}")
+                decryptedSocketFile.encryptAndSave(serverSocketFile)
+            }
         } catch (e: Exception) {
-            // ignore
-            e.printStackTrace()
-        } finally {
-            Files.createFile(path)
+            Timber.e(e, "Failed to create or restore server socket file.")
         }
     }
 
@@ -88,16 +89,6 @@ class SnowbirdService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    /**
-     * Checks if a web server is available and responding with a 200 OK status.
-     * Throws exceptions on failure for better integration with retry mechanisms.
-     *
-     * @param url The URL to check
-     * @param timeout Optional timeout in milliseconds (default 5000ms)
-     * @throws ConnectException if the server refuses connection
-     * @throws SocketTimeoutException if the connection times out
-     * @throws IOException for other network-related errors
-     */
     private suspend fun checkServerAvailability(url: String, timeout: Int = 1000) {
         withContext(Dispatchers.IO) {
             var connection: HttpURLConnection? = null
@@ -147,12 +138,9 @@ class SnowbirdService : Service() {
             .build()
     }
 
-    /**
-     * Starts polling the server for availability
-     */
     private fun startPolling() {
         Timber.d("Starting polling")
-        pollingJob?.cancel() // Cancel any existing polling
+        pollingJob?.cancel()
 
         pollingJob = suspendToRetry { checkServerAvailability("http://localhost:8080/status") }
             .retryWithScope(
@@ -167,7 +155,6 @@ class SnowbirdService : Service() {
                     when (error) {
                         is ConnectException,
                         is SocketTimeoutException -> true
-
                         else -> false
                     }
                 }

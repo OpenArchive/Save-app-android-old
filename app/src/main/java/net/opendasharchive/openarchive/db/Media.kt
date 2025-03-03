@@ -1,13 +1,16 @@
 package net.opendasharchive.openarchive.db
 
 import android.net.Uri
-import androidx.core.net.toFile
 import com.google.gson.annotations.Expose
 import com.google.gson.annotations.SerializedName
 import com.orm.SugarRecord
+import net.opendasharchive.openarchive.util.SecureFileUtil.decryptAndRestore
+import net.opendasharchive.openarchive.util.SecureFileUtil.encryptAndSave
+import timber.log.Timber
 import java.io.File
+import java.io.FileNotFoundException
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
 
 data class Media(
     var originalFilePath: String = "",
@@ -81,21 +84,25 @@ data class Media(
         const val ORDER_PRIORITY = "priority DESC"
         const val ORDER_CREATED = "create_date DESC"
 
-
         fun getByStatus(statuses: List<Status>, order: String? = null): List<Media> {
-            return find(Media::class.java,
+            return find(
+                Media::class.java,
                 statuses.joinToString(" OR ") { "status = ?" },
                 statuses.map { it.id.toString() }.toTypedArray(),
-                null, order, null)
+                null, order, null
+            )
         }
 
-        fun get(mediaId: Long?): Media? {
-            @Suppress("NAME_SHADOWING")
-            val mediaId = mediaId ?: return null
-
+        fun get(mediaId1: Long?): Media? {
+            val mediaId = mediaId1 ?: return null
             return findById(Media::class.java, mediaId)
         }
     }
+
+    val cleanedPath: String
+        get() {
+            return originalFilePath.replace("file:/", "")
+        }
 
     val formattedCreateDate: String
         get() {
@@ -110,12 +117,35 @@ data class Media(
             status = value.id
         }
 
+    /**
+     * Returns the **encrypted file URI**.
+     */
     val fileUri: Uri
-        get() = Uri.parse(originalFilePath)
+        get() {
+            val file = File(originalFilePath)
+            if (!file.exists()) throw FileNotFoundException("File not found at: ${file.absolutePath}")
+
+            val encryptedFile = File(file.parent, file.name + ".enc")
+
+            return if (encryptedFile.exists()) {
+                Uri.fromFile(encryptedFile)
+            } else {
+                Uri.fromFile(file.encryptAndSave(encryptedFile))
+            }
+        }
+
 
     val file: File
-        get() = fileUri.toFile()
+        get() {
+            val encryptedFile = File("$originalFilePath.enc")
+            val decryptedFile = File(originalFilePath)
 
+            return if (encryptedFile.exists()) {
+                encryptedFile.decryptAndRestore(decryptedFile)
+            } else {
+                decryptedFile // ✅ Return original if not encrypted
+            }
+        }
     val collection: Collection?
         get() = findById(Collection::class.java, collectionId)
 
@@ -126,16 +156,15 @@ data class Media(
         get() = project?.space
 
     val isUploading
-        get() =  status == Status.Queued.id
+        get() = status == Status.Queued.id
                 || status == Status.Uploading.id
                 || status == Status.Error.id
 
     var tagSet: MutableSet<String>
-        get() = tags.split("\\p{Punct}|\\p{Blank}+".toRegex()).map { it.trim() }.toMutableSet()
+        get() = tags.split("\\p{Punct}|[ \\t]+".toRegex()).map { it.trim() }.toMutableSet()
         set(value) {
             tags = value.joinToString(";")
         }
-
 
     @Transient
     var uploadPercentage: Int? = null

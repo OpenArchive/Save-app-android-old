@@ -7,7 +7,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import timber.log.Timber
-import java.io.File
+import java.io.File // NOT USED
 import java.io.InputStream
 import java.net.URI
 import java.net.URLDecoder

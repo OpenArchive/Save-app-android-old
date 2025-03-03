@@ -33,10 +33,12 @@ import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.db.Media
 import net.opendasharchive.openarchive.db.Project
+import net.opendasharchive.openarchive.util.SecureFileUtil.encryptAndSave
 import net.opendasharchive.openarchive.util.Utility
 import net.opendasharchive.openarchive.util.extensions.makeSnackBar
 import org.witness.proofmode.crypto.HashUtils
-import java.io.File
+import timber.log.Timber
+import java.io.File // OK
 import java.util.Date
 
 object Picker {
@@ -171,7 +173,7 @@ object Picker {
                 val media = import(context, project, uri)
                 if (media != null) result.add(media)
             } catch (e: Exception) {
-                AppLogger.e( "Error importing media", e)
+                AppLogger.e("Error importing media", e)
             }
         }
 
@@ -179,42 +181,41 @@ object Picker {
     }
 
     fun import(context: Context, project: Project?, uri: Uri): Media? {
-        @Suppress("NAME_SHADOWING")
-        val project = project ?: return null
-
         val title = Utility.getUriDisplayName(context, uri) ?: ""
         val file = Utility.getOutputMediaFileByCache(context, title)
 
-        if (!Utility.writeStreamToFile(context.contentResolver.openInputStream(uri), file)) {
+        if (file == null || !file.exists()) {
+            Timber.e("File creation failed: ${file?.absolutePath}")
             return null
         }
 
-        // create media
+        if (!Utility.writeStreamToFile(context.contentResolver.openInputStream(uri), file)) {
+            Timber.e("Failed to write stream to file: ${file.absolutePath}")
+            return null
+        }
+
+        if (file.name.endsWith(".enc")) {
+            Timber.d("File is already encrypted, skipping encryption: ${file.absolutePath}")
+            return null
+        }
+
+        // ✅ Encrypt only if it's NOT already encrypted
+        val encryptedFile = File(file.parent, "${file.name}.enc")
+        val encryptedResult = file.encryptAndSave(encryptedFile)
+
+        if (encryptedResult == null) {  // ✅ Proper null check
+            Timber.e("Encryption failed: ${encryptedFile.absolutePath}")
+            return null
+        }
+
+        // ✅ Proceed with saving media
         val media = Media()
-
-        val coll = project.openCollection
-
-        media.collectionId = coll.id
-
-        val fileSource = uri.path?.let { File(it) }
-        var createDate = Date()
-
-        if (fileSource?.exists() == true) {
-            createDate = Date(fileSource.lastModified())
-            media.contentLength = fileSource.length()
-        }
-        else {
-            media.contentLength = file?.length() ?: 0
-        }
-
-        media.originalFilePath = Uri.fromFile(file).toString()
+        media.originalFilePath = encryptedResult.absolutePath
         media.mimeType = Utility.getMimeType(context, uri) ?: ""
-        media.createDate = createDate
+        media.createDate = Date()
         media.updateDate = media.createDate
         media.sStatus = Media.Status.Local
-        media.mediaHashString =
-            HashUtils.getSHA256FromFileContent(context.contentResolver.openInputStream(uri))
-        media.projectId = project.id
+        media.projectId = project?.id ?: 0
         media.title = title
         media.save()
 
@@ -225,9 +226,12 @@ object Picker {
         val file = Utility.getOutputMediaFileByCache(context, "IMG_${System.currentTimeMillis()}.jpg")
 
         file?.let {
+            val encryptedFile = File(it.parent, it.name + ".enc")
+            it.encryptAndSave(encryptedFile)
+
             val uri = FileProvider.getUriForFile(
                 context, "${context.packageName}.provider",
-                it
+                encryptedFile
             )
             currentPhotoUri = uri
             launcher.launch(uri)
