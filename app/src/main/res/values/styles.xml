@@ -391,6 +391,7 @@
     <style name="TextAppearance.App.Button" parent="TextAppearance.Material3.LabelLarge">
         <item name="fontFamily">@font/montserrat</item>
         <item name="android:fontFamily">@font/montserrat</item>
+        <item name="android:textFontWeight">500</item>
     </style>
 
     <style name="TextAppearance.App.TitleLarge" parent="TextAppearance.Material3.TitleLarge">

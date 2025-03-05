@@ -88,6 +88,8 @@
                         app:tint="@color/colorOnBackground" />
 
                     <TextView
+                        android:textFontWeight="600"
+                        android:textSize="16sp"
                         android:id="@+id/folder_name"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -124,6 +126,9 @@
                         android:background="@drawable/pill"
                         android:elevation="1dp"
                         android:gravity="center"
+                        android:textSize="11sp"
+                        android:textFontWeight="500"
+                        android:textColor="@color/colorOnBackground"
                         tools:text="1" />
                 </LinearLayout>
 
