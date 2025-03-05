@@ -103,6 +103,7 @@ abstract class BaseActivity : AppCompatActivity() {
 
         if (showBackButton) {
             supportActionBar?.setDisplayHomeAsUpEnabled(true)
+            supportActionBar?.setHomeAsUpIndicator(R.drawable.ic_arrow_back_ios)
             toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
         } else {
             supportActionBar?.setDisplayHomeAsUpEnabled(false)

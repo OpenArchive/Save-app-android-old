@@ -12,7 +12,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
-open class SKBottomSheetDialogFragment: BottomSheetDialogFragment() {
+open class SKBottomSheetDialogFragment : BottomSheetDialogFragment() {
     override fun onStart() {
         super.onStart()
         val sheetContainer = requireView().parent as? ViewGroup ?: return
@@ -24,7 +24,8 @@ open class SKBottomSheetDialogFragment: BottomSheetDialogFragment() {
         val dialog = super.onCreateDialog(savedInstanceState)
         dialog.setOnShowListener { dialogInterface ->
             (dialogInterface as? BottomSheetDialog)?.let { bottomSheetDialog ->
-                (bottomSheetDialog.findViewById(com.google.android.material.R.id.design_bottom_sheet) as? FrameLayout)?.let { frameLayout ->
+                (bottomSheetDialog.findViewById(com.google.android.material.R.id.design_bottom_sheet)
+                                as? FrameLayout)?.let { frameLayout ->
 
                     val behavior = BottomSheetBehavior.from(frameLayout)
 
@@ -37,7 +38,8 @@ open class SKBottomSheetDialogFragment: BottomSheetDialogFragment() {
                     behavior.isHideable = false // Allow dismissing
 
                     // Dismiss the dialog when hidden
-                    behavior.addBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
+                    behavior.addBottomSheetCallback(object :
+                        BottomSheetBehavior.BottomSheetCallback() {
                         override fun onStateChanged(bottomSheet: View, newState: Int) {
                             if (newState == BottomSheetBehavior.STATE_HIDDEN) {
                                 dismiss()

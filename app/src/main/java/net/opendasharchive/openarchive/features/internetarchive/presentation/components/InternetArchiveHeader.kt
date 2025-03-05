@@ -57,7 +57,6 @@ fun InternetArchiveHeader(modifier: Modifier = Modifier) {
             Text(
                 text = stringResource(id = R.string.internet_archive_description),
                 fontSize = 14.sp,
-                lineHeight = 16.sp,
                 fontWeight = FontWeight.Medium,
                 color = ThemeColors.material.onSurfaceVariant,
             )

@@ -136,6 +136,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
             true
         }
 
+        getPrefByKey<SwitchPreferenceCompat>(R.string.pref_key_use_tor)?.isEnabled = false
+
         findPreference<Preference>(Prefs.THEME)?.setOnPreferenceChangeListener { _, newValue ->
             Theme.set(Theme.get(newValue as? String))
             true

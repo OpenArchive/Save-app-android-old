@@ -87,7 +87,7 @@ fun ServerOptionItem(
             ) {
                 Text(
                     text = title,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.SemiBold,
                     fontSize = 18.sp
                 )
 

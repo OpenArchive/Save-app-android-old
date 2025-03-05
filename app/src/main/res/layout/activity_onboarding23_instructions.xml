@@ -58,7 +58,7 @@
             android:layout_gravity="end"
             android:layout_weight="65"
             android:paddingEnd="40dp"
-            android:src="@drawable/onboarding23_cover_secure"
+            tools:src="@drawable/onboarding_encrypt_png"
             tools:ignore="RtlSymmetry" />
 
         <View

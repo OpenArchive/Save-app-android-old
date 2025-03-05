@@ -68,10 +68,10 @@ android {
                 localPropsFile.inputStream().use { props.load(it) }
             }
 
-//            storeFile = file(props["storeFile"] as? String ?: "")
-//            storePassword = props["storePassword"] as? String ?: ""
-//            keyAlias = props["keyAlias"] as? String ?: ""
-//            keyPassword = props["keyPassword"] as? String ?: ""
+            storeFile = file(props["storeFile"] as? String ?: "")
+            storePassword = props["storePassword"] as? String ?: ""
+            keyAlias = props["keyAlias"] as? String ?: ""
+            keyPassword = props["keyPassword"] as? String ?: ""
         }
     }
 
@@ -130,8 +130,8 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.viewpager2:viewpager2:1.1.0")
     implementation("androidx.recyclerview:recyclerview-selection:1.1.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.2.0")
-    implementation("androidx.constraintlayout:constraintlayout-compose:1.1.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+    implementation("androidx.constraintlayout:constraintlayout-compose:1.1.1")
     implementation("androidx.coordinatorlayout:coordinatorlayout:1.2.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
 

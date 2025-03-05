@@ -8,6 +8,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -58,6 +60,7 @@ import androidx.compose.ui.text.input.PlatformImeOptions
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import net.opendasharchive.openarchive.R
@@ -115,12 +118,6 @@ private fun InternetArchiveLoginContent(
     state: InternetArchiveLoginState, dispatch: Dispatch<Action>
 ) {
 
-    // If extra paranoid could pre-hash password in memory
-    // and use the store/dispatcher
-    var showPassword by rememberSaveable {
-        mutableStateOf(false)
-    }
-
     LaunchedEffect(state.isLoginError) {
         while (state.isLoginError) {
             delay(3000)
@@ -132,19 +129,30 @@ private fun InternetArchiveLoginContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(top = 32.dp, bottom = 16.dp)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
         InternetArchiveHeader(
-            modifier = Modifier.padding(vertical = ThemeDimensions.spacing.large)
-                .padding(end = 40.dp)
+            modifier = Modifier
+                .padding(vertical = 48.dp)
+                .padding(end = 24.dp)
         )
 
 
 
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-            Text("Account")
+        Box {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Text(
+                    "Account",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp
+                )
+            }
         }
 
         CustomTextField(
@@ -195,14 +203,17 @@ private fun InternetArchiveLoginContent(
         ) {
             Text(
                 text = stringResource(R.string.prompt_no_account),
-                color = ThemeColors.material.onBackground
+                color = ThemeColors.material.onBackground,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp
             )
             TextButton(
                 modifier = Modifier.heightIn(ThemeDimensions.touchable),
                 onClick = { dispatch(CreateLogin) }) {
                 Text(
                     text = stringResource(R.string.label_create_login),
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
@@ -239,7 +250,7 @@ private fun InternetArchiveLoginContent(
                 if (state.isBusy) {
                     CircularProgressIndicator(color = ThemeColors.material.primary)
                 } else {
-                    Text(stringResource(R.string.label_login))
+                    Text(stringResource(R.string.next))
                 }
             }
         }

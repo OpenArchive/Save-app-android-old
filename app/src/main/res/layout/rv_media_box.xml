@@ -40,7 +40,7 @@
             android:id="@+id/overlay_container"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@color/transparent_black">
+            android:background="@color/transparent_loading_overlay">
 
             <com.google.android.material.progressindicator.CircularProgressIndicator
                 android:id="@+id/progress"
@@ -89,6 +89,8 @@
         android:text="100%"
         android:textSize="12sp"
         android:visibility="gone"
+        tools:visibility="visible"
+        tools:text="65"
         android:textColor="@color/colorPrimary"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"

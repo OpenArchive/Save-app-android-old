@@ -132,10 +132,10 @@ fun BaseDialog(
 
                     }
 
-
+                    Spacer(Modifier.height(24.dp))
 
                     positiveButton?.let { btn ->
-                        Spacer(Modifier.height(18.dp))
+                        Spacer(Modifier.height(4.dp))
                         BaseButton(
                             modifier = Modifier.fillMaxWidth(),
                             text = btn.text.asString(),
@@ -199,10 +199,10 @@ fun BaseDialogMessage(
     Text(
         text = text,
         textAlign = TextAlign.Center,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = MaterialTheme.colorScheme.onSurface,
         style = MaterialTheme.typography.bodyMedium.copy(
             fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
+            fontWeight = FontWeight.Medium,
         ),
         modifier = modifier
     )

@@ -33,7 +33,7 @@ fun SpaceSetupScreen(
             .fillMaxSize()
             .padding(8.dp)
     ) {
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(48.dp))
         // Header texts
         Column(
             modifier = Modifier
@@ -44,15 +44,16 @@ fun SpaceSetupScreen(
             Text(
                 text = stringResource(R.string.to_get_started_connect_to_a_server_to_store_your_media),
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             val description = if (isDwebEnabled) stringResource(R.string.to_get_started_more_hint_dweb) else stringResource(R.string.to_get_started_more_hint)
             Text(
                 text = description,
                 fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center
             )
         }

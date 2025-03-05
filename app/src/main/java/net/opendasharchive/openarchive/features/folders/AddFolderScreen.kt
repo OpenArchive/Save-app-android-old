@@ -77,7 +77,7 @@ fun AddFolderScreenContent(
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(64.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         Text(
             text = stringResource(id = R.string.select_where_to_store_your_media),
@@ -88,7 +88,7 @@ fun AddFolderScreenContent(
             modifier = Modifier.padding(horizontal = 64.dp)
         )
 
-        Spacer(modifier = Modifier.height(64.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         FolderOption(
             iconRes = R.drawable.ic_create_new_folder,

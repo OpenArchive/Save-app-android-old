@@ -144,7 +144,7 @@
 
     <!-- Strings related to Settings -->
 
-    <string name="tap_to_add">Tap the button below to add media</string>
+    <string name="tap_to_add">Tap the button below\nto add media</string>
     <string name="to_get_started_connect_to_a_server_to_store_your_media">To get started, connect to a server to store your media.</string>
     <string name="to_get_started_more_hint_dweb">You can add multiple private servers and\none IA or DWeb server account at any time.</string>
     <string name="to_get_started_more_hint">You can add multiple private servers and\none IA account at any time.</string>
@@ -280,7 +280,7 @@
     <string name="is_video">is video</string>
     <string name="use_upload_chunking_nextcloud_only">Use Upload Chunking (Nextcloud Only)</string>
     <string name="chunking_explanation">\"Chunking\" uploads media in pieces so you don\'t have to restart your upload if your connection is interrupted.</string>
-    <string name="preview_media">Preview Media</string>
+    <string name="preview_media">Preview Upload</string>
     <string name="add_more">Add More</string>
     <string name="select_all">Select All</string>
     <string name="lbl_got_it">Got it</string>
@@ -346,6 +346,7 @@
     <string name="label_create_login">Create one</string>
     <string name="prompt_no_account">No account?</string>
     <string name="action_continue">Continue</string>
+
 
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>

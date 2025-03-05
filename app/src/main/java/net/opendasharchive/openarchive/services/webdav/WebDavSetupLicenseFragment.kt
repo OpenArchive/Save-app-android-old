@@ -6,6 +6,7 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
 import androidx.core.os.bundleOf
 import androidx.fragment.app.setFragmentResult
 import androidx.navigation.fragment.findNavController
@@ -100,6 +101,12 @@ class WebDavSetupLicenseFragment: BaseFragment() {
             space.license = it
             space.save()
         }
+
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : OnBackPressedCallback(true){
+            override fun handleOnBackPressed() {
+                // do nothing
+            }
+        })
     }
 
     companion object {
@@ -121,7 +128,7 @@ class WebDavSetupLicenseFragment: BaseFragment() {
         }
     }
 
-    override fun getToolbarTitle() = "Select a License"
+    override fun getToolbarTitle() = getString(R.string.private_server)
     override fun getToolbarSubtitle(): String? = null
     override fun shouldShowBackButton() = false
 }

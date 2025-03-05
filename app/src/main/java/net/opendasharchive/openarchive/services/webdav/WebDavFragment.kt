@@ -21,6 +21,7 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import net.opendasharchive.openarchive.BuildConfig
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.databinding.FragmentWebDavBinding
@@ -251,6 +252,12 @@ class WebDavFragment : BaseFragment() {
                     findNavController().popBackStack()
                 }
             }
+        }
+
+        if (BuildConfig.DEBUG) {
+            binding.server.setText("https://nx27277.your-storageshare.de/")
+            binding.username.setText("Upul")
+            binding.password.setText("J7wc(ka_4#9!13h&")
         }
     }
 

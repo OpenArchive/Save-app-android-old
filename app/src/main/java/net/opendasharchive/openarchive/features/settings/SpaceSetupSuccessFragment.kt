@@ -60,6 +60,6 @@ class SpaceSetupSuccessFragment : BaseFragment() {
             }
     }
 
-    override fun getToolbarTitle() = "Setup complete"
+    override fun getToolbarTitle() = "Setup Complete"
     override fun shouldShowBackButton() = false
 }

@@ -9,6 +9,7 @@
     <color name="blue">#0000ff</color>
     <color name="black">#000000</color>
     <color name="transparent_black">#33333333</color>
+    <color name="transparent_loading_overlay">#AB2B2B2B</color>
     <color name="transparent_white">#CCFFFFFF</color>
     <color name="storymaker_blue">#27aae1</color>
     <color name="bright_blue">#b0e7ff</color>

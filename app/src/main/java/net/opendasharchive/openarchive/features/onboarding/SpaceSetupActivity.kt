@@ -108,9 +108,7 @@ class SpaceSetupActivity : BaseActivity() {
         navController.graph = navGraph
 
         appBarConfiguration = AppBarConfiguration(emptySet())
-
         setupActionBarWithNavController(navController, appBarConfiguration)
-
     }
 
     fun updateToolbarFromFragment(fragment: Fragment) {

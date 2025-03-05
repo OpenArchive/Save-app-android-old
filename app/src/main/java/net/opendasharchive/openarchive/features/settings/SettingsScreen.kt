@@ -20,8 +20,6 @@ import me.zhanghai.compose.preference.preferenceCategory
 import me.zhanghai.compose.preference.switchPreference
 import net.opendasharchive.openarchive.core.presentation.theme.DefaultScaffoldPreview
 
-
-
 @Composable
 fun SettingsScreen(
     onNavigateToCache: () -> Unit = {}
