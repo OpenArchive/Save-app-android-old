@@ -15,6 +15,7 @@ import net.opendasharchive.openarchive.core.di.retrofitModule
 import net.opendasharchive.openarchive.core.di.unixSocketModule
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.features.settings.passcode.PasscodeManager
+import net.opendasharchive.openarchive.util.Analytics
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.Theme
 import org.koin.android.ext.koin.androidContext
@@ -31,6 +32,7 @@ class SaveApp : SugarApp() {
 
     override fun onCreate() {
         super.onCreate()
+        Analytics.init(this)
         AppLogger.init(applicationContext, initDebugger = true)
         registerActivityLifecycleCallbacks(PasscodeManager())
         startKoin {

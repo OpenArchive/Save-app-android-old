@@ -9,6 +9,12 @@ plugins {
 }
 android {
 
+    val localPropsFile = file("../local.properties")
+    val localProps = Properties()
+    if (!localPropsFile.canRead()) {
+        throw GradleException("Could not read local.properties!")
+    }
+    localProps.load(localPropsFile.inputStream())
     compileSdk = 34
 
     compileOptions {
@@ -29,6 +35,7 @@ android {
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        resValue("string", "mixpanel_key", localProps.getProperty("mixpanel.key") ?: "")
     }
 
     base {
@@ -243,6 +250,9 @@ dependencies {
 
     implementation("org.cleaninsights.sdk:clean-insights-sdk:2.8.0")
     implementation("info.guardianproject.netcipher:netcipher:2.2.0-alpha")
+
+    // Mixpanel analytics
+    implementation("com.mixpanel.android:mixpanel-android:8.0.2")
 
 
     // Tests
