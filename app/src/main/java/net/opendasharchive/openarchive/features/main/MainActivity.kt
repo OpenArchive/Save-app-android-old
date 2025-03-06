@@ -6,12 +6,14 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
@@ -267,6 +269,14 @@ class MainActivity : BaseActivity() {
     override fun onStart() {
         super.onStart()
 
+        if(Prefs.useProofMode){
+            Prefs.proofModeLocation = true
+            Prefs.proofModeNetwork = true
+        }else{
+            Prefs.proofModeLocation = false
+            Prefs.proofModeNetwork = false
+        }
+
         ProofModeHelper.init(this) {
             // Check for any queued uploads and restart, only after ProofMode is correctly initialized.
             UploadService.startUploadService(this)
@@ -410,6 +420,13 @@ class MainActivity : BaseActivity() {
 
         when (requestCode) {
             2 -> Picker.pickMedia(this, mediaLaunchers.imagePickerLauncher)
+            REQUEST_CAMERA_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    takePhoto() // ✅ Permission granted, retry camera
+                } else {
+                    Toast.makeText(this, "Camera permission denied", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -429,11 +446,10 @@ class MainActivity : BaseActivity() {
 
             if (Prefs.addMediaHint) {
                 when (mediaType) {
-                    AddMediaType.CAMERA -> Picker.takePhoto(
-                        this@MainActivity,
-                        mediaLaunchers.cameraLauncher
-                    )
-
+                    AddMediaType.CAMERA -> {
+//                        takePhoto()
+                        Picker.takePhoto(this,mediaLaunchers.cameraLauncher)
+                    }
                     AddMediaType.GALLERY -> Picker.pickMedia(
                         this,
                         mediaLaunchers.imagePickerLauncher
@@ -525,4 +541,29 @@ class MainActivity : BaseActivity() {
             else -> super.onOptionsItemSelected(item)
         }
     }
+
+    private fun takePhoto() {
+        // Check if CAMERA permission is granted
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            // Request permission
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
+            return
+        }
+
+        // If permission is already granted, start the camera intent
+        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        if (takePictureIntent.resolveActivity(this.packageManager) != null) {
+
+            this.startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
+        } else {
+            Toast.makeText(this, "Camera not available", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    companion object {
+        // Define request codes
+        private const val REQUEST_CAMERA_PERMISSION = 100
+        private const val REQUEST_IMAGE_CAPTURE = 101
+    }
+
 }
