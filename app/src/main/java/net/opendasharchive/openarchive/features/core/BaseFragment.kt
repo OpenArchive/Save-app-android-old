@@ -6,6 +6,7 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.db.SnowbirdError
 import net.opendasharchive.openarchive.extensions.androidViewModel
 import net.opendasharchive.openarchive.features.core.dialog.DialogStateManager
@@ -21,6 +22,12 @@ abstract class BaseFragment : Fragment(), ToolbarConfigurable {
 
     val snowbirdGroupViewModel: SnowbirdGroupViewModel by androidViewModel()
     val snowbirdRepoViewModel: SnowbirdRepoViewModel by androidViewModel()
+
+    val isJetpackNavigation: Boolean
+        get() {
+            val parentFragmentManager = parentFragmentManager
+            return parentFragmentManager.findFragmentById(R.id.space_nav_host_fragment) != null
+        }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)

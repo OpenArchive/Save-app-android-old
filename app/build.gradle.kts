@@ -6,6 +6,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
+    id("androidx.navigation.safeargs.kotlin")
+    alias(libs.plugins.detekt.plugin)
 }
 android {
 
@@ -18,12 +20,12 @@ android {
     compileSdk = 34
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
 
     defaultConfig {
@@ -95,6 +97,14 @@ android {
         abortOnError = false
     }
 
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
+
     namespace = "net.opendasharchive.openarchive"
 
     configurations.all {
@@ -107,9 +117,15 @@ android {
 
 dependencies {
 
-    val composeVersion = "1.7.7"
+    val composeVersion = "1.7.8"
     val material = "1.12.0"
     val material3 = "1.3.1"
+    val lifecycle = "2.8.7"
+    val navigation = "2.8.8"
+    val fragment = "1.8.6"
+    val koin = "4.1.0-Beta5"
+
+    val coil = "3.0.4"
 
     // Core Kotlin and Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
@@ -119,22 +135,26 @@ dependencies {
     // AndroidX Libraries
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.viewpager2:viewpager2:1.1.0")
     implementation("androidx.recyclerview:recyclerview-selection:1.1.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.2.0")
-    implementation("androidx.constraintlayout:constraintlayout-compose:1.1.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+    implementation("androidx.constraintlayout:constraintlayout-compose:1.1.1")
     implementation("androidx.coordinatorlayout:coordinatorlayout:1.2.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
 
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("androidx.navigation:navigation-fragment-ktx:2.8.6")
-    implementation("androidx.navigation:navigation-ui-ktx:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycle")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:$lifecycle")
+
 
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("androidx.security:security-crypto-ktx:1.1.0-alpha06")
+
+    implementation("androidx.fragment:fragment-ktx:$fragment")
+    implementation("androidx.fragment:fragment-compose:$fragment")
 
     // Compose Preferences
     implementation("me.zhanghai.compose.preference:library:1.1.1")
@@ -143,9 +163,10 @@ dependencies {
     implementation("com.google.android.material:material:$material")
 
     // AndroidX SwipeRefreshLayout
-    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-alpha01")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 
     // Compose Libraries
+    implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.compose.material3:material3:$material3")
     implementation("androidx.compose.ui:ui:$composeVersion")
@@ -154,24 +175,35 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:$composeVersion")
     debugImplementation("androidx.compose.ui:ui-tooling:$composeVersion")
 
+    implementation("androidx.compose.runtime:runtime:$composeVersion")
+    implementation("androidx.compose.runtime:runtime-livedata:$composeVersion")
+
     // Navigation
-    implementation("androidx.navigation:navigation-compose:2.8.6")
+    implementation("androidx.navigation:navigation-compose:$navigation")
+    implementation("androidx.navigation:navigation-ui-ktx:$navigation")
+    implementation("androidx.navigation:navigation-fragment-ktx:$navigation")
+    implementation("androidx.navigation:navigation-fragment-compose:$navigation")
 
     // Preference
     implementation("androidx.preference:preference-ktx:1.2.1")
 
     // Dependency Injection
-    implementation("io.insert-koin:koin-core:4.1.0-Beta5")
-    implementation("io.insert-koin:koin-android:4.1.0-Beta5")
-    implementation("io.insert-koin:koin-androidx-compose:4.1.0-Beta5")
+    implementation("io.insert-koin:koin-core:$koin")
+    implementation("io.insert-koin:koin-android:$koin")
+    implementation("io.insert-koin:koin-androidx-compose:$koin")
+    implementation("io.insert-koin:koin-androidx-navigation:$koin")
+    implementation("io.insert-koin:koin-compose:$koin")
+    implementation("io.insert-koin:koin-compose-viewmodel:$koin")
+    implementation("io.insert-koin:koin-compose-viewmodel-navigation:$koin")
 
     // Image Libraries
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
     implementation("com.github.esafirm:android-image-picker:3.0.0")
     implementation("com.squareup.picasso:picasso:2.5.2")
-    implementation("io.coil-kt:coil-compose:2.7.0")
-    implementation("io.coil-kt:coil-video:2.7.0")
+    implementation("io.coil-kt.coil3:coil:$coil")
+    implementation("io.coil-kt.coil3:coil-compose:$coil")
+    implementation("io.coil-kt.coil3:coil-video:$coil")
 
     // Networking and Data
     // Networking
@@ -257,14 +289,32 @@ dependencies {
 
     // Tests
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.10.3")
+    testImplementation("org.robolectric:robolectric:4.14.1")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     testImplementation("androidx.work:work-testing:2.9.1")
+
+    // Detekt
+    detektPlugins(libs.detekt.formatting)
+    detektPlugins(libs.detekt.rules.authors)
+    detektPlugins(libs.detekt.rules.libraries)
+    detektPlugins(libs.detekt.compose)
 }
 
 configurations.all {
     exclude(group = "com.google.guava", module = "listenablefuture")
+}
+
+detekt {
+    config.setFrom(file("$rootDir/config/detekt-config.yml"))
+    baseline = file("$rootDir/config/baseline.xml")
+    source.setFrom(
+        files("$rootDir/app/src")
+    )
+    buildUponDefaultConfig = true
+    allRules = false
+    autoCorrect = false
+    ignoreFailures = true
 }
 
 /**
@@ -273,4 +323,3 @@ password '$bbpassword'
 deviceGroup 'gpdevices'
 mode "FULL_RUN"
 projectName "OASave"}**/
-
