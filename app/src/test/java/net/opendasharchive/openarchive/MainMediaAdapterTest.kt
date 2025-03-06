@@ -91,6 +91,8 @@ class MainMediaAdapterTest {
             mediaList,
             recyclerView,
             checkSelecting = { },
+            allowMultiProjectSelection = TODO(),
+            onDeleteClick = TODO(),
         )
     }
 
