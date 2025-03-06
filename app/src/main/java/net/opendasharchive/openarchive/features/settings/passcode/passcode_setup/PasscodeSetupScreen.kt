@@ -99,6 +99,7 @@ private fun PasscodeSetupScreenContent(
             verticalArrangement = Arrangement.Top,
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(top = 32.dp)
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 24.dp)
         ) {
@@ -116,8 +117,9 @@ private fun PasscodeSetupScreenContent(
             Text(
                 text = "Make sure you remember this pin. If you forget it, you will need to reset the app, and all data will be erased.",
                 color = MaterialTheme.colorScheme.error,
+                fontSize = 11.sp,
                 textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Light,
+                fontWeight = FontWeight.Medium,
                 style = MaterialTheme.typography.labelMedium
             )
         }
