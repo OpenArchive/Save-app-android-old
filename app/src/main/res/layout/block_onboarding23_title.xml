@@ -12,7 +12,7 @@
     <ImageView
         android:layout_width="wrap_content"
         android:layout_height="0dp"
-        android:layout_weight="12"
+        android:layout_weight="10"
         android:adjustViewBounds="true"
         android:src="@drawable/save_oa"
         app:tint="@color/colorTertiary" />
@@ -50,7 +50,7 @@
             android:textFontWeight="900"
             android:textStyle="bold"
             app:autoSizeTextType="uniform"
-            tools:targetApi="p" />
+             />
 
     </LinearLayout>
 
@@ -78,7 +78,7 @@
             android:textFontWeight="900"
             android:textStyle="bold"
             app:autoSizeTextType="uniform"
-            tools:targetApi="p" />
+             />
     </LinearLayout>
 
     <LinearLayout
@@ -105,7 +105,7 @@
             android:textFontWeight="900"
             android:textStyle="bold"
             app:autoSizeTextType="uniform"
-            tools:targetApi="p" />
+             />
 
     </LinearLayout>
 
@@ -134,7 +134,7 @@
             android:textFontWeight="900"
             android:textStyle="bold"
             app:autoSizeTextType="uniform"
-            tools:targetApi="p" />
+             />
 
     </LinearLayout>
 
@@ -146,11 +146,11 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="2"
+        android:layout_weight="4"
         android:text="@string/secure_mobile_media_preservation"
         android:textStyle="bold"
         app:autoSizeMaxTextSize="500sp"
-        app:autoSizeMinTextSize="4sp"
+        app:autoSizeMinTextSize="16sp"
         app:autoSizeTextType="uniform" />
 
 </LinearLayout>

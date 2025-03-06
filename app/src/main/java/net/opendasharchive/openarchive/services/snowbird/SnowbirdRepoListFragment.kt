@@ -13,6 +13,7 @@ import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.R
@@ -25,7 +26,7 @@ import net.opendasharchive.openarchive.util.SpacingItemDecoration
 import net.opendasharchive.openarchive.util.Utility
 import timber.log.Timber
 
-class SnowbirdRepoListFragment private constructor() : BaseFragment() {
+class SnowbirdRepoListFragment: BaseFragment() {
 
     private lateinit var viewBinding: FragmentSnowbirdListReposBinding
     private lateinit var adapter: SnowbirdRepoListAdapter
@@ -114,13 +115,22 @@ class SnowbirdRepoListFragment private constructor() : BaseFragment() {
         adapter = SnowbirdRepoListAdapter { repoKey ->
             AppLogger.d("Click!!")
             //findNavController().navigate(SnowbirdRepoListFragmentDirections.navigateToSnowbirdListFilesScreen(groupKey, repoKey))
-            setFragmentResult(
-                RESULT_REQUEST_KEY,
-                bundleOf(
-                    RESULT_VAL_RAVEN_GROUP_KEY to groupKey,
-                    RESULT_VAL_RAVEN_REPO_KEY to repoKey
+            if (isJetpackNavigation) {
+                val action =
+                    SnowbirdRepoListFragmentDirections.actionFragmentSnowbirdListReposToFragmentSnowbirdListMedia(
+                        dwebGroupKey = groupKey,
+                        dwebRepoKey = repoKey
+                    )
+                findNavController().navigate(action)
+            } else {
+                setFragmentResult(
+                    RESULT_REQUEST_KEY,
+                    bundleOf(
+                        RESULT_VAL_RAVEN_GROUP_KEY to groupKey,
+                        RESULT_VAL_RAVEN_REPO_KEY to repoKey
+                    )
                 )
-            )
+            }
         }
 
         val spacingInPixels = resources.getDimensionPixelSize(R.dimen.list_item_spacing)
@@ -190,8 +200,8 @@ class SnowbirdRepoListFragment private constructor() : BaseFragment() {
     companion object {
 
         const val RESULT_REQUEST_KEY = "raven_fragment_repo_list_result"
-        const val RESULT_VAL_RAVEN_GROUP_KEY = "raven_fragment_repo_list_group_key"
-        const val RESULT_VAL_RAVEN_REPO_KEY = "raven_fragment_repo_list_repo_key"
+        const val RESULT_VAL_RAVEN_GROUP_KEY = "dweb_group_key"
+        const val RESULT_VAL_RAVEN_REPO_KEY = "dweb_repo_key"
 
         @JvmStatic
         fun newInstance(groupKey: String) =

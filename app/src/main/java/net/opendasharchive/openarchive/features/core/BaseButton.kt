@@ -40,7 +40,7 @@ fun BaseButton(
             contentColor = textColor
         ),
         shape = RoundedCornerShape(cornerRadius),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
     ) {
         ButtonText(text, color = textColor)
     }
@@ -94,7 +94,7 @@ fun ButtonText(
     text: String,
     modifier: Modifier = Modifier,
     fontSize: TextUnit = 16.sp,
-    fontWeight: FontWeight = FontWeight.Normal,
+    fontWeight: FontWeight = FontWeight.SemiBold,
     color: Color = MaterialTheme.colorScheme.onPrimary
 ) {
     Text(

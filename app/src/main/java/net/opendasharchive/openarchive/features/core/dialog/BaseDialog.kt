@@ -1,8 +1,8 @@
 package net.opendasharchive.openarchive.features.core.dialog
 
-import androidx.compose.foundation.background
+import android.content.res.Configuration
+import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,7 +27,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,10 +54,10 @@ fun BaseDialog(
     hasCheckbox: Boolean = false,
     onCheckBoxStateChanged: (Boolean) -> Unit = {},
     checkBoxHint: String = "Do not show me this again",
-    positiveButton: ButtonData,
+    positiveButton: ButtonData? = null,
     neutralButton: ButtonData? = null,
     destructiveButton: ButtonData? = null,
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh
+    backgroundColor: Color = MaterialTheme.colorScheme.surface
 ) {
 
     val (isCheckedState, setCheckedState) = remember { mutableStateOf(false) }
@@ -70,14 +70,18 @@ fun BaseDialog(
             usePlatformDefaultWidth = true
         )
     ) {
-        Box(
-            Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .fillMaxWidth()
-                .background(backgroundColor)
-        ) {
 
-            Card {
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 4.dp
+                ),
+                colors = CardDefaults.cardColors(
+                    containerColor = backgroundColor
+                )
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -89,11 +93,11 @@ fun BaseDialog(
                     icon?.let { icon ->
                         icon.asIcon(
                             contentDescription = null,
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(30.dp),
                             tint = iconColor ?: Color.Unspecified
                         ).invoke()
 
-                        Spacer(modifier = Modifier.height(18.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
 
                     BaseDialogTitle(title)
@@ -108,7 +112,7 @@ fun BaseDialog(
                     }
 
                     if (hasCheckbox) {
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(8.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -128,19 +132,11 @@ fun BaseDialog(
 
                     }
 
-                    Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(24.dp))
 
-                    BaseButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = positiveButton.text.asString(),
-                        onClick = {
-                            positiveButton.action()
-                            onDismiss()
-                        })
-
-                    neutralButton?.let { btn ->
-                        Spacer(modifier = Modifier.height(4.dp))
-                        BaseNeutralButton(
+                    positiveButton?.let { btn ->
+                        Spacer(Modifier.height(4.dp))
+                        BaseButton(
                             modifier = Modifier.fillMaxWidth(),
                             text = btn.text.asString(),
                             onClick = {
@@ -160,12 +156,23 @@ fun BaseDialog(
                             text = btn.text.asString()
                         )
                     }
+
+                    neutralButton?.let { btn ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        BaseNeutralButton(
+                            modifier = Modifier.fillMaxWidth(),
+                            text = btn.text.asString(),
+                            onClick = {
+                                btn.action()
+                                onDismiss()
+                            })
+                    }
                 }
 
             }
 
 
-        }
+
     }
 }
 
@@ -192,10 +199,10 @@ fun BaseDialogMessage(
     Text(
         text = text,
         textAlign = TextAlign.Center,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = MaterialTheme.colorScheme.onSurface,
         style = MaterialTheme.typography.bodyMedium.copy(
             fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
+            fontWeight = FontWeight.Medium,
         ),
         modifier = modifier
     )
@@ -245,6 +252,7 @@ fun DialogHost(dialogStateManager: DialogStateManager) {
 }
 
 @Preview
+@Preview(uiMode = UI_MODE_NIGHT_YES)
 @Composable
 private fun BaseDialogPreview() {
     DefaultBoxPreview {
@@ -262,6 +270,7 @@ private fun BaseDialogPreview() {
 }
 
 @Preview
+@Preview(uiMode = UI_MODE_NIGHT_YES)
 @Composable
 private fun WarningDialogPreview() {
     DefaultBoxPreview {
@@ -282,6 +291,7 @@ private fun WarningDialogPreview() {
 }
 
 @Preview
+@Preview(uiMode = UI_MODE_NIGHT_YES)
 @Composable
 private fun ErrorDialogPreview() {
     DefaultBoxPreview {

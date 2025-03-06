@@ -36,6 +36,26 @@ fun DefaultScaffoldPreview(
 }
 
 @Composable
+fun DefaultEmptyScaffoldPreview(
+    content: @Composable () -> Unit
+) {
+
+    SaveAppTheme {
+
+        Scaffold { paddingValues ->
+
+            Box(
+                modifier = Modifier.Companion.padding(paddingValues),
+                contentAlignment = Alignment.Companion.Center
+            ) {
+                content()
+            }
+        }
+    }
+
+}
+
+@Composable
 fun DefaultBoxPreview(
     content: @Composable () -> Unit
 ) {

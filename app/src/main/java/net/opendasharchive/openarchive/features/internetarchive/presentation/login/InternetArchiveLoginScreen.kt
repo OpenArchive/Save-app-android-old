@@ -8,6 +8,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,11 +24,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -43,8 +47,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -54,6 +60,7 @@ import androidx.compose.ui.text.input.PlatformImeOptions
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import net.opendasharchive.openarchive.R
@@ -111,12 +118,6 @@ private fun InternetArchiveLoginContent(
     state: InternetArchiveLoginState, dispatch: Dispatch<Action>
 ) {
 
-    // If extra paranoid could pre-hash password in memory
-    // and use the store/dispatcher
-    var showPassword by rememberSaveable {
-        mutableStateOf(false)
-    }
-
     LaunchedEffect(state.isLoginError) {
         while (state.isLoginError) {
             delay(3000)
@@ -127,19 +128,38 @@ private fun InternetArchiveLoginContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(top = 32.dp, bottom = 16.dp)
+            .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
         InternetArchiveHeader(
-            modifier = Modifier.padding(bottom = ThemeDimensions.spacing.large)
+            modifier = Modifier
+                .padding(vertical = 48.dp)
+                .padding(end = 24.dp)
         )
+
+
+
+        Box {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Text(
+                    "Account",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp
+                )
+            }
+        }
 
         CustomTextField(
             value = state.username,
             onValueChange = { dispatch(UpdateUsername(it)) },
             label = stringResource(R.string.label_username),
-            placeholder = stringResource(R.string.placeholder_email_or_username),
+            placeholder = stringResource(R.string.prompt_email),
             isError = state.isUsernameError,
             isLoading = state.isBusy,
             keyboardType = KeyboardType.Email,
@@ -152,41 +172,48 @@ private fun InternetArchiveLoginContent(
             value = state.password,
             onValueChange = { dispatch(UpdatePassword(it)) },
             label = stringResource(R.string.label_password),
-            placeholder = stringResource(R.string.placeholder_password),
+            placeholder = stringResource(R.string.prompt_password),
             isError = state.isPasswordError,
             isLoading = state.isBusy,
             keyboardType = KeyboardType.Password,
             imeAction = ImeAction.Done,
         )
 
-        Spacer(Modifier.height(ThemeDimensions.spacing.large))
-
-        AnimatedVisibility(
-            visible = state.isLoginError,
-            enter = fadeIn(),
-            exit = fadeOut()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
         ) {
-            Text(
-                text = stringResource(R.string.error_incorrect_username_or_password),
-                color = MaterialTheme.colorScheme.error
-            )
+            AnimatedVisibility(
+                visible = state.isLoginError,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Text(
+                    text = stringResource(R.string.error_incorrect_username_or_password),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
+
+        Spacer(Modifier.height(ThemeDimensions.spacing.large))
         Row(
             modifier = Modifier
-                .padding(top = ThemeDimensions.spacing.small)
-                .weight(1f),
+                .padding(top = ThemeDimensions.spacing.small),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = stringResource(R.string.prompt_no_account),
-                color = ThemeColors.material.onBackground
+                color = ThemeColors.material.onBackground,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp
             )
             TextButton(
                 modifier = Modifier.heightIn(ThemeDimensions.touchable),
                 onClick = { dispatch(CreateLogin) }) {
                 Text(
                     text = stringResource(R.string.label_create_login),
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
@@ -195,8 +222,9 @@ private fun InternetArchiveLoginContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .weight(1f)
                 .padding(top = ThemeDimensions.spacing.medium),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             TextButton(
@@ -204,9 +232,12 @@ private fun InternetArchiveLoginContent(
                     .weight(1f)
                     .heightIn(ThemeDimensions.touchable)
                     .padding(ThemeDimensions.spacing.small),
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = colorResource(R.color.colorOnBackground)
+                ),
                 shape = RoundedCornerShape(ThemeDimensions.roundedCorner),
                 onClick = { dispatch(Action.Cancel) }) {
-                Text(stringResource(R.string.action_cancel))
+                Text(stringResource(R.string.back))
             }
             Button(
                 modifier = Modifier
@@ -219,7 +250,7 @@ private fun InternetArchiveLoginContent(
                 if (state.isBusy) {
                     CircularProgressIndicator(color = ThemeColors.material.primary)
                 } else {
-                    Text(stringResource(R.string.label_login))
+                    Text(stringResource(R.string.next))
                 }
             }
         }
@@ -227,6 +258,7 @@ private fun InternetArchiveLoginContent(
 }
 
 @Composable
+@Preview
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 private fun InternetArchiveLoginPreview() {
     DefaultScaffoldPreview {
@@ -276,14 +308,11 @@ fun CustomTextField(
     imeAction: ImeAction = ImeAction.Next,
 ) {
 
-    TextField(
+    OutlinedTextField(
         modifier = modifier.fillMaxWidth(),
         value = value,
         enabled = !isLoading,
         onValueChange = onValueChange,
-        label = {
-            Text(label)
-        },
         placeholder = {
             placeholder?.let {
                 Text(placeholder)
@@ -302,8 +331,10 @@ fun CustomTextField(
         ),
         isError = isError,
         colors = TextFieldDefaults.colors(
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
+            focusedContainerColor = MaterialTheme.colorScheme.background,
+            unfocusedContainerColor = MaterialTheme.colorScheme.background
+            //focusedIndicatorColor = Color.Transparent,
+            //unfocusedIndicatorColor = Color.Transparent,
         ),
     )
 }
@@ -325,14 +356,11 @@ fun CustomSecureField(
         mutableStateOf(false)
     }
 
-    TextField(
+    OutlinedTextField(
         modifier = modifier.fillMaxWidth(),
         value = value,
         enabled = !isLoading,
         onValueChange = onValueChange,
-        label = {
-            Text(label)
-        },
         placeholder = {
             Text(placeholder)
         },
@@ -350,8 +378,10 @@ fun CustomSecureField(
         visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
         isError = isError,
         colors = TextFieldDefaults.colors(
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
+            focusedContainerColor = MaterialTheme.colorScheme.background,
+            unfocusedContainerColor = MaterialTheme.colorScheme.background
+            //focusedIndicatorColor = Color.Transparent,
+            //unfocusedIndicatorColor = Color.Transparent,
         ),
         trailingIcon = {
             IconButton(

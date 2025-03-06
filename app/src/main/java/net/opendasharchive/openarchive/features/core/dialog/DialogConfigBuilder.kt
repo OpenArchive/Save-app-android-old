@@ -9,16 +9,19 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.features.core.UiImage
 import net.opendasharchive.openarchive.features.core.UiText
+import net.opendasharchive.openarchive.features.core.asUiText
 
 // --------------------------------------------------------------------
 // 1. Dialog Types
@@ -34,16 +37,17 @@ data class DialogConfig(
     val type: DialogType,
     val title: UiText,
     val message: UiText,
-    val icon: UiImage?,
-    val iconColor: Color?,
-    val positiveButton: ButtonData,
+    val icon: UiImage? = null,
+    val iconColor: Color? = null,
+    val positiveButton: ButtonData? = null,
     val neutralButton: ButtonData? = null,
     val destructiveButton: ButtonData? = null,
     val showCheckbox: Boolean = false,
     val checkboxText: UiText? = null,
     val onCheckboxChanged: (Boolean) -> Unit = {},
-    val backgroundColor: Color,
-    val cornerRadius: Dp
+    val backgroundColor: Color? = null,
+    val cornerRadius: Dp? = null,
+    val onDismissAction: (() -> Unit)? = null,
 )
 
 // --------------------------------------------------------------------
@@ -51,7 +55,7 @@ data class DialogConfig(
 // --------------------------------------------------------------------
 data class ButtonData(
     val text: UiText,
-    val action: () -> Unit = {}
+    val action: () -> Unit = {},
 )
 
 // --------------------------------------------------------------------
@@ -93,6 +97,9 @@ class DialogBuilder {
     var checkboxText: UiText? = null
     var onCheckboxChanged: (Boolean) -> Unit = {}
 
+    private var _onDismissAction: (() -> Unit)? = null
+
+    // Button DSL functions – simple and concise
     fun positiveButton(block: ButtonBuilder.() -> Unit) {
         _positiveButton = ButtonBuilder().apply(block)
             .build(defaultText = defaultPositiveTextFor(type))
@@ -126,17 +133,12 @@ class DialogBuilder {
     fun build(): DialogConfig {
 
         if (icon == null) {
-
-            val defaultIconVector = when (type) {
-                DialogType.Success -> Icons.Filled.Check
-                DialogType.Error -> Icons.Default.Error
-                DialogType.Warning -> Icons.Default.Warning
-                DialogType.Info -> Icons.Filled.Info
+            icon = when (type) {
+                DialogType.Success -> UiImage.DrawableResource(R.drawable.ic_done)
+                DialogType.Error -> UiImage.DynamicVector(Icons.Outlined.Error)
+                DialogType.Warning -> UiImage.DynamicVector(Icons.Default.Warning)
+                DialogType.Info -> UiImage.DynamicVector(Icons.Filled.Info)
                 DialogType.Custom -> null
-            }
-
-            if (defaultIconVector != null) {
-                icon = UiImage.DynamicVector(defaultIconVector)
             }
         }
 
@@ -160,14 +162,15 @@ class DialogBuilder {
             message = message ?: UiText.DynamicString(""),
             icon = icon,
             iconColor = finalIconColor,
-            positiveButton = _positiveButton ?: ButtonData(defaultPositiveTextFor(type)),
+            positiveButton = _positiveButton, //?: ButtonData(defaultPositiveTextFor(type)),
             neutralButton = _neutralButton,
             destructiveButton = _destructiveButton,
             showCheckbox = showCheckbox,
             checkboxText = checkboxText,
             onCheckboxChanged = onCheckboxChanged,
             backgroundColor = finalBackgroundColor,
-            cornerRadius = finalCornerRadius
+            cornerRadius = finalCornerRadius,
+            onDismissAction = _onDismissAction
         )
     }
 
@@ -178,16 +181,12 @@ class DialogBuilder {
 
         if (icon == null) {
 
-            val defaultIconVector = when (type) {
-                DialogType.Success -> Icons.Filled.Check
-                DialogType.Error -> Icons.Default.Error
-                DialogType.Warning -> Icons.Default.Warning
-                DialogType.Info -> Icons.Filled.Info
+            icon = when (type) {
+                DialogType.Success -> UiImage.DrawableResource(R.drawable.ic_done)
+                DialogType.Error -> UiImage.DynamicVector(Icons.Outlined.Error)
+                DialogType.Warning -> UiImage.DynamicVector(Icons.Default.Warning)
+                DialogType.Info -> UiImage.DynamicVector(Icons.Filled.Info)
                 DialogType.Custom -> null
-            }
-
-            if (defaultIconVector != null) {
-                icon = UiImage.DynamicVector(defaultIconVector)
             }
         }
 
@@ -212,7 +211,7 @@ class DialogBuilder {
             message = message ?: UiText.DynamicString(""),
             icon = icon,
             iconColor = finalIconColor,
-            positiveButton = _positiveButton ?: ButtonData(defaultPositiveTextFor(type)),
+            positiveButton = _positiveButton, //?: ButtonData(defaultPositiveTextFor(type)),
             neutralButton = _neutralButton,
             destructiveButton = _destructiveButton,
             showCheckbox = showCheckbox,
@@ -236,7 +235,7 @@ fun DialogStateManager.showDialog(block: DialogBuilder.() -> Unit) {
 }
 
 // --- View extension: pass a Context so that resource colors are used.
-fun DialogStateManager.showDialog(resourceProvider: ResourceProvider, block: DialogBuilder.() -> Unit) {
+fun DialogStateManager.showDialog(resourceProvider: ResourceProvider = this.requireResourceProvider(), block: DialogBuilder.() -> Unit) {
     val config = DialogBuilder().apply(block).build(resourceProvider)
     showDialog(config)
 }
@@ -275,7 +274,7 @@ fun DialogStateManager.showSuccessDialog(
     val resourceProvider = this.requireResourceProvider()
 
     showDialog(resourceProvider) {
-        type = DialogType.Info
+        type = DialogType.Success
         if (icon != null) this.icon = icon
         if (title != null) this.title = UiText.StringResource(title)
         this.message = UiText.StringResource(message)
@@ -328,6 +327,60 @@ fun DialogStateManager.showInfoDialog(
         positiveButton {
             text = UiText.StringResource(R.string.lbl_got_it)
             action = onDone
+        }
+    }
+}
+
+// View helper for an info/hint dialog.
+fun DialogStateManager.showWarningDialog(
+    title: UiText?,
+    message: UiText,
+    icon: UiImage? = null,
+    positiveButtonText: UiText? = null,
+    onDone: () -> Unit = {},
+    onCancel: () -> Unit = {}
+) {
+    val resourceProvider = this.requireResourceProvider()
+
+    showDialog(resourceProvider) {
+        type = DialogType.Warning
+        this.title = title
+        this.icon = icon
+        this.message = message
+        positiveButton {
+            text = positiveButtonText ?: UiText.StringResource(R.string.lbl_got_it)
+            action = onDone
+        }
+        destructiveButton {
+            text = UiText.StringResource(R.string.lbl_Cancel)
+            action = onCancel
+        }
+    }
+}
+
+// For Destructive Actions confirmation (Removing folder or server etc)
+fun DialogStateManager.showDestructiveDialog(
+    title: UiText?,
+    message: UiText,
+    icon: UiImage? = null,
+    positiveButtonText: UiText? = null,
+    onDone: () -> Unit = {},
+    onCancel: () -> Unit = {}
+) {
+    val resourceProvider = this.requireResourceProvider()
+
+    showDialog(resourceProvider) {
+        type = DialogType.Warning
+        this.title = title
+        this.icon = icon
+        this.message = message
+        positiveButton {
+            text = positiveButtonText ?: UiText.StringResource(R.string.lbl_got_it)
+            action = onDone
+        }
+        destructiveButton {
+            text = UiText.StringResource(R.string.lbl_Cancel)
+            action = onCancel
         }
     }
 }

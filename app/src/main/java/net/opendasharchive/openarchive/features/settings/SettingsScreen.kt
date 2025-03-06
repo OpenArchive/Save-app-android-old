@@ -10,6 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.rememberNavController
+import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import me.zhanghai.compose.preference.listPreference
 import me.zhanghai.compose.preference.preference
@@ -18,7 +21,9 @@ import me.zhanghai.compose.preference.switchPreference
 import net.opendasharchive.openarchive.core.presentation.theme.DefaultScaffoldPreview
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(
+    onNavigateToCache: () -> Unit = {}
+) {
 
     val context = LocalContext.current
 
@@ -43,6 +48,14 @@ fun SettingsScreen() {
                 key = "pref_media_folders",
                 title = { Text("Media Folders") },
                 summary = { Text("Add or remove media folders") })
+            preference(
+                key = "pref_media_cache",
+                title = { Text("Media Cache") },
+                summary = { Text("View media cache") },
+                onClick = {
+                    onNavigateToCache()
+                }
+            )
 
             // Verify Category
             preferenceCategory(title = { Text("Verify") }, key = "verify")
