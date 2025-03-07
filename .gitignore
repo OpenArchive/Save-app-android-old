@@ -57,3 +57,4 @@ fastlane/.env
 /app/release/output-metadata.json
 /app/src/main/assets/.env
 /.kotlin/sessions/kotlin-compiler-1215430679833621634.salive
+/.kotlin/

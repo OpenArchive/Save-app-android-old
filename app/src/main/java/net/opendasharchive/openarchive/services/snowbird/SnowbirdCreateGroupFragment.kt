@@ -4,8 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.os.bundleOf
-import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -16,8 +14,10 @@ import net.opendasharchive.openarchive.db.SnowbirdError
 import net.opendasharchive.openarchive.db.SnowbirdGroup
 import net.opendasharchive.openarchive.db.SnowbirdRepo
 import net.opendasharchive.openarchive.features.core.BaseFragment
+import net.opendasharchive.openarchive.features.core.UiText
+import net.opendasharchive.openarchive.features.core.dialog.DialogType
+import net.opendasharchive.openarchive.features.core.dialog.showDialog
 import net.opendasharchive.openarchive.util.FullScreenOverlayCreateGroupManager
-import net.opendasharchive.openarchive.util.Utility
 import timber.log.Timber
 
 class SnowbirdCreateGroupFragment: BaseFragment() {
@@ -126,34 +126,25 @@ class SnowbirdCreateGroupFragment: BaseFragment() {
     private fun showConfirmation(repo: SnowbirdRepo?) {
         val group = SnowbirdGroup.get(repo!!.groupKey)!!
 
-        Utility.showMaterialPrompt(
-            requireContext(),
-            title = "Raven Group Created",
-            message = "Would you like to share your new group with a QR code?",
-            positiveButtonText = "Yes",
-            negativeButtonText = "No",
-            completion = { affirm ->
-                if (affirm) {
-                    if (isJetpackNavigation) {
-                        val action =
-                            SnowbirdCreateGroupFragmentDirections.actionFragmentSnowbirdCreateGroupToFragmentSnowbirdShareGroup(
-                                group.key
-                            )
-                        findNavController().navigate(action)
-                    } else {
-                        setFragmentResult(
-                            RESULT_REQUEST_KEY,
-                            bundleOf(
-                                RESULT_NAVIGATION_KEY to RESULT_NAVIGATION_VAL_SHARE_SCREEN,
-                                RESULT_BUNDLE_GROUP_KEY to group.key
-                            )
-                        )
-                    }
-                } else {
+        dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+            type = DialogType.Success
+            title = UiText.DynamicString("Raven Group Created")
+            message = UiText.DynamicString("Would you like to share your new group with a QR code?")
+            positiveButton {
+                text = UiText.DynamicString("Yes")
+                action = {
+                    val action =
+                        SnowbirdCreateGroupFragmentDirections.actionFragmentSnowbirdCreateGroupToFragmentSnowbirdShareGroup(group.key)
+                    findNavController().navigate(action)
+                }
+            }
+            neutralButton {
+                text = UiText.DynamicString("No")
+                action = {
                     parentFragmentManager.popBackStack()
                 }
             }
-        )
+        }
     }
 
     override fun getToolbarTitle(): String {

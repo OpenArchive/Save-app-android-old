@@ -223,10 +223,10 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
     override fun onStart() {
         super.onStart()
 
-        if(Prefs.useProofMode){
+        if (Prefs.useProofMode) {
             Prefs.proofModeLocation = true
             Prefs.proofModeNetwork = true
-        }else{
+        } else {
             Prefs.proofModeLocation = false
             Prefs.proofModeNetwork = false
         }
@@ -331,9 +331,15 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
             if (Picker.canPickFiles(this@MainActivity)) {
                 setAddButtonLongClickEnabled()
                 onAddLongClick = {
-                    val addMediaBottomSheet =
-                        ContentPickerFragment { actionType -> addClicked(actionType) }
-                    addMediaBottomSheet.show(supportFragmentManager, ContentPickerFragment.TAG)
+                    if (Space.current == null) {
+                        navigateToAddServer()
+                    } else if (getSelectedProject() == null) {
+                        navigateToAddFolder()
+                    } else {
+                        val addMediaBottomSheet =
+                            ContentPickerFragment { actionType -> addClicked(actionType) }
+                        addMediaBottomSheet.show(supportFragmentManager, ContentPickerFragment.TAG)
+                    }
                 }
                 supportFragmentManager.setFragmentResultListener(
                     AddMediaDialogFragment.RESP_TAKE_PHOTO, this@MainActivity
@@ -775,6 +781,7 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
                         message = R.string.press_and_hold_options_media_screen_message.asUiText(),
                         onDone = {
                             Prefs.addMediaHint = true
+                            addClicked(mediaType)
                         }
                     )
                 }
@@ -828,7 +835,16 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
     }
 
     private fun showNotificationPermissionRationale() {
-        Utility.showMaterialWarning(this, "Accept!") { Timber.d("thing") }
+        dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+            title = UiText.DynamicString("Notification Permission")
+            message = UiText.DynamicString("We need permission to post notifications")
+            positiveButton {
+                text = UiText.DynamicString("Accept")
+                action = {
+                    Timber.d("thing")
+                }
+            }
+        }
     }
 
     private fun handleIntent(intent: Intent) {
@@ -979,8 +995,7 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
 
         // If permission is already granted, start the camera intent
         val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        if (takePictureIntent.resolveActivity(this.packageManager) != null) {
-
+        if (takePictureIntent.resolveActivity(packageManager) != null) {
             this.startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
         } else {
             Toast.makeText(this, "Camera not available", Toast.LENGTH_SHORT).show()

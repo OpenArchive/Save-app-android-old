@@ -10,11 +10,11 @@ import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.db.SnowbirdError
 import net.opendasharchive.openarchive.extensions.androidViewModel
 import net.opendasharchive.openarchive.features.core.dialog.DialogStateManager
+import net.opendasharchive.openarchive.features.core.dialog.showDialog
 import net.opendasharchive.openarchive.features.onboarding.SpaceSetupActivity
 import net.opendasharchive.openarchive.services.snowbird.SnowbirdGroupViewModel
 import net.opendasharchive.openarchive.services.snowbird.SnowbirdRepoViewModel
 import net.opendasharchive.openarchive.util.FullScreenOverlayManager
-import net.opendasharchive.openarchive.util.Utility
 
 abstract class BaseFragment : Fragment(), ToolbarConfigurable {
 
@@ -44,10 +44,13 @@ abstract class BaseFragment : Fragment(), ToolbarConfigurable {
     }
 
     open fun handleError(error: SnowbirdError) {
-        Utility.showMaterialWarning(
-            requireContext(),
-            error.friendlyMessage
-        )
+        dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+            title = UiText.DynamicString("Oops")
+            message = UiText.DynamicString(error.friendlyMessage)
+            positiveButton {
+                text = UiText.StringResource(R.string.lbl_ok)
+            }
+        }
     }
 
     open fun handleLoadingStatus(isLoading: Boolean) {

@@ -13,12 +13,15 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.google.zxing.integration.android.IntentIntegrator
 import kotlinx.coroutines.launch
+import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.databinding.FragmentSnowbirdBinding
 import net.opendasharchive.openarchive.db.SnowbirdGroup
 import net.opendasharchive.openarchive.extensions.getQueryParameter
-import net.opendasharchive.openarchive.features.main.QRScannerActivity
 import net.opendasharchive.openarchive.features.core.BaseFragment
-import net.opendasharchive.openarchive.util.Utility
+import net.opendasharchive.openarchive.features.core.UiText
+import net.opendasharchive.openarchive.features.core.dialog.DialogType
+import net.opendasharchive.openarchive.features.core.dialog.showDialog
+import net.opendasharchive.openarchive.features.main.QRScannerActivity
 import timber.log.Timber
 
 class SnowbirdFragment : BaseFragment() {
@@ -127,18 +130,26 @@ class SnowbirdFragment : BaseFragment() {
         val name = uriString.getQueryParameter("name")
 
         if (name == null) {
-            Utility.showMaterialWarning(
-                requireContext(),
-                "Unable to determine group name from QR code."
-            )
+            dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+                type = DialogType.Warning
+                title = UiText.DynamicString("Oops!")
+                message = UiText.DynamicString("Unable to determine group name from QR code.")
+                positiveButton {
+                    text = UiText.StringResource(R.string.lbl_ok)
+                }
+            }
             return
         }
 
         if (SnowbirdGroup.exists(name)) {
-            Utility.showMaterialWarning(
-                requireContext(),
-                "You have already joined this group."
-            )
+            dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+                type = DialogType.Warning
+                title = UiText.DynamicString("Oops!")
+                message = UiText.DynamicString("You have already joined this group.")
+                positiveButton {
+                    text = UiText.StringResource(R.string.lbl_ok)
+                }
+            }
             return
         }
 
