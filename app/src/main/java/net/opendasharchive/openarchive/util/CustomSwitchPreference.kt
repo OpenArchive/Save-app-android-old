@@ -15,7 +15,7 @@ class CustomSwitchPreference @JvmOverloads constructor(
         super.onBindViewHolder(holder)
 
         // Find the switch inside the custom layout
-        val switchView = holder.findViewById(R.id.checkbox) as? MaterialSwitch
+        val switchView = holder.findViewById(android.R.id.checkbox) as? MaterialSwitch
 
         switchView?.apply {
             isChecked = this@CustomSwitchPreference.isChecked

@@ -22,8 +22,10 @@ import net.opendasharchive.openarchive.databinding.FragmentSnowbirdListReposBind
 import net.opendasharchive.openarchive.db.SnowbirdError
 import net.opendasharchive.openarchive.db.SnowbirdRepo
 import net.opendasharchive.openarchive.features.core.BaseFragment
+import net.opendasharchive.openarchive.features.core.UiText
+import net.opendasharchive.openarchive.features.core.dialog.DialogType
+import net.opendasharchive.openarchive.features.core.dialog.showDialog
 import net.opendasharchive.openarchive.util.SpacingItemDecoration
-import net.opendasharchive.openarchive.util.Utility
 import timber.log.Timber
 
 class SnowbirdRepoListFragment: BaseFragment() {
@@ -96,11 +98,14 @@ class SnowbirdRepoListFragment: BaseFragment() {
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
                 return when (menuItem.itemId) {
                     R.id.action_add -> {
-                        Utility.showMaterialWarning(
-                            context = requireContext(),
-                            message = "Feature not implemented yet.",
-                            positiveButtonText = "OK"
-                        )
+                        dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+                            type = DialogType.Warning
+                            title = UiText.DynamicString("Oops!")
+                            message = UiText.DynamicString("Feature not implemented yet.")
+                            positiveButton {
+                                text = UiText.StringResource(R.string.lbl_ok)
+                            }
+                        }
                         true
                     }
 
@@ -154,11 +159,17 @@ class SnowbirdRepoListFragment: BaseFragment() {
         adapter.submitList(repos)
 
         if (isRefresh && repos.isEmpty()) {
-            Utility.showMaterialMessage(
-                requireContext(),
-                title = "Info",
-                message = "No new repositories found."
-            )
+            dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+                type = DialogType.Info
+                title = UiText.StringResource(R.string.label_info_title)
+                message = UiText.DynamicString("No new repositories found.")
+                positiveButton {
+                    text = UiText.StringResource(R.string.label_got_it)
+                    action = {
+                        parentFragmentManager.popBackStack()
+                    }
+                }
+            }
         }
     }
 

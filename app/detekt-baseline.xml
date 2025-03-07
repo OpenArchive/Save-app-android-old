@@ -221,7 +221,6 @@
     <ID>FinalNewline:BaseComposeActivity.kt$net.opendasharchive.openarchive.features.core.BaseComposeActivity.kt</ID>
     <ID>FinalNewline:BaseDialog.kt$net.opendasharchive.openarchive.features.core.dialog.BaseDialog.kt</ID>
     <ID>FinalNewline:BaseFragment.kt$net.opendasharchive.openarchive.features.core.BaseFragment.kt</ID>
-    <ID>FinalNewline:BaseSnowbirdFragment.kt$net.opendasharchive.openarchive.services.snowbird.BaseSnowbirdFragment.kt</ID>
     <ID>FinalNewline:BaseViewModel.kt$net.opendasharchive.openarchive.util.BaseViewModel.kt</ID>
     <ID>FinalNewline:BasicAuthInterceptor.kt$net.opendasharchive.openarchive.services.webdav.BasicAuthInterceptor.kt</ID>
     <ID>FinalNewline:BiometricAuthenticator.kt$net.opendasharchive.openarchive.features.settings.passcode.BiometricAuthenticator.kt</ID>

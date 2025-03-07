@@ -4,7 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
-import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import net.opendasharchive.openarchive.core.presentation.theme.SaveAppTheme
 import net.opendasharchive.openarchive.features.core.BaseActivity
@@ -17,18 +17,8 @@ class PasscodeSetupActivity : BaseActivity() {
         const val EXTRA_PASSCODE_ENABLED = "passcode_enabled"
     }
 
-//    private val onBackPressedCallback = object : OnBackPressedCallback(enabled = true) {
-//        override fun handleOnBackPressed() {
-//            setResult(RESULT_CANCELED)
-//            finish()
-//        }
-//    }
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        //onBackPressedDispatcher.addCallback(onBackPressedCallback)
 
         setContent {
             SaveAppTheme {
@@ -37,11 +27,19 @@ class PasscodeSetupActivity : BaseActivity() {
                         ComposeAppBar(
                             title = "Lock app with passcode",
                             onNavigationAction = {
-                                 //onBackPressedCallback.handleOnBackPressed()
+                                setResult(RESULT_CANCELED)
+                                finish()
                             }
                         )
                     }
                 ) {
+
+                    // Handle back press inside Compose
+                    BackHandler {
+                        setResult(RESULT_CANCELED)
+                        finish()
+                    }
+
                     PasscodeSetupScreen(
                         onPasscodeSet = {
                             // Passcode successfully set

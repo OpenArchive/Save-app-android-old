@@ -22,8 +22,10 @@ import net.opendasharchive.openarchive.databinding.FragmentSnowbirdGroupListBind
 import net.opendasharchive.openarchive.db.SnowbirdError
 import net.opendasharchive.openarchive.db.SnowbirdGroup
 import net.opendasharchive.openarchive.features.core.BaseFragment
+import net.opendasharchive.openarchive.features.core.UiText
+import net.opendasharchive.openarchive.features.core.dialog.DialogType
+import net.opendasharchive.openarchive.features.core.dialog.showDialog
 import net.opendasharchive.openarchive.util.SpacingItemDecoration
-import net.opendasharchive.openarchive.util.Utility
 import timber.log.Timber
 
 class SnowbirdGroupListFragment : BaseFragment() {
@@ -126,27 +128,19 @@ class SnowbirdGroupListFragment : BaseFragment() {
 
     private fun onLongPress(groupKey: String) {
         AppLogger.d("Long press!")
-        Utility.showMaterialPrompt(
-            requireContext(),
-            title = "Share Group",
-            message = "Would you like to share this group?",
-            positiveButtonText = "Yes",
-            negativeButtonText = "No"
-        ) { affirm ->
-            if (affirm) {
-                if (isJetpackNavigation) {
+        dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+            type = DialogType.Info
+            title = UiText.DynamicString("Share Group")
+            message = UiText.DynamicString("Would you like to share this group?")
+            positiveButton {
+                text = UiText.DynamicString("Yes")
+                action = {
                     val action = SnowbirdGroupListFragmentDirections.actionFragmentSnowbirdGroupListToFragmentSnowbirdShareGroup(groupKey)
                     findNavController().navigate(action)
-                } else {
-                    setFragmentResult(
-                        RESULT_REQUEST_KEY,
-                        bundleOf(
-                            RESULT_BUNDLE_NAVIGATION_KEY to RESULT_VAL_RAVEN_SHARE_SCREEN,
-                            RESULT_BUNDLE_GROUP_KEY to groupKey
-                        )
-                    )
                 }
-                //findNavController().navigate(SnowbirdGroupListFragmentDirections.navigateToSnowbirdShareScreen(groupKey))
+            }
+            neutralButton {
+                text = UiText.DynamicString("No")
             }
         }
     }

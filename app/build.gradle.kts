@@ -299,6 +299,7 @@ dependencies {
     detektPlugins(libs.detekt.rules.authors)
     detektPlugins(libs.detekt.rules.libraries)
     detektPlugins(libs.detekt.compose)
+    detektPlugins(libs.detekt.rules.compose)
 }
 
 configurations.all {
