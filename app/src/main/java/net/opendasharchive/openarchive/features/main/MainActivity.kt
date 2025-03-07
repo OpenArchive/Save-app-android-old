@@ -9,7 +9,6 @@ import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.Menu
@@ -19,10 +18,8 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
 import android.widget.PopupWindow
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.drawerlayout.widget.DrawerLayout
@@ -74,7 +71,6 @@ import net.opendasharchive.openarchive.upload.UploadManagerFragment
 import net.opendasharchive.openarchive.upload.UploadService
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.ProofModeHelper
-import net.opendasharchive.openarchive.util.Utility
 import net.opendasharchive.openarchive.util.extensions.Position
 import net.opendasharchive.openarchive.util.extensions.cloak
 import net.opendasharchive.openarchive.util.extensions.hide
@@ -766,7 +762,7 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
             getSelectedProject() != null -> {
                 if (Prefs.addMediaHint) {
                     when (mediaType) {
-                        AddMediaType.CAMERA -> Picker.takePhoto(this, mediaLaunchers.cameraLauncher)
+                        AddMediaType.CAMERA -> Picker.takePhoto(this@MainActivity, mediaLaunchers.cameraLauncher)
                         AddMediaType.GALLERY -> Picker.pickMedia(
                             this,
                             mediaLaunchers.imagePickerLauncher
@@ -892,14 +888,8 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
-            2 -> Picker.pickMedia(this, mediaLaunchers.imagePickerLauncher)
-            REQUEST_CAMERA_PERMISSION -> {
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    takePhoto() // ✅ Permission granted, retry camera
-                } else {
-                    Toast.makeText(this, "Camera permission denied", Toast.LENGTH_LONG).show()
-                }
-            }
+            REQUEST_FILE_MEDIA -> Picker.pickMedia(this, mediaLaunchers.imagePickerLauncher)
+            REQUEST_CAMERA_PERMISSION -> Picker.takePhoto(this, mediaLaunchers.cameraLauncher)
         }
     }
 
@@ -984,27 +974,9 @@ class MainActivity : BaseActivity(), SpaceDrawerAdapterListener, FolderDrawerAda
         }
     }
 
-
-    private fun takePhoto() {
-        // Check if CAMERA permission is granted
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            // Request permission
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
-            return
-        }
-
-        // If permission is already granted, start the camera intent
-        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        if (takePictureIntent.resolveActivity(packageManager) != null) {
-            this.startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
-        } else {
-            Toast.makeText(this, "Camera not available", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     companion object {
         // Define request codes
-        private const val REQUEST_CAMERA_PERMISSION = 100
-        private const val REQUEST_IMAGE_CAPTURE = 101
+        const val REQUEST_CAMERA_PERMISSION = 100
+        const val REQUEST_FILE_MEDIA = 101
     }
 }

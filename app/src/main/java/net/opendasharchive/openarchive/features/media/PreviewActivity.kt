@@ -18,6 +18,7 @@ import net.opendasharchive.openarchive.features.core.asUiImage
 import net.opendasharchive.openarchive.features.core.asUiText
 import net.opendasharchive.openarchive.features.core.dialog.DialogType
 import net.opendasharchive.openarchive.features.core.dialog.showDialog
+import net.opendasharchive.openarchive.features.main.MainActivity
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.extensions.hide
 import net.opendasharchive.openarchive.util.extensions.show
@@ -304,6 +305,19 @@ class PreviewActivity : BaseActivity(), View.OnClickListener, PreviewAdapter.Lis
 //            // hack for making sure this dialog always shows all lines of the pretty long title, even on small screens
 //            d.findViewById<TextView>(androidx.appcompat.R.id.alertTitle)?.maxLines = 99
 
+        }
+    }
+
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            MainActivity.REQUEST_FILE_MEDIA -> Picker.pickMedia(this, mediaLaunchers.imagePickerLauncher)
+            MainActivity.REQUEST_CAMERA_PERMISSION -> Picker.takePhoto(this, mediaLaunchers.cameraLauncher)
         }
     }
 }
