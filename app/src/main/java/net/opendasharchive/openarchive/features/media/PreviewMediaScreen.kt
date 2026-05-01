@@ -68,6 +68,7 @@ import net.opendasharchive.openarchive.core.presentation.theme.SaveAppTheme
 import net.opendasharchive.openarchive.core.presentation.theme.ThemeDimensions
 import net.opendasharchive.openarchive.core.repositories.MediaRepository
 import net.opendasharchive.openarchive.core.repositories.ProjectRepository
+import net.opendasharchive.openarchive.core.repositories.SpaceRepository
 import net.opendasharchive.openarchive.features.main.ui.CameraCaptureResult
 import org.koin.compose.koinInject
 
@@ -80,6 +81,7 @@ fun PreviewMediaScreen(
     val scope = rememberCoroutineScope()
     val projectRepository: ProjectRepository = koinInject()
     val mediaRepository: MediaRepository = koinInject()
+    val spaceRepository: SpaceRepository = koinInject()
 
     val pickerLaunchers = rememberContentPickerLaunchers(
         navigator = viewModel.getNavigator(),
@@ -113,6 +115,7 @@ fun PreviewMediaScreen(
         scope.launch(Dispatchers.IO) {
             val archive = projectRepository.getProject(result.projectId)
             if (archive != null && result.capturedUris.isNotEmpty()) {
+                val vault = archive.vaultId?.let { spaceRepository.getSpaceById(it) }
                 val submission = projectRepository.getActiveSubmission(archive.id)
                 val evidenceList = MediaPicker.import(
                     context,
@@ -120,6 +123,7 @@ fun PreviewMediaScreen(
                     submission.id,
                     result.capturedUris,
                     fromCamera = true,
+                    vaultType = vault?.type,
                 )
                 evidenceList.forEach { evidence ->
                     mediaRepository.addEvidence(evidence)

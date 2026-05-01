@@ -3,6 +3,7 @@ package net.opendasharchive.openarchive.services.internetarchive.data
 import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.core.domain.Evidence
@@ -11,7 +12,10 @@ import net.opendasharchive.openarchive.core.domain.Vault
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.services.Conduit
 import net.opendasharchive.openarchive.services.SaveClient
-import okhttp3.*
+import okhttp3.Headers
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.File
 import java.io.IOException
@@ -201,10 +205,7 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
         }
 
         if (mEvidence.tags.isNotEmpty()) {
-            val tags = mEvidence.tags.toMutableList()
-            tags.add(mContext.getString(R.string.default_tags))
-            mEvidence = mEvidence.copy(tags = tags)
-
+            val tags = mEvidence.tags + listOf(mContext.getString(R.string.default_tags))
             builder.add("x-archive-meta-subject", tags.joinToString(","))
         }
 
@@ -239,30 +240,22 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
     }
 
     @Throws(Exception::class)
-    private suspend fun OkHttpClient.execute(request: Request) = withContext(Dispatchers.IO) {
-        val result = newCall(request)
-            .execute()
-
-        if (result.isSuccessful.not()) {
-            throw RuntimeException("${result.code}: ${result.message}")
+    private suspend fun OkHttpClient.execute(request: Request) {
+        var delayMs = 30_000L
+        val maxRetries = 5
+        repeat(maxRetries) { attempt ->
+            val result = withContext(Dispatchers.IO) { newCall(request).execute() }
+            when {
+                result.isSuccessful -> return
+                result.code == 503 && attempt < maxRetries - 1 -> {
+                    AppLogger.w("IA returned 503 Slow Down, retrying in ${delayMs / 1000}s (attempt ${attempt + 1})")
+                    delay(delayMs)
+                    delayMs = minOf(delayMs * 2, 300_000L)
+                }
+                else -> throw RuntimeException("${result.code}: ${result.message}")
+            }
         }
-    }
-
-    @Throws(Exception::class)
-    private fun OkHttpClient.enqueue(request: Request) {
-        newCall(request)
-            .enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    jobFailedAsync(e)
-                }
-
-                override fun onResponse(call: Call, response: Response) {
-                    if (!response.isSuccessful) {
-                        jobFailedAsync(Exception("${response.code}: ${response.message}"))
-                    }
-                }
-
-            })
+        throw RuntimeException("Upload failed after $maxRetries attempts (503 Slow Down)")
     }
 
     private fun sanitizeHeaderValue(value: String): String {

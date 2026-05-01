@@ -568,5 +568,7 @@
     <string name="tor_still_connecting_message">Tor is still connecting. Do you want to disable Tor and proceed with the upload?</string>
     <string name="tor_error_message">Tor encountered an error and is not connected. Do you want to disable Tor and proceed with the upload?</string>
     <string name="proceed">Proceed</string>
+    <string name="upload_once">Upload once</string>
+    <string name="disable_tor">Disable TOR</string>
     <string name="ok">OK</string>
 </resources>

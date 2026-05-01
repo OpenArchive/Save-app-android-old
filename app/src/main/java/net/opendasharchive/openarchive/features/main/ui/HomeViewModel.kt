@@ -144,7 +144,7 @@ class HomeViewModel(
             }
             HomeAction.HideUploadManager -> {
                 _uiState.update { it.copy(showUploadManager = false) }
-                uploadGate.check { uploadJobScheduler.schedule() }
+                uploadGate.check(vaultType = uiState.value.currentSpace?.type) { uploadJobScheduler.schedule() }
             }
 
             HomeAction.NavigateToAddNewFolder -> {
@@ -178,6 +178,7 @@ class HomeViewModel(
 
             HomeAction.NavigateToCamera -> viewModelScope.launch {
                 val projectId = uiState.value.selectedProjectId ?: return@launch
+                val vaultType = uiState.value.currentSpace?.type
                 val config = CameraConfig(
                     allowVideoCapture = true,
                     allowPhotoCapture = true,
@@ -187,7 +188,7 @@ class HomeViewModel(
                     showGridToggle = true,
                     showCameraSwitch = true
                 )
-                val route = AppRoute.CameraRoute(projectId, config)
+                val route = AppRoute.CameraRoute(projectId, config, vaultType = vaultType)
                 navigator.navigateTo(route)
             }
 

@@ -63,6 +63,7 @@ import net.opendasharchive.openarchive.core.navigation.ResultEffect
 import net.opendasharchive.openarchive.core.presentation.theme.DefaultBoxPreview
 import net.opendasharchive.openarchive.core.repositories.MediaRepository
 import net.opendasharchive.openarchive.core.repositories.ProjectRepository
+import net.opendasharchive.openarchive.core.repositories.SpaceRepository
 import net.opendasharchive.openarchive.features.main.CheckForInAppReview
 import net.opendasharchive.openarchive.features.main.CheckForInAppUpdates
 import net.opendasharchive.openarchive.features.main.ui.components.HomeAppBar
@@ -119,6 +120,7 @@ fun HomeScreen(
 
     val projectRepository: ProjectRepository = koinInject()
     val mediaRepository: MediaRepository = koinInject()
+    val spaceRepository: SpaceRepository = koinInject()
 
     // Content Picker Launchers for Gallery/Files
     // Camera is handled via navigation
@@ -178,6 +180,7 @@ fun HomeScreen(
             try {
                 val archive = projectRepository.getProject(result.projectId)
                 if (archive != null && result.capturedUris.isNotEmpty()) {
+                    val vault = archive.vaultId?.let { spaceRepository.getSpaceById(it) }
                     val submission = projectRepository.getActiveSubmission(archive.id)
                     val evidenceList = MediaPicker.import(
                         context,
@@ -185,6 +188,7 @@ fun HomeScreen(
                         submission.id,
                         result.capturedUris,
                         fromCamera = true,
+                        vaultType = vault?.type,
                     )
                     evidenceList.forEach { evidence ->
                         mediaRepository.addEvidence(evidence)

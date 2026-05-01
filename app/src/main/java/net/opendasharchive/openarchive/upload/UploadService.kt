@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import net.opendasharchive.openarchive.services.tor.TorServiceManager
 import net.opendasharchive.openarchive.util.CleanInsightsManager
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.analytics.api.AnalyticsEvent
@@ -39,8 +40,8 @@ import java.util.*
 
 class UploadService : JobService() {
 
-    // Inject analytics manager
     private val analyticsManager: AnalyticsManager by inject()
+    private val torServiceManager: TorServiceManager by inject()
     private val mediaRepository: MediaRepository by inject()
     private val projectRepository: ProjectRepository by inject()
     private val collectionRepository: CollectionRepository by inject()
@@ -114,130 +115,112 @@ class UploadService : JobService() {
         val batchStartTime = System.currentTimeMillis()
         AppLogger.i("upload started")
 
-        if (!shouldUpload()) {
-            mRunning = false
-            AppLogger.i("no network, upload stopped")
-            // Track network error
-            analyticsManager.trackEvent(
-                AnalyticsEvent.UploadNetworkError(
-                    reason = if (Prefs.uploadWifiOnly) "wifi_required" else "no_network"
-                )
-            )
-            return completed()
-        }
-
-        // Get items that are set into queued state.
-        var results = emptyList<Evidence>()
-        var successCount = 0
-        var failedCount = 0
-        var totalCount = 0
-
-        // Get initial batch
-        val initialBatch = mediaRepository.getQueue()
-
-        if (initialBatch.isNotEmpty()) {
-            // Track upload session started (1+ files)
-            val sessionSize = initialBatch.size
-            val totalSizeMB = initialBatch.sumOf { it.contentLength } / (1024 * 1024)
-            analyticsManager.trackEvent(
-                AnalyticsEvent.UploadSessionStarted(
-                    count = sessionSize,
-                    totalSizeMB = totalSizeMB
-                )
-            )
-        }
-
-        while (mKeepUploading &&
-            mediaRepository.getQueue()
-                .also { results = it }
-                .isNotEmpty()
-        ) {
-            val datePublish = DateUtils.nowDateTime
-
-            // Skip items already in ERROR state — they need explicit user retry via the Edit Queue.
-            // Without this filter, a failed item would be reset to UPLOADING each iteration,
-            // fail again, and loop indefinitely.
-            val uploadableResults = results.filter { it.status != EvidenceStatus.ERROR }
-            if (uploadableResults.isEmpty()) break
-
-            for (media in uploadableResults) {
-                totalCount++
-                var updatedMedia = media
-                if (updatedMedia.status != EvidenceStatus.UPLOADING) {
-                    updatedMedia = updatedMedia.copy(
-                        uploadedAt = datePublish,
-                        progress = 0,
-                        status = EvidenceStatus.UPLOADING,
-                        statusMessage = ""
+        try {
+            if (!shouldUpload()) {
+                AppLogger.i("upload blocked by network/TOR check")
+                analyticsManager.trackEvent(
+                    AnalyticsEvent.UploadNetworkError(
+                        reason = if (Prefs.uploadWifiOnly) "wifi_required" else "no_network"
                     )
-                }
-
-                val vault = spaceRepository.getSpaceById(media.vaultId)
-                updatedMedia = updatedMedia.copy(
-                    licenseUrl = vault?.licenseUrl,
                 )
+                return completed()
+            }
 
-                // Persist updated state before starting upload
-                mediaRepository.updateEvidence(updatedMedia)
+            var results = emptyList<Evidence>()
+            var successCount = 0
+            var failedCount = 0
+            var totalCount = 0
 
-                // Update the submission upload date if not already set.
-                // This "closes" the submission bucket in the repository,
-                // ensuring that any following imports start a new submission.
-                val submission = collectionRepository.getCollection(updatedMedia.submissionId)
-                if (submission != null && submission.uploadDate == null) {
-                    collectionRepository.updateCollection(submission.copy(uploadDate = datePublish))
-                }
+            val initialBatch = mediaRepository.getQueue()
+            if (initialBatch.isNotEmpty()) {
+                val sessionSize = initialBatch.size
+                val totalSizeMB = initialBatch.sumOf { it.contentLength } / (1024 * 1024)
+                analyticsManager.trackEvent(
+                    AnalyticsEvent.UploadSessionStarted(count = sessionSize, totalSizeMB = totalSizeMB)
+                )
+            }
 
-                try {
-                    AppLogger.i("Started uploading", updatedMedia)
-                    val uploadSuccess = upload(updatedMedia)
-                    if (uploadSuccess) {
-                        serviceScope.launch {
-                            fileCleanupHelper.deleteUploadedMediaFiles(updatedMedia)
-                        }
-                        successCount++
-                    } else {
-                        failedCount++
+            while (mKeepUploading &&
+                mediaRepository.getQueue().also { results = it }.isNotEmpty()
+            ) {
+                val datePublish = DateUtils.nowDateTime
+
+                val uploadableResults = results.filter { it.status != EvidenceStatus.ERROR }
+                if (uploadableResults.isEmpty()) break
+
+                for (media in uploadableResults) {
+                    totalCount++
+                    var updatedMedia = media
+                    if (updatedMedia.status != EvidenceStatus.UPLOADING) {
+                        updatedMedia = updatedMedia.copy(
+                            uploadedAt = datePublish,
+                            progress = 0,
+                            status = EvidenceStatus.UPLOADING,
+                            statusMessage = ""
+                        )
                     }
-                } catch (ioe: IOException) {
-                    AppLogger.e(ioe)
 
-                    updatedMedia = updatedMedia.copy(
-                        statusMessage = "error in uploading media: " + ioe.message,
-                        status = EvidenceStatus.ERROR
-                    )
+                    val vault = spaceRepository.getSpaceById(media.vaultId)
+                    updatedMedia = updatedMedia.copy(licenseUrl = vault?.licenseUrl)
                     mediaRepository.updateEvidence(updatedMedia)
 
-                    UploadEventBus.emitChanged(
-                        projectId = updatedMedia.archiveId,
-                        collectionId = updatedMedia.submissionId,
-                        mediaId = updatedMedia.id,
-                        progress = -1,
-                        isUploaded = false
-                    )
-                    failedCount++
+                    val submission = collectionRepository.getCollection(updatedMedia.submissionId)
+                    if (submission != null && submission.uploadDate == null) {
+                        collectionRepository.updateCollection(submission.copy(uploadDate = datePublish))
+                    }
+
+                    try {
+                        AppLogger.i("Started uploading", updatedMedia)
+                        val uploadSuccess = upload(updatedMedia)
+                        if (uploadSuccess) {
+                            serviceScope.launch { fileCleanupHelper.deleteUploadedMediaFiles(updatedMedia) }
+                            successCount++
+                        } else {
+                            failedCount++
+                        }
+                    } catch (ioe: IOException) {
+                        AppLogger.e(ioe)
+                        // Safety net: conduit should have called jobFailed() already, but guard
+                        // against unhandled IOExceptions escaping the conduit's try/catch.
+                        if (mediaRepository.getEvidence(updatedMedia.id)?.status != EvidenceStatus.ERROR) {
+                            updatedMedia = updatedMedia.copy(
+                                statusMessage = ioe.message ?: "IOException during upload",
+                                status = EvidenceStatus.ERROR
+                            )
+                            mediaRepository.updateEvidence(updatedMedia)
+                            UploadEventBus.emitChanged(
+                                projectId = updatedMedia.archiveId,
+                                collectionId = updatedMedia.submissionId,
+                                mediaId = updatedMedia.id,
+                                progress = -1,
+                                isUploaded = false
+                            )
+                        }
+                        failedCount++
+                    }
+
+                    if (!mKeepUploading) break
                 }
-
-                if (!mKeepUploading) break // Time to end this.
             }
-        }
 
-        AppLogger.i("Uploads completed")
+            AppLogger.i("Uploads completed")
 
-        // Track upload session completed (if any uploads were attempted)
-        if (totalCount > 0) {
-            val sessionDuration = (System.currentTimeMillis() - batchStartTime) / 1000
-            analyticsManager.trackEvent(
-                AnalyticsEvent.UploadSessionCompleted(
-                    count = totalCount,
-                    successCount = successCount,
-                    failedCount = failedCount,
-                    durationSeconds = sessionDuration
+            if (totalCount > 0) {
+                val sessionDuration = (System.currentTimeMillis() - batchStartTime) / 1000
+                analyticsManager.trackEvent(
+                    AnalyticsEvent.UploadSessionCompleted(
+                        count = totalCount,
+                        successCount = successCount,
+                        failedCount = failedCount,
+                        durationSeconds = sessionDuration
+                    )
                 )
-            )
+            }
+        } finally {
+            // Always reset mRunning — even if the coroutine is cancelled by onStopJob()
+            mRunning = false
         }
 
-        mRunning = false
         completed()
     }
 
@@ -299,11 +282,19 @@ class UploadService : JobService() {
     }
 
     /**
-     * Check if online, and connected to the appropriate network type.
+     * Check if upload should proceed: migration state, TOR readiness, and network type.
      */
     private fun shouldUpload(): Boolean {
         if (Prefs.isMigrationInProgress) {
             AppLogger.i("migration in progress, upload paused")
+            return false
+        }
+
+        // If TOR is enabled but not yet connected, defer upload.
+        // The UploadGate handles this at the UI layer, but system-triggered jobs
+        // (e.g. on network reconnect) must also respect the TOR requirement.
+        if (Prefs.useTor && !torServiceManager.isReady()) {
+            AppLogger.i("TOR enabled but not ready, deferring upload")
             return false
         }
 

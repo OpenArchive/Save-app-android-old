@@ -536,6 +536,7 @@ fun SaveNavGraph(
                 entry<AppRoute.CameraRoute> { route ->
                     CameraScreenWrapper(
                         config = route.config,
+                        vaultType = route.vaultType,
                         onCaptureComplete = { uris ->
                             // Send captured URIs via ResultEventBus
                             resultBus.sendResult(

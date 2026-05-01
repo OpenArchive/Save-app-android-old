@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import net.opendasharchive.openarchive.core.domain.VaultType
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.util.rememberComposePermissionManager
 
@@ -35,6 +36,7 @@ import net.opendasharchive.openarchive.util.rememberComposePermissionManager
 @Composable
 fun CameraScreenWrapper(
     config: CameraConfig = CameraConfig(),
+    vaultType: VaultType? = null,
     onCaptureComplete: (List<Uri>) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -203,6 +205,7 @@ fun CameraScreenWrapper(
         } else {
             CameraScreen(
                 config = config,
+                vaultType = vaultType,
                 onCaptureComplete = onCaptureComplete,
                 onCancel = onCancel,
                 permissionManager = permissionManager

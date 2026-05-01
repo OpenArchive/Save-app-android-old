@@ -96,6 +96,7 @@ sealed class AppRoute(open val deeplink: String) : NavKey {
     data class CameraRoute(
         val projectId: Long,
         val config: CameraConfig,
+        val vaultType: VaultType? = null,
         val resultKey: String = NavigationResultKeys.CAMERA_CAPTURE_RESULT
     ) : AppRoute("camera")
 

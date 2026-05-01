@@ -65,6 +65,7 @@ class UploadGate(
                 title = R.string.wifi_not_connected.asUiText()
                 message = R.string.wifi_required_upload_message.asUiText()
                 positiveButton {
+                    // Permanently disable WiFi-only setting and proceed
                     text = UiText.Resource(R.string.allow_any_connection)
                     action = {
                         Prefs.uploadWifiOnly = false
@@ -72,7 +73,11 @@ class UploadGate(
                     }
                 }
                 neutralButton {
-                    text = UiText.Resource(R.string.ignore)
+                    // One-time override — proceed without changing the setting
+                    text = UiText.Resource(R.string.upload_once)
+                    action = {
+                        checkTor(vaultType = vaultType, onProceed = onProceed)
+                    }
                 }
             }
             return
@@ -99,7 +104,13 @@ class UploadGate(
                 title = R.string.tor_not_connected.asUiText()
                 message = messageRes.asUiText()
                 positiveButton {
-                    text = UiText.Resource(R.string.proceed)
+                    // One-time override — upload now without disabling TOR setting
+                    text = UiText.Resource(R.string.upload_once)
+                    action = { onProceed() }
+                }
+                destructiveButton {
+                    // Permanently disable TOR and proceed
+                    text = UiText.Resource(R.string.disable_tor)
                     action = {
                         Prefs.useTor = false
                         torServiceManager.stop()

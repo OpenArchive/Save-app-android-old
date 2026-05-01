@@ -7,11 +7,9 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import kotlin.coroutines.resume
 
@@ -25,60 +23,48 @@ class GmsLocationProvider(private val context: Context) : LocationProvider {
 
     override suspend fun getCurrentLocation(timeoutMs: Long): Location? {
         return withContext(Dispatchers.IO) {
-            suspendCancellableCoroutine { continuation ->
-                try {
-                    val cancellationTokenSource = CancellationTokenSource()
+            withTimeoutOrNull(timeoutMs) {
+                suspendCancellableCoroutine { continuation ->
+                    try {
+                        val cancellationTokenSource = CancellationTokenSource()
 
-                    // Create location request with high accuracy
-                    val locationRequest = CurrentLocationRequest.Builder()
-                        .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-                        .setMaxUpdateAgeMillis(0)  // Don't accept cached locations
-                        .build()
+                        val locationRequest = CurrentLocationRequest.Builder()
+                            .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                            .setMaxUpdateAgeMillis(60_000)
+                            .build()
 
-                    fusedLocationClient.getCurrentLocation(
-                        locationRequest,
-                        cancellationTokenSource.token
-                    ).addOnSuccessListener { location ->
-                        if (continuation.isActive) {
-                            if (location != null) {
-                                AppLogger.d("[GmsLocation] Got location: ${location.latitude}, ${location.longitude}")
-                            } else {
-                                AppLogger.w("[GmsLocation] Location is null")
+                        fusedLocationClient.getCurrentLocation(
+                            locationRequest,
+                            cancellationTokenSource.token
+                        ).addOnSuccessListener { location ->
+                            if (continuation.isActive) {
+                                if (location != null) {
+                                    AppLogger.d("[GmsLocation] Got location: ${location.latitude}, ${location.longitude}")
+                                } else {
+                                    AppLogger.w("[GmsLocation] Location is null")
+                                }
+                                continuation.resume(location)
                             }
-                            continuation.resume(location)
+                        }.addOnFailureListener { exception ->
+                            if (continuation.isActive) {
+                                AppLogger.w("[GmsLocation] Failed to get location: ${exception.message}")
+                                continuation.resume(null)
+                            }
                         }
-                    }.addOnFailureListener { exception ->
-                        if (continuation.isActive) {
-                            AppLogger.w("[GmsLocation] Failed to get location: ${exception.message}")
-                            continuation.resume(null)
-                        }
-                    }
 
-                    // Handle cancellation
-                    continuation.invokeOnCancellation {
-                        cancellationTokenSource.cancel()
-                    }
-
-                    // Set timeout
-                    GlobalScope.launch {
-                        delay(timeoutMs)
-                        if (continuation.isActive) {
-                            AppLogger.w("[GmsLocation] Location request timed out after ${timeoutMs}ms")
+                        continuation.invokeOnCancellation {
                             cancellationTokenSource.cancel()
-                            continuation.resume(null)
                         }
-                    }
-                } catch (e: SecurityException) {
-                    AppLogger.e("[GmsLocation] No location permission", e)
-                    if (continuation.isActive) {
-                        continuation.resume(null)
-                    }
-                } catch (e: Exception) {
-                    AppLogger.e("[GmsLocation] Unexpected error", e)
-                    if (continuation.isActive) {
-                        continuation.resume(null)
+                    } catch (e: SecurityException) {
+                        AppLogger.e("[GmsLocation] No location permission", e)
+                        if (continuation.isActive) continuation.resume(null)
+                    } catch (e: Exception) {
+                        AppLogger.e("[GmsLocation] Unexpected error", e)
+                        if (continuation.isActive) continuation.resume(null)
                     }
                 }
+            }.also { result ->
+                if (result == null) AppLogger.w("[GmsLocation] Location request timed out after ${timeoutMs}ms")
             }
         }
     }

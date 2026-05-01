@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.core.repositories.InvalidationBus
 import net.opendasharchive.openarchive.core.repositories.MediaRepository
+import net.opendasharchive.openarchive.core.repositories.SpaceRepository
 import net.opendasharchive.openarchive.features.core.dialog.DialogStateManager
 import net.opendasharchive.openarchive.features.core.dialog.DialogType
 import net.opendasharchive.openarchive.features.core.dialog.showDialog
@@ -50,6 +51,7 @@ sealed class UploadManagerEvent {
 class UploadManagerViewModel(
     private val application: Application,
     private val mediaRepository: MediaRepository,
+    private val spaceRepository: SpaceRepository,
     private val dialogManager: DialogStateManager,
     private val uploadJobScheduler: UploadJobScheduler,
     private val uploadGate: UploadGate
@@ -181,25 +183,25 @@ class UploadManagerViewModel(
     }
 
     private fun showRetryDialog(evidence: Evidence, position: Int) {
-        dialogManager.showDialog(dialogManager.requireResourceProvider()) {
-            type = DialogType.Error
-            title = UiText.Resource(R.string.upload_unsuccessful)
-            message = UiText.Resource(R.string.upload_unsuccessful_description)
-            icon = UiImage.DrawableResource(R.drawable.ic_error)
-            positiveButton {
-                text = UiText.Resource(R.string.lbl_retry)
-                action = {
-                    uploadGate.check {
-                        retryItem(evidence)
-                        uploadJobScheduler.schedule()
+        viewModelScope.launch {
+            val vault = spaceRepository.getSpaceById(evidence.vaultId)
+            dialogManager.showDialog(dialogManager.requireResourceProvider()) {
+                type = DialogType.Error
+                title = UiText.Resource(R.string.upload_unsuccessful)
+                message = UiText.Resource(R.string.upload_unsuccessful_description)
+                icon = UiImage.DrawableResource(R.drawable.ic_error)
+                positiveButton {
+                    text = UiText.Resource(R.string.lbl_retry)
+                    action = {
+                        uploadGate.check(vaultType = vault?.type) {
+                            retryItem(evidence)
+                            uploadJobScheduler.schedule()
+                        }
                     }
                 }
-            }
-
-            destructiveButton {
-                text = UiText.Resource(R.string.btn_lbl_remove_media)
-                action = {
-                    deleteItem(position)
+                destructiveButton {
+                    text = UiText.Resource(R.string.btn_lbl_remove_media)
+                    action = { deleteItem(position) }
                 }
             }
         }

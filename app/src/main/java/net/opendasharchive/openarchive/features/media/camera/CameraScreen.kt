@@ -73,8 +73,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.delay
 import net.opendasharchive.openarchive.R
+import net.opendasharchive.openarchive.core.domain.VaultType
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.util.ComposePermissionManager
+import net.opendasharchive.openarchive.util.Prefs
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -82,6 +84,7 @@ import java.util.concurrent.Executors
 fun CameraScreen(
     modifier: Modifier = Modifier,
     config: CameraConfig = CameraConfig(),
+    vaultType: VaultType? = null,
     onCaptureComplete: (List<Uri>) -> Unit,
     onCancel: () -> Unit,
     permissionManager: ComposePermissionManager,
@@ -90,6 +93,7 @@ fun CameraScreen(
     val context = LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val cameraState by viewModel.state.collectAsState()
+    val applyProvenance = vaultType == VaultType.PRIVATE_SERVER && Prefs.useC2pa
     
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
@@ -327,6 +331,7 @@ fun CameraScreen(
                             context = context,
                             imageCapture = capture,
                             useCleanFilenames = config.useCleanFilenames,
+                            applyProvenance = applyProvenance,
                             onSuccess = { uri ->
                                 AppLogger.d("Photo captured: $uri")
                             },
@@ -343,6 +348,7 @@ fun CameraScreen(
                                 context = context,
                                 videoCapture = capture,
                                 useCleanFilenames = config.useCleanFilenames,
+                                applyProvenance = applyProvenance,
                                 onSuccess = { uri ->
                                     AppLogger.d("Video captured: $uri")
                                 },

@@ -24,82 +24,55 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
             val path = getPath() ?: return false
 
             mClient = SaveClient.getSardine(mContext, auth.username, auth.secret)
-
             sanitize()
 
             val fileName = getUploadFileName(mEvidence)
 
+            // Step 1: Create remote folders
             try {
                 val archive = projectRepository.getProject(mEvidence.archiveId)
                 createFolders(base, path, archive?.isRemote ?: false)
-
-                uploadMetadata(base, path, fileName)
             } catch (e: Throwable) {
                 jobFailed(e)
-
                 return false
             }
 
-            AppLogger.i("Begin media file upload...")
-            if (mEvidence.contentLength > CHUNK_FILESIZE_THRESHOLD) {
-                return uploadChunked(base, path, fileName)
-            }
-
-            val fullPath = construct(base, path, fileName)
-            AppLogger.i("Uploading started for single file upload...", "filePath: $fullPath")
-
-            // Validate the file is still accessible before handing to sardine.
+            // Step 2: Validate file is accessible before starting upload.
             // RequestBodyUtil swallows FileNotFoundException and leaves inputStream=null,
-            // which then NPEs inside Okio.source(). Fail early with a clear error instead.
-            // ENOENT means the file is unrecoverable — auto-delete the evidence record
-            // rather than leaving it stuck in ERROR state where retries will always fail.
+            // which NPEs inside Okio.source(). Fail fast with a clear error.
+            // ENOENT is not silently auto-deleted — it goes to ERROR state so the user
+            // can see and act on it rather than the item disappearing without explanation.
             try {
                 mContext.contentResolver.openInputStream(mEvidence.fileUri)?.close()
                     ?: throw IOException("openInputStream returned null for ${mEvidence.fileUri}")
             } catch (e: FileNotFoundException) {
-                AppLogger.e("Media file missing (ENOENT), removing evidence ${mEvidence.id}: ${mEvidence.fileUri}")
-                mediaRepository.deleteMedia(mEvidence.id)
+                AppLogger.e("Media file missing (ENOENT), evidence ${mEvidence.id}: ${mEvidence.fileUri}")
+                jobFailed(IOException("Media file not found: ${mEvidence.fileUri}", e))
                 return false
             } catch (e: Throwable) {
-                AppLogger.e("Media file inaccessible, cannot upload: ${mEvidence.fileUri}", e.message ?: "")
+                AppLogger.e("Media file inaccessible: ${mEvidence.fileUri}", e.message ?: "")
                 jobFailed(e)
                 return false
             }
 
-            try {
-                mClient.put(
-                    mContext.contentResolver,
-                    fullPath,
-                    mEvidence.fileUri,
-                    mEvidence.contentLength,
-                    mEvidence.mimeType,
-                    false,
-                    object : SardineListener {
-                        var lastBytes: Long = 0
-
-                        override fun transferred(bytes: Long) {
-                            if (bytes > lastBytes) {
-                                jobProgress(bytes)
-                                lastBytes = bytes
-                            }
-                            AppLogger.i("Bytes transferred for for ${mEvidence.id}: ", "$bytes")
-                        }
-
-                        override fun continueUpload(): Boolean {
-                            AppLogger.i("Should continue upload for ${mEvidence.id}?", "$mCancelled")
-                            return !mCancelled
-                        }
-                    })
-            } catch (e: Throwable) {
-                jobFailed(e)
-
-                return false
+            // Step 3: Upload media file (chunked for large files, single otherwise)
+            AppLogger.i("Begin media file upload...")
+            val uploadSuccess = if (mEvidence.contentLength > CHUNK_FILESIZE_THRESHOLD) {
+                uploadChunked(base, path, fileName)
+            } else {
+                uploadSingle(base, path, fileName)
             }
 
-            mEvidence = mEvidence.copy(serverUrl = fullPath)
-            jobSucceeded()
+            // Step 4: Upload metadata only after media succeeds (non-fatal if metadata fails)
+            if (uploadSuccess) {
+                try {
+                    uploadMetadata(base, path, fileName)
+                } catch (e: Throwable) {
+                    AppLogger.e("Metadata upload failed (non-fatal): ${e.message}")
+                }
+            }
 
-            return true
+            return uploadSuccess
         } catch (e: Throwable) {
             jobFailed(e)
         }
@@ -113,6 +86,40 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
         } else {
             AppLogger.i("folder already exists: ", url)
         }
+    }
+
+    private suspend fun uploadSingle(base: HttpUrl, path: List<String>, fileName: String): Boolean {
+        val fullPath = construct(base, path, fileName)
+        AppLogger.i("Uploading single file...", "filePath: $fullPath")
+
+        try {
+            mClient.put(
+                mContext.contentResolver,
+                fullPath,
+                mEvidence.fileUri,
+                mEvidence.contentLength,
+                mEvidence.mimeType,
+                false,
+                object : SardineListener {
+                    var lastBytes: Long = 0
+
+                    override fun transferred(bytes: Long) {
+                        if (bytes > lastBytes) {
+                            jobProgress(bytes)
+                            lastBytes = bytes
+                        }
+                    }
+
+                    override fun continueUpload(): Boolean = !mCancelled
+                })
+        } catch (e: Throwable) {
+            jobFailed(e)
+            return false
+        }
+
+        mEvidence = mEvidence.copy(serverUrl = fullPath)
+        jobSucceeded()
+        return true
     }
 
     @Throws(IOException::class)
@@ -138,23 +145,19 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
         return try {
             createFolders(tmpBase, tmpPath)
 
-            // Create chunks and start uploads. Look for existing chunks, and skip if done.
-            // Start with the last chunk and re-upload.
-
             var offset = 0
 
-            mEvidence.file.inputStream().use { inputStream ->
+            // Use contentResolver to support both file:// and content:// URIs
+            (mContext.contentResolver.openInputStream(mEvidence.fileUri)
+                ?: throw IOException("Cannot open input stream for ${mEvidence.fileUri}")).use { inputStream ->
                 while (!mCancelled && offset < mEvidence.contentLength) {
                     var buffer = ByteArray(CHUNK_SIZE.toInt())
-
                     val length = inputStream.read(buffer)
-
                     if (length < 1) break
 
                     if (length < CHUNK_SIZE) buffer = buffer.copyOfRange(0, length)
 
                     val total = offset + length
-
                     val chunkPath = construct(tmpBase, tmpPath, "$offset-$total")
                     val chunkExists = mClient.exists(chunkPath)
                     var chunkLengthMatches = false
@@ -175,14 +178,12 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
                                     jobProgress(offset.toLong() + bytes)
                                 }
 
-                                override fun continueUpload(): Boolean {
-                                    return !mCancelled
-                                }
+                                override fun continueUpload(): Boolean = !mCancelled
                             })
                     }
 
-                    jobProgress(total.toLong())
-                    offset = total + 1
+                    // Fix: offset = total (was total + 1, which skipped 1 byte per chunk boundary)
+                    offset = total
                 }
             }
 
@@ -194,13 +195,17 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
             mClient.move(construct(tmpBase, tmpPath, ".file"), construct(tmpBase, dest, fileName))
 
             mEvidence = mEvidence.copy(serverUrl = construct(base, path, fileName))
-
             jobSucceeded()
-
             true
         } catch (e: Throwable) {
+            // Clean up partial upload slot on server to avoid orphaned temp chunks
+            try {
+                mClient.delete(construct(tmpBase, tmpPath))
+                AppLogger.i("Cleaned up partial chunked upload at ${construct(tmpBase, tmpPath)}")
+            } catch (cleanupEx: Throwable) {
+                AppLogger.w("Failed to clean up partial chunks: ${cleanupEx.message}")
+            }
             jobFailed(e)
-
             false
         }
     }
@@ -218,7 +223,6 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
             null
         )
 
-        /// Upload C2PA manifest, if enabled and successfully created.
         val c2paManifest = getC2paManifest()
         if (c2paManifest != null) {
             if (mCancelled) throw Exception("Cancelled")
