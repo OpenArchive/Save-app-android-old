@@ -301,7 +301,12 @@ class CameraViewModel : ViewModel() {
         val isoFmt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).also {
             it.timeZone = java.util.TimeZone.getTimeZone("UTC")
         }
+        val mimeType = android.webkit.MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(file.extension.lowercase())
+            ?: "application/octet-stream"
         return buildMap {
+            put("title",            file.name)
+            put("mimeType",         mimeType)
             put("File Hash SHA256", hash)
             put("File Path",        file.absolutePath)
             put("File Created",     isoFmt.format(java.util.Date(metadata.captureTime)))

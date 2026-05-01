@@ -226,9 +226,8 @@ class UploadService : JobService() {
 
     @Throws(IOException::class)
     private suspend fun upload(media: Evidence): Boolean {
-        val updatedMedia = media.copy(status = EvidenceStatus.UPLOADING)
+        val updatedMedia = media  // status already set to UPLOADING by the caller
         AppLogger.i("${updatedMedia.id} - media status changed to uploading")
-        mediaRepository.updateEvidence(updatedMedia)
 
         BroadcastManager.postChange(this, updatedMedia.submissionId, updatedMedia.id)
         UploadEventBus.emitChanged(

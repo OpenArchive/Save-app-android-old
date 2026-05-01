@@ -8,6 +8,7 @@ import android.net.Uri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.analytics.api.AnalyticsEvent
@@ -114,6 +115,7 @@ abstract class Conduit(
 
     open fun cancel() {
         mCancelled = true
+        scope.cancel()
     }
 
     /**
@@ -194,6 +196,7 @@ abstract class Conduit(
                 progress = 100,
                 isUploaded = true
             )
+        scope.cancel()
     }
 
     suspend fun jobFailed(exception: Throwable) {
@@ -227,6 +230,7 @@ abstract class Conduit(
                 progress = -1,
                 isUploaded = false
             )
+            scope.cancel()
             return
         }
 
@@ -281,6 +285,7 @@ abstract class Conduit(
                 progress = -1,
                 isUploaded = false
             )
+        scope.cancel()
     }
 
     /**
@@ -320,7 +325,13 @@ abstract class Conduit(
      * reads some values from mMedia and copies them to some other fields of mMedia
      */
     protected suspend fun sanitize() {
-        val length = mEvidence.file.length()
+        val length = when (mEvidence.fileUri.scheme) {
+            "file" -> try { mEvidence.file.length() } catch (e: Exception) { 0L }
+            "content" -> try {
+                mContext.contentResolver.openFileDescriptor(mEvidence.fileUri, "r")?.use { it.statSize } ?: 0L
+            } catch (e: Exception) { 0L }
+            else -> 0L
+        }
         var updatedEvidence = mEvidence
         if (length > 0) updatedEvidence = updatedEvidence.copy(contentLength = length)
 

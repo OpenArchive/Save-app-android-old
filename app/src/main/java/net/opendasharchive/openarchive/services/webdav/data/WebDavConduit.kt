@@ -63,13 +63,15 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
                 uploadSingle(base, path, fileName)
             }
 
-            // Step 4: Upload metadata only after media succeeds (non-fatal if metadata fails)
+            // Step 4: Upload metadata only after media succeeds (non-fatal if metadata fails),
+            // then mark succeeded so DB status reflects the final state.
             if (uploadSuccess) {
                 try {
                     uploadMetadata(base, path, fileName)
                 } catch (e: Throwable) {
                     AppLogger.e("Metadata upload failed (non-fatal): ${e.message}")
                 }
+                jobSucceeded()
             }
 
             return uploadSuccess
@@ -118,7 +120,6 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
         }
 
         mEvidence = mEvidence.copy(serverUrl = fullPath)
-        jobSucceeded()
         return true
     }
 
@@ -195,7 +196,6 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
             mClient.move(construct(tmpBase, tmpPath, ".file"), construct(tmpBase, dest, fileName))
 
             mEvidence = mEvidence.copy(serverUrl = construct(base, path, fileName))
-            jobSucceeded()
             true
         } catch (e: Throwable) {
             // Clean up partial upload slot on server to avoid orphaned temp chunks
