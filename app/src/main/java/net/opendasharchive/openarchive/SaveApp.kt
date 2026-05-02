@@ -66,10 +66,27 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
     }
 
     override fun onCreate() {
+        // Delete Sugar DB BEFORE SugarApp.onCreate() opens it. If migration is done,
+        // SugarApp would otherwise open the file and hold a live fd; deleting it after
+        // that causes SQLITE_READONLY_DBMOVED (1032) on any subsequent Sugar write.
+        // Reading the pref directly here (before Prefs.load) is safe — attachBaseContext
+        // has already run so the base context is valid.
+        val rawPrefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+        val isMigrated = rawPrefs.getBoolean("is_room_migrated", false)
+        val sugarDbExistedBeforeDelete = if (isMigrated) {
+            val existed = getDatabasePath("openarchive.db").exists()
+            deleteDatabase("openarchive.db")
+            existed
+        } else null
+
         super<SugarApp>.onCreate()
 
-        // Initialize logging first
+        // Initialize logging first (applicationContext valid after super.onCreate)
         AppLogger.init(applicationContext, initDebugger = true)
+
+        if (sugarDbExistedBeforeDelete != null) {
+            AppLogger.i("DB: Room active — Sugar ORM retired. Sugar DB ${if (sugarDbExistedBeforeDelete) "deleted" else "already absent"}")
+        }
 
         // ACRA spawns a secondary :acra process to collect/send crash reports.
         // Skip all main-process initialisation (WorkManager, Koin, TOR, analytics) there.
@@ -90,13 +107,6 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
                 ExistingWorkPolicy.KEEP,
                 migrationRequest
             )
-        } else {
-            // Migration already done in a previous run — safe to delete Sugar DB now.
-            // Koin will bind Room repos this startup, so the Sugar file is truly unused.
-            val sugarDbFile = getDatabasePath("openarchive.db")
-            val existed = sugarDbFile.exists()
-            deleteDatabase("openarchive.db")
-            AppLogger.i("DB: Room active — Sugar ORM retired. Sugar DB ${if (existed) "deleted" else "already absent"}")
         }
 
         // Initialize Koin DI
