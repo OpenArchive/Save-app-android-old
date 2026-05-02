@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,7 +72,6 @@ fun MediaThumbnail(
                 SubcomposeAsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(evidence.fileUri)
-                        .error(R.drawable.ic_image)
                         .build(),
                     contentDescription = null,
                     contentScale = contentScale,
@@ -78,7 +79,19 @@ fun MediaThumbnail(
                         .fillMaxSize()
                         .alpha(alpha)
                 ) {
-                    SubcomposeAsyncImageContent()
+                    val asyncState by painter.state.collectAsState()
+                    when (asyncState) {
+                        is coil3.compose.AsyncImagePainter.State.Error,
+                        is coil3.compose.AsyncImagePainter.State.Empty -> {
+                            MediaPlaceholderIcon(
+                                drawableRes = R.drawable.ic_image,
+                                padding = placeholderPadding,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            onTitleVisibilityChanged?.invoke(true)
+                        }
+                        else -> SubcomposeAsyncImageContent()
+                    }
                 }
                 onTitleVisibilityChanged?.invoke(false)
             }
@@ -88,7 +101,6 @@ fun MediaThumbnail(
                     model = ImageRequest.Builder(context)
                         .data(evidence.originalFilePath.ifEmpty { evidence.fileUri.toString() })
                         .decoderFactory(VideoFrameDecoder.Factory())
-                        .error(R.drawable.ic_video)
                         .build(),
                     contentDescription = null,
                     contentScale = contentScale,
@@ -96,7 +108,19 @@ fun MediaThumbnail(
                         .fillMaxSize()
                         .alpha(alpha)
                 ) {
-                    SubcomposeAsyncImageContent()
+                    val asyncState by painter.state.collectAsState()
+                    when (asyncState) {
+                        is coil3.compose.AsyncImagePainter.State.Error,
+                        is coil3.compose.AsyncImagePainter.State.Empty -> {
+                            MediaPlaceholderIcon(
+                                drawableRes = R.drawable.ic_video,
+                                padding = placeholderPadding,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            onTitleVisibilityChanged?.invoke(true)
+                        }
+                        else -> SubcomposeAsyncImageContent()
+                    }
                 }
                 onTitleVisibilityChanged?.invoke(false)
             }
@@ -152,6 +176,7 @@ fun MediaThumbnail(
                 PdfThumbnailView(
                     uri = evidence.fileUri,
                     placeholderRes = R.drawable.ic_pdf,
+                    placeholderPadding = placeholderPadding,
                     maxDimensionPx = pdfMaxDimensionPx,
                     contentScale = contentScale,
                     modifier = Modifier

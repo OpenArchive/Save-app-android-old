@@ -31,7 +31,8 @@ class MigrationWorker(
     private val credentialStore: VaultCredentialStore by inject()
 
     override suspend fun doWork(): Result {
-        if (Prefs.isRoomMigrated) return Result.success()
+        // Already delta-migrated; Sugar DB deletion is scheduled for next startup
+        if (Prefs.isSugarDbDeletePending) return Result.success()
 
         Prefs.isMigrationInProgress = true
 
@@ -41,6 +42,11 @@ class MigrationWorker(
                 processedCount = 0,
                 totalCount = 0
             )
+
+            // Reset completed state so delta run re-migrates (upserts are idempotent)
+            if (state.stage == "DONE") {
+                state = MigrationStateEntity(stage = "IDLE", processedCount = 0, totalCount = 0)
+            }
 
             if (state.stage == "IDLE" || state.stage == "SPACES") {
                 try {
@@ -85,15 +91,9 @@ class MigrationWorker(
             migrationDao.upsert(state.copy(stage = "DONE", completedAt = DateUtils.now))
 
             Prefs.isRoomMigrated = true
+            Prefs.isSugarDbDeletePending = true
             Prefs.isMigrationInProgress = false
-            AppLogger.i("Migration to Room completed successfully")
-
-            try {
-                applicationContext.deleteDatabase("openarchive.db")
-                AppLogger.i("Sugar ORM database deleted after migration")
-            } catch (e: Exception) {
-                AppLogger.e("Failed to delete Sugar ORM database (non-fatal)", e)
-            }
+            AppLogger.i("DB: Migration complete — isSugarDbDeletePending=true. Sugar DB will be deleted on next startup.")
 
             return Result.success()
         } catch (e: Exception) {

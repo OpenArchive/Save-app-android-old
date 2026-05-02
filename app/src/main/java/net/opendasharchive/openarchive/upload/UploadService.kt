@@ -263,7 +263,17 @@ class UploadService : JobService() {
 
         val conduit = Conduit.get(updatedMedia, this)
         if (conduit == null) {
-            AppLogger.e("Conduit is null")
+            AppLogger.e("Conduit is null for media ${updatedMedia.id}, vaultId=${updatedMedia.vaultId}")
+            mediaRepository.updateEvidence(
+                updatedMedia.copy(status = EvidenceStatus.ERROR, statusMessage = "No vault configured")
+            )
+            UploadEventBus.emitChanged(
+                projectId = updatedMedia.archiveId,
+                collectionId = updatedMedia.submissionId,
+                mediaId = updatedMedia.id,
+                progress = -1,
+                isUploaded = false
+            )
             return false
         }
 

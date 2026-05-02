@@ -375,6 +375,10 @@ class CameraViewModel : ViewModel() {
 
     fun confirmCapture(item: CapturedItem): List<Uri> {
         return if (_state.value.capturedItems.contains(item)) {
+            // Remove confirmed item so clearCaptures() in onCleared doesn't try to delete it
+            _state.value = _state.value.copy(
+                capturedItems = _state.value.capturedItems.filter { it != item }
+            )
             listOf(item.uri)
         } else {
             emptyList()
