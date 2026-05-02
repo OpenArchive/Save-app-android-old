@@ -10,6 +10,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.room3.Room
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -21,8 +22,10 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import kotlinx.coroutines.runBlocking
 import net.opendasharchive.openarchive.core.repositories.CacheCleanupWorker
 import net.opendasharchive.openarchive.core.di.torModule
+import net.opendasharchive.openarchive.core.security.TinkVaultCredentialStore
 import net.opendasharchive.openarchive.services.tor.TorConstants
 import net.opendasharchive.openarchive.services.tor.TorServiceManager
 import kotlinx.coroutines.launch
@@ -30,7 +33,9 @@ import net.opendasharchive.openarchive.analytics.api.AnalyticsManager
 import net.opendasharchive.openarchive.analytics.api.session.SessionTracker
 import net.opendasharchive.openarchive.core.security.C2paKeyStore
 import net.opendasharchive.openarchive.analytics.di.analyticsModule
+import net.opendasharchive.openarchive.db.AppDatabase
 import net.opendasharchive.openarchive.db.MigrationWorker
+import net.opendasharchive.openarchive.db.SugarToRoomMigrator
 import net.opendasharchive.openarchive.core.di.coreModule
 import net.opendasharchive.openarchive.core.di.databaseModule
 import net.opendasharchive.openarchive.core.di.featuresModule
@@ -66,16 +71,17 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
     }
 
     override fun onCreate() {
-        // Delete Sugar DB BEFORE SugarApp.onCreate() opens it. If migration is done,
-        // SugarApp would otherwise open the file and hold a live fd; deleting it after
-        // that causes SQLITE_READONLY_DBMOVED (1032) on any subsequent Sugar write.
-        // Reading the pref directly here (before Prefs.load) is safe — attachBaseContext
-        // has already run so the base context is valid.
+        // L2: Delete Sugar DB BEFORE SugarApp.onCreate() opens it. Reading raw prefs here
+        // (before Prefs.load) is safe — attachBaseContext has already run.
+        // Sugar DB cannot be deleted in the same session it was opened (SQLITE_READONLY_DBMOVED 1032),
+        // so deletion is always deferred to the next launch via `sugar_db_delete_pending`.
         val rawPrefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
-        val isMigrated = rawPrefs.getBoolean("is_room_migrated", false)
-        val sugarDbExistedBeforeDelete = if (isMigrated) {
+        val deletePending = rawPrefs.getBoolean("sugar_db_delete_pending", false)
+        val sugarDbExistedBeforeDelete = if (deletePending) {
             val existed = getDatabasePath("openarchive.db").exists()
             deleteDatabase("openarchive.db")
+            // Clear the flag synchronously so it doesn't trigger again on subsequent launches
+            rawPrefs.edit().putBoolean("sugar_db_delete_pending", false).commit()
             existed
         } else null
 
@@ -85,7 +91,7 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
         AppLogger.init(applicationContext, initDebugger = true)
 
         if (sugarDbExistedBeforeDelete != null) {
-            AppLogger.i("DB: Room active — Sugar ORM retired. Sugar DB ${if (sugarDbExistedBeforeDelete) "deleted" else "already absent"}")
+            AppLogger.i("DB: Sugar DB ${if (sugarDbExistedBeforeDelete) "deleted" else "already absent"} — Room only from here")
         }
 
         // ACRA spawns a secondary :acra process to collect/send crash reports.
@@ -97,16 +103,50 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
         // Initialize C2PA Helper
         C2paHelper.init(this)
 
-        // Trigger Room migration if needed (SugarORM → Room)
+        // --- 2-launch synchronous migration strategy ---
+        // L1: If Sugar DB exists and Room migration hasn't run yet, open Room directly
+        //     (before Koin), run migration synchronously, then mark done.
+        //     Sugar DB deletion is deferred to L2 (SQLITE_READONLY_DBMOVED constraint).
+        // L2: Deletion of Sugar DB already happened at the top of onCreate (before super).
+        // New install: no Sugar DB → set isRoomMigrated immediately.
         if (!Prefs.isRoomMigrated) {
-            AppLogger.i("DB: Sugar ORM active — Room migration not yet complete, using Sugar repos this session")
-            val migrationRequest = OneTimeWorkRequestBuilder<MigrationWorker>()
-                .build()
-            WorkManager.getInstance(this).enqueueUniqueWork(
-                "RoomMigration",
-                ExistingWorkPolicy.KEEP,
-                migrationRequest
-            )
+            val sugarDbExists = getDatabasePath("openarchive.db").exists()
+            if (!sugarDbExists) {
+                Prefs.isRoomMigrated = true
+                AppLogger.i("DB: New install — no Sugar DB, using Room from start")
+            } else {
+                AppLogger.i("DB: L1 — Sugar DB found, running synchronous migration before Koin")
+                val tempDb = Room.databaseBuilder(
+                    applicationContext,
+                    AppDatabase::class.java,
+                    "openarchive.db_room"
+                ).build()
+                try {
+                    val credentialStore = TinkVaultCredentialStore(applicationContext)
+                    runBlocking {
+                        SugarToRoomMigrator.migrate(
+                            vaultDao = tempDb.vaultDao(),
+                            archiveDao = tempDb.archiveDao(),
+                            submissionDao = tempDb.submissionDao(),
+                            evidenceDao = tempDb.evidenceDao(),
+                            migrationDao = tempDb.migrationDao(),
+                            credentialStore = credentialStore
+                        )
+                    }
+                    Prefs.isRoomMigrated = true
+                    Prefs.isSugarDbDeletePending = true
+                    AppLogger.i("DB: L1 migration complete — Sugar DB deletion scheduled for next launch")
+                } catch (e: Exception) {
+                    AppLogger.e("DB: L1 synchronous migration failed — will retry via MigrationWorker", e)
+                    // Fallback: enqueue WorkManager-based migration so user data is not lost
+                    WorkManager.getInstance(this).enqueueUniqueWork(
+                        "RoomMigration", ExistingWorkPolicy.KEEP,
+                        OneTimeWorkRequestBuilder<MigrationWorker>().build()
+                    )
+                } finally {
+                    tempDb.close()
+                }
+            }
         }
 
         // Initialize Koin DI

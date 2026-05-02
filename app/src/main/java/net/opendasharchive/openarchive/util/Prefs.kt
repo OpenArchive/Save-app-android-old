@@ -29,6 +29,7 @@ object Prefs {
     private const val DID_RUN_SEEDER = "did_run_seeder"
     private const val IS_MIGRATION_IN_PROGRESS = "is_migration_in_progress"
     private const val IS_ROOM_MIGRATED = "is_room_migrated"
+    private const val SUGAR_DB_DELETE_PENDING = "sugar_db_delete_pending"
     val TOR_DOWNLOAD_URL = Uri.parse("https://play.google.com/store/apps/details?id=org.torproject.android")
 
     private var prefs: SharedPreferences? = null
@@ -205,6 +206,13 @@ object Prefs {
         get() = prefs?.getBoolean(IS_ROOM_MIGRATED, false) ?: false
         set(value) {
             putBoolean(IS_ROOM_MIGRATED, value)
+        }
+
+    // Set after delta migration on L2; triggers Sugar DB deletion on L3
+    var isSugarDbDeletePending: Boolean
+        get() = prefs?.getBoolean(SUGAR_DB_DELETE_PENDING, false) ?: false
+        set(value) {
+            putBoolean(SUGAR_DB_DELETE_PENDING, value)
         }
 
 }

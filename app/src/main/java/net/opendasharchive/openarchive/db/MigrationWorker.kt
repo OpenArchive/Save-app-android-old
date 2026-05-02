@@ -31,7 +31,8 @@ class MigrationWorker(
     private val credentialStore: VaultCredentialStore by inject()
 
     override suspend fun doWork(): Result {
-        if (Prefs.isRoomMigrated) return Result.success()
+        // Already delta-migrated; Sugar DB deletion is scheduled for next startup
+        if (Prefs.isSugarDbDeletePending) return Result.success()
 
         Prefs.isMigrationInProgress = true
 
@@ -41,6 +42,11 @@ class MigrationWorker(
                 processedCount = 0,
                 totalCount = 0
             )
+
+            // Reset completed state so delta run re-migrates (upserts are idempotent)
+            if (state.stage == "DONE") {
+                state = MigrationStateEntity(stage = "IDLE", processedCount = 0, totalCount = 0)
+            }
 
             if (state.stage == "IDLE" || state.stage == "SPACES") {
                 try {
@@ -85,13 +91,9 @@ class MigrationWorker(
             migrationDao.upsert(state.copy(stage = "DONE", completedAt = DateUtils.now))
 
             Prefs.isRoomMigrated = true
+            Prefs.isSugarDbDeletePending = true
             Prefs.isMigrationInProgress = false
-            AppLogger.i("DB: Migration to Room complete — isRoomMigrated=true. Sugar DB will be deleted on next startup.")
-
-            // Sugar DB deletion is deferred to next app startup (SaveApp.onCreate).
-            // Deleting here causes SQLite 1032 (SQLITE_READONLY_DBMOVED): Koin already
-            // bound MediaRepository → SugarMediaRepository for this process lifetime,
-            // so any addEvidence() call after deletion hits a dead file descriptor.
+            AppLogger.i("DB: Migration complete — isSugarDbDeletePending=true. Sugar DB will be deleted on next startup.")
 
             return Result.success()
         } catch (e: Exception) {
