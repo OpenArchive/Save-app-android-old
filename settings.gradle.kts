@@ -85,7 +85,6 @@ dependencyResolutionManagement {
             content {
                 includeModule("com.github.esafirm", "android-image-picker")
                 includeModule("com.github.abdularis", "circularimageview")
-                includeModule("com.github.guardianproject", "sardine-android")
             }
         }
     }

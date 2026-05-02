@@ -241,7 +241,6 @@ okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor",
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 retrofit-kotlinx-serialization = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
-guardianproject-sardine = { group = "com.github.guardianproject", name = "sardine-android", version = "89f7eae512" }
 
 # Security & Cryptography
 bouncycastle-bcprov = { group = "org.bouncycastle", name = "bcprov-jdk15to18", version.ref = "bouncycastle-bcprov" }
