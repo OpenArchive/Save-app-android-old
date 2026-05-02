@@ -1,20 +1,35 @@
 package net.opendasharchive.openarchive.services.webdav.data
 
 import android.content.Context
-import com.thegrizzlylabs.sardineandroid.SardineListener
-import com.thegrizzlylabs.sardineandroid.impl.OkHttpSardine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.core.domain.Evidence
 import net.opendasharchive.openarchive.services.Conduit
 import net.opendasharchive.openarchive.services.SaveClient
+import net.opendasharchive.openarchive.services.common.network.RequestBodyUtil
+import net.opendasharchive.openarchive.services.common.network.createListener
+import okhttp3.Call
 import okhttp3.HttpUrl
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.FileNotFoundException
 import java.io.IOException
 
 
 class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, context) {
 
-    private lateinit var mClient: OkHttpSardine
+    private lateinit var mClient: OkHttpClient
+
+    @Volatile
+    private var currentCall: Call? = null
+
+    override fun cancel() {
+        super.cancel()
+        currentCall?.cancel()
+    }
 
     override suspend fun upload(): Boolean {
         try {
@@ -23,7 +38,16 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
             val base = vault.hostUrl ?: return false
             val path = getPath() ?: return false
 
-            mClient = SaveClient.getSardine(mContext, auth.username, auth.secret)
+            // SaveClient.get() with user/pass adds BasicAuthInterceptor and, when Tor is
+            // enabled in Prefs, routes all traffic through the SOCKS5 proxy automatically.
+            mClient = SaveClient.get(
+                context = mContext,
+                user = auth.username,
+                password = auth.secret,
+                forceCloseConnection = true,
+                allowHttp2 = false
+            )
+
             sanitize()
 
             val fileName = getUploadFileName(mEvidence)
@@ -58,7 +82,7 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
             // Step 3: Upload media file (chunked for large files, single otherwise)
             AppLogger.i("Begin media file upload...")
             val uploadSuccess = if (mEvidence.contentLength > CHUNK_FILESIZE_THRESHOLD) {
-                uploadChunked(base, path, fileName)
+                uploadChunked(base, path, fileName, vault.username)
             } else {
                 uploadSingle(base, path, fileName)
             }
@@ -83,37 +107,27 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
     }
 
     override suspend fun createFolder(url: String) {
-        if (!mClient.exists(url)) {
-            mClient.createDirectory(url)
+        if (!headExists(url)) {
+            mkcol(url)
         } else {
-            AppLogger.i("folder already exists: ", url)
+            AppLogger.i("folder already exists: $url")
         }
     }
 
     private suspend fun uploadSingle(base: HttpUrl, path: List<String>, fileName: String): Boolean {
         val fullPath = construct(base, path, fileName)
-        AppLogger.i("Uploading single file...", "filePath: $fullPath")
+        AppLogger.i("Uploading single file... $fullPath")
 
         try {
-            mClient.put(
+            val listener = createListener(cancellable = { !mCancelled }, onProgress = { jobProgress(it) })
+            val requestBody = RequestBodyUtil.create(
                 mContext.contentResolver,
-                fullPath,
                 mEvidence.fileUri,
                 mEvidence.contentLength,
-                mEvidence.mimeType,
-                false,
-                object : SardineListener {
-                    var lastBytes: Long = 0
-
-                    override fun transferred(bytes: Long) {
-                        if (bytes > lastBytes) {
-                            jobProgress(bytes)
-                            lastBytes = bytes
-                        }
-                    }
-
-                    override fun continueUpload(): Boolean = !mCancelled
-                })
+                mEvidence.mimeType.toMediaTypeOrNull(),
+                listener
+            )
+            execute(Request.Builder().url(fullPath).put(requestBody).build())
         } catch (e: Throwable) {
             jobFailed(e)
             return false
@@ -124,35 +138,35 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
     }
 
     @Throws(IOException::class)
-    private suspend fun uploadChunked(base: HttpUrl, path: List<String>, fileName: String): Boolean {
+    private suspend fun uploadChunked(
+        base: HttpUrl,
+        path: List<String>,
+        fileName: String,
+        username: String
+    ): Boolean {
         AppLogger.i("Uploading started as chunked upload...")
         val vault = spaceRepository.getSpaceById(mEvidence.vaultId) ?: return false
         val url = vault.hostUrl ?: return false
 
         val tmpBase = HttpUrl.Builder()
             .scheme(url.scheme)
-            .username(url.username)
-            .password(url.password)
             .host(url.host)
             .port(url.port)
-            .query(url.query)
-            .fragment(url.fragment)
             .addPathSegment("remote.php")
             .addPathSegment("dav")
             .build()
 
-        val tmpPath = listOf("uploads", vault.username, fileName)
+        val tmpPath = listOf("uploads", username, fileName)
 
         return try {
             createFolders(tmpBase, tmpPath)
 
-            // Single PROPFIND to determine if we're resuming a previous upload attempt.
-            // If the temp folder already has chunks, scan forward to find where to resume.
-            // If it's a fresh upload, skip all per-chunk exists checks (N chunks × 1–2 RTTs saved).
-            val tempFolderPath = construct(tmpBase, tmpPath)
+            // One HEAD to detect resume: check if the temp folder and first chunk already exist.
+            // Fresh uploads skip all per-chunk existence checks (N × 1-2 RTT saved).
+            val firstChunkSize = minOf(CHUNK_SIZE, mEvidence.contentLength).toInt()
             var isResuming = try {
-                mClient.exists(tempFolderPath) &&
-                    mClient.list(tempFolderPath).size > 1  // >1: folder entry + at least one chunk
+                headExists(construct(tmpBase, tmpPath)) &&
+                    headExists(construct(tmpBase, tmpPath, "0-$firstChunkSize"))
             } catch (e: Throwable) { false }
 
             AppLogger.i(if (isResuming) "Resuming chunked upload..." else "Fresh chunked upload, skipping per-chunk existence checks")
@@ -175,53 +189,42 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
                     // Only check existence when resuming. Once we find the first missing chunk,
                     // all subsequent chunks are also missing — stop scanning.
                     if (isResuming) {
-                        val chunkExists = mClient.exists(chunkPath)
+                        val chunkExists = headExists(chunkPath)
                         if (chunkExists) {
-                            val dirList = mClient.list(chunkPath)
-                            val sizeMatches = !dirList.isNullOrEmpty() &&
-                                dirList.first().contentLength == length.toLong()
-                            if (sizeMatches) {
+                            val remoteLen = headContentLength(chunkPath)
+                            if (remoteLen == length.toLong()) {
                                 AppLogger.i("Resuming: chunk $offset-$total already present, skipping")
                                 offset = total
                                 continue
                             }
                         } else {
-                            // First missing chunk — no more resume scanning needed from here
                             isResuming = false
                         }
                     }
 
-                    mClient.put(
-                        chunkPath,
-                        buffer,
-                        mEvidence.mimeType,
-                        object : SardineListener {
-                            override fun transferred(bytes: Long) {
-                                jobProgress(offset.toLong() + bytes)
-                            }
+                    val chunkBody = buffer.toRequestBody(mEvidence.mimeType.toMediaTypeOrNull())
+                    execute(Request.Builder().url(chunkPath).put(chunkBody).build())
+                    jobProgress(total.toLong())
 
-                            override fun continueUpload(): Boolean = !mCancelled
-                        })
-
-                    // Fix: offset = total (was total + 1, which skipped 1 byte per chunk boundary)
                     offset = total
                 }
             }
 
             if (mCancelled) throw Exception("Cancelled")
 
-            val dest = mutableListOf("files", vault.username)
+            val dest = mutableListOf("files", username)
             dest.addAll(path)
 
-            mClient.move(construct(tmpBase, tmpPath, ".file"), construct(tmpBase, dest, fileName))
+            move(construct(tmpBase, tmpPath, ".file"), construct(tmpBase, dest, fileName))
 
             mEvidence = mEvidence.copy(serverUrl = construct(base, path, fileName))
             true
         } catch (e: Throwable) {
             // Clean up partial upload slot on server to avoid orphaned temp chunks
             try {
-                mClient.delete(construct(tmpBase, tmpPath))
-                AppLogger.i("Cleaned up partial chunked upload at ${construct(tmpBase, tmpPath)}")
+                val tempFolder = construct(tmpBase, tmpPath)
+                webdavDelete(tempFolder)
+                AppLogger.i("Cleaned up partial chunked upload at $tempFolder")
             } catch (cleanupEx: Throwable) {
                 AppLogger.w("Failed to clean up partial chunks: ${cleanupEx.message}")
             }
@@ -231,30 +234,91 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
     }
 
     private suspend fun uploadMetadata(base: HttpUrl, path: List<String>, fileName: String) {
-        AppLogger.i("Uploading metadata....")
+        AppLogger.i("Uploading metadata...")
         val metadata = getMetadata()
 
         if (mCancelled) throw Exception("Cancelled")
 
-        mClient.put(
-            construct(base, path, "$fileName.meta.json"),
-            metadata.toByteArray(),
-            "text/plain",
-            null
+        execute(
+            Request.Builder()
+                .url(construct(base, path, "$fileName.meta.json"))
+                .put(metadata.toRequestBody("text/plain".toMediaTypeOrNull()))
+                .build()
         )
 
         val c2paManifest = getC2paManifest()
         if (c2paManifest != null) {
             if (mCancelled) throw Exception("Cancelled")
-
             AppLogger.d("Uploading C2PA manifest: ${c2paManifest.name}")
-            mClient.put(
-                construct(base, path, c2paManifest.name),
-                c2paManifest,
-                "application/json",
-                false,
-                null
+            execute(
+                Request.Builder()
+                    .url(construct(base, path, c2paManifest.name))
+                    .put(c2paManifest.readBytes().toRequestBody("application/json".toMediaTypeOrNull()))
+                    .build()
             )
+        }
+    }
+
+    // --- WebDAV HTTP helpers ---
+
+    private suspend fun headExists(url: String): Boolean = withContext(Dispatchers.IO) {
+        val response = mClient.newCall(Request.Builder().url(url).head().build()).execute()
+        val code = response.code
+        response.close()
+        code in 200..299 || code == 207
+    }
+
+    private suspend fun headContentLength(url: String): Long = withContext(Dispatchers.IO) {
+        val response = mClient.newCall(Request.Builder().url(url).head().build()).execute()
+        val len = response.header("Content-Length")?.toLongOrNull() ?: -1L
+        response.close()
+        len
+    }
+
+    private suspend fun mkcol(url: String) = withContext(Dispatchers.IO) {
+        val response = mClient.newCall(
+            Request.Builder().url(url).method("MKCOL", null).build()
+        ).execute()
+        val code = response.code
+        response.close()
+        // 201 = created, 405 = already exists — both acceptable
+        if (code !in 200..299 && code != 405) {
+            throw IOException("MKCOL failed: $code for $url")
+        }
+    }
+
+    private suspend fun move(sourceUrl: String, destinationUrl: String) = withContext(Dispatchers.IO) {
+        val response = mClient.newCall(
+            Request.Builder()
+                .url(sourceUrl)
+                .method("MOVE", null)
+                .header("Destination", destinationUrl)
+                .header("Overwrite", "T")
+                .build()
+        ).execute()
+        val code = response.code
+        val message = response.message
+        response.close()
+        if (code !in 200..299) throw IOException("MOVE failed: $code $message")
+    }
+
+    private suspend fun webdavDelete(url: String) = withContext(Dispatchers.IO) {
+        val response = mClient.newCall(Request.Builder().url(url).delete().build()).execute()
+        response.close()
+    }
+
+    @Throws(IOException::class)
+    private suspend fun execute(request: Request) {
+        val call = mClient.newCall(request)
+        currentCall = call
+        try {
+            val response = withContext(Dispatchers.IO) { call.execute() }
+            val code = response.code
+            val message = response.message
+            response.close()
+            if (code !in 200..299) throw IOException("$code: $message")
+        } finally {
+            currentCall = null
         }
     }
 }

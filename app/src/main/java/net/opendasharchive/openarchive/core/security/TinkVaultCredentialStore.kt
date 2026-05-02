@@ -25,6 +25,10 @@ import javax.crypto.spec.GCMParameterSpec
 // Replaces TinkVaultCredentialStore — same AES-256-GCM + Android Keystore, no Tink dependency.
 // Migration: if decryption fails (pre-existing Tink-encrypted data), the credential is cleared
 // and the user will be prompted to re-enter their server password on next connection.
+//
+// DataStore must be a process-wide singleton for a given file (Android requirement). The
+// companion object holds the single instance so that the migration-time store (created before
+// Koin) and the Koin-injected store share the same underlying DataStore and never conflict.
 class TinkVaultCredentialStore(
     context: Context,
     private val io: CoroutineDispatcher = Dispatchers.IO
@@ -32,12 +36,8 @@ class TinkVaultCredentialStore(
 
     private val appContext = context.applicationContext
 
-    private val dataStore: DataStore<Preferences> by lazy {
-        PreferenceDataStoreFactory.create(
-            scope = CoroutineScope(SupervisorJob() + io),
-            produceFile = { appContext.preferencesDataStoreFile(DATASTORE_FILE_NAME) }
-        )
-    }
+    private val dataStore: DataStore<Preferences>
+        get() = getOrCreateDataStore(appContext)
 
     private fun getOrCreateKey(): SecretKey {
         val ks = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
@@ -94,12 +94,22 @@ class TinkVaultCredentialStore(
 
     private fun secretKey(vaultId: Long) = stringPreferencesKey("vault_secret_$vaultId")
 
-    private companion object {
+    companion object {
         const val DATASTORE_FILE_NAME = "vault_secure_credentials"
         const val KEY_ALIAS = "openarchive_vault_master_key"
-        const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        const val TRANSFORMATION = "AES/GCM/NoPadding"
-        const val GCM_IV_LENGTH = 12
-        const val GCM_TAG_BITS = 128
+        private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+        private const val TRANSFORMATION = "AES/GCM/NoPadding"
+        private const val GCM_IV_LENGTH = 12
+        private const val GCM_TAG_BITS = 128
+
+        @Volatile private var sharedDataStore: DataStore<Preferences>? = null
+
+        private fun getOrCreateDataStore(context: Context): DataStore<Preferences> =
+            sharedDataStore ?: synchronized(this) {
+                sharedDataStore ?: PreferenceDataStoreFactory.create(
+                    scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+                    produceFile = { context.applicationContext.preferencesDataStoreFile(DATASTORE_FILE_NAME) }
+                ).also { sharedDataStore = it }
+            }
     }
 }

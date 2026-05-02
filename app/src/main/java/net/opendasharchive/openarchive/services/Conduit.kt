@@ -7,9 +7,11 @@ import android.webkit.MimeTypeMap
 import android.net.Uri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.analytics.api.AnalyticsEvent
 import net.opendasharchive.openarchive.analytics.api.AnalyticsManager
@@ -199,7 +201,13 @@ abstract class Conduit(
         scope.cancel()
     }
 
-    suspend fun jobFailed(exception: Throwable) {
+    suspend fun jobFailed(exception: Throwable) = withContext(NonCancellable) {
+        // NonCancellable ensures DB writes and bus events always complete even if the
+        // parent serviceScope is being cancelled (e.g. onStopJob). Without it,
+        // suspension points inside jobFailed throw CancellationException, which propagates
+        // to the outer catch in upload() and calls jobFailed a second time — producing
+        // duplicate "Upload cancelled" log entries and leaving evidence in a bad state.
+
         // TorNotReadyException is transient — re-queue silently so the item retries when Tor connects.
         if (exception is TorNotReadyException) {
             AppLogger.i("Tor not ready during upload, re-queuing item ${mEvidence.id}")
@@ -213,7 +221,7 @@ abstract class Conduit(
                 isUploaded = false
             )
             scope.cancel()
-            return
+            return@withContext
         }
 
         // If an upload was cancelled, reset to QUEUED so it's retried on next session,
@@ -247,7 +255,7 @@ abstract class Conduit(
                 isUploaded = false
             )
             scope.cancel()
-            return
+            return@withContext
         }
 
         mEvidence = mEvidence.copy(
@@ -258,49 +266,49 @@ abstract class Conduit(
 
         AppLogger.e(exception)
 
-            // Track failed upload analytics (GDPR-compliant - no PII)
-            val vault = spaceRepository.getSpaceById(mEvidence.vaultId)
-            val backendType = vault?.type?.friendlyName ?: "Unknown"
-            val fileType = getFileType(mEvidence.mimeType)
-            val fileSizeKB = mEvidence.contentLength / 1024
+        // Track failed upload analytics (GDPR-compliant - no PII)
+        val vault = spaceRepository.getSpaceById(mEvidence.vaultId)
+        val backendType = vault?.type?.friendlyName ?: "Unknown"
+        val fileType = getFileType(mEvidence.mimeType)
+        val fileSizeKB = mEvidence.contentLength / 1024
 
-            // Categorize error
-            val errorCategory = when (exception) {
-                is IOException -> "network"
-                is FileNotFoundException -> "file_not_found"
-                is SecurityException -> "permission"
-                else -> "unknown"
-            }
+        // Categorize error
+        val errorCategory = when (exception) {
+            is IOException -> "network"
+            is FileNotFoundException -> "file_not_found"
+            is SecurityException -> "permission"
+            else -> "unknown"
+        }
 
-            analyticsManager.trackUploadFailed(
-                backendType = backendType,
-                fileType = fileType,
-                errorCategory = errorCategory,
-                fileSizeKB = fileSizeKB
-            )
+        analyticsManager.trackUploadFailed(
+            backendType = backendType,
+            fileType = fileType,
+            errorCategory = errorCategory,
+            fileSizeKB = fileSizeKB
+        )
 
-            // Track in session
-            sessionTracker.trackUploadFailed()
+        // Track in session
+        sessionTracker.trackUploadFailed()
 
-            // Track error for drop-off analysis
-            analyticsManager.trackError(
-                errorCategory = errorCategory,
-                screenName = "Upload",
-                backendType = backendType
-            )
+        // Track error for drop-off analysis
+        analyticsManager.trackError(
+            errorCategory = errorCategory,
+            screenName = "Upload",
+            backendType = backendType
+        )
 
-            BroadcastManager.postChange(
-                context = mContext,
-                collectionId = mEvidence.submissionId,
-                mediaId = mEvidence.id
-            )
-            UploadEventBus.emitChanged(
-                projectId = mEvidence.archiveId,
-                collectionId = mEvidence.submissionId,
-                mediaId = mEvidence.id,
-                progress = -1,
-                isUploaded = false
-            )
+        BroadcastManager.postChange(
+            context = mContext,
+            collectionId = mEvidence.submissionId,
+            mediaId = mEvidence.id
+        )
+        UploadEventBus.emitChanged(
+            projectId = mEvidence.archiveId,
+            collectionId = mEvidence.submissionId,
+            mediaId = mEvidence.id,
+            progress = -1,
+            isUploaded = false
+        )
         scope.cancel()
     }
 

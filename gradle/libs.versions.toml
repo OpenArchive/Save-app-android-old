@@ -1,89 +1,60 @@
 [versions]
 activity = "1.13.0"
-agp = "9.1.0"
+agp = "9.1.1"
 androidx-exifinterface = "1.4.2"
 androidx-security-crypto = "1.1.0"
 androidx-test-runner = "1.7.0"
 appcompat = "1.7.1"
 biometric = "1.1.0"
-bitcoinj-core = "0.16.2"
-bouncycastle-bcpg = "1.71"
-bouncycastle-bcpkix = "1.72"
-bouncycastle-bcprov = "1.72"
 camerax = "1.6.0"
 clean-insights = "2.8.0"
 coil = "3.4.0"
-compose = "1.11.0-beta02"
+compose = "1.11.0"
 compose-preference = "2.2.0"
-compose-stability = "0.7.0"
-constraintlayout = "2.2.1"
-constraintlayout-compos = "1.1.1"
-coordinatorlayout = "1.3.0"
 core-ktx = "1.18.0"
 core-splashscreen = "1.2.0"
-datastore = "1.3.0-alpha07"
+datastore = "1.3.0-alpha08"
 coroutines = "1.10.2"
 detekt = "1.23.8"
-detekt-compose = "0.5.6"
+detekt-compose = "0.5.8"
 detekt-rules-compose = "1.4.0"
 dotsindicator = "5.1.0"
-espresso-core = "3.5.1"
 firebase-analytics = "23.2.0"
-firebase-crashlytics = "20.0.4"
+firebase-crashlytics = "20.0.5"
 fragment = "1.8.9"
-google-api-client-android = "1.26.0"
-google-firebase-crashlytics = "3.0.6"
-google-gms-auth = "21.4.0"
-google-gms-google-services = "4.4.4"
-google-http-client-gson = "1.42.3"
 google-play-app-update-ktx = "2.1.0"
-google-play-asset-delivery-ktx = "2.3.0"
-google-play-feature-delivery = "2.1.0"
 google-play-review = "2.0.2"
-gson = "2.13.2"
-guava = "31.0.1-jre"
-guava-listenablefuture = "9999.0-empty-to-avoid-conflict-with-guava"
-j2v8 = "6.2.1@aar"
-jsoup = "1.17.2"
+gson = "2.14.0"
 jtorctl = "0.4.5.7"
 junit = "4.13.2"
 junit-android = "1.3.0"
-koin = "4.2.0"
-koin-plugin = "0.4.1"
-kotlin = "2.3.20"
+koin = "4.2.1"
+kotlin = "2.3.21"
 kotlinx-collections-immutable = "0.4.0"
 kotlinx-datetime = "0.7.1"
 ksp = "2.3.6"
 lifecycle = "2.10.0"
 material = "1.13.0"
-material3 = "1.5.0-alpha16"
+material3 = "1.5.0-alpha18"
 material-adaptive = "1.2.0"
-mlkit-barcode = "17.3.0"
-media3 = "1.9.3"
-mixpanel = "8.4.0"
-navigation = "2.9.7"
-navigation3 = "1.1.0-rc01"
-navigation-events = "1.1.0-alpha01"
+media3 = "1.10.0"
+mixpanel = "8.6.0"
+navigation = "2.9.8"
+navigation3 = "1.1.1"
+navigation-events = "1.1.0"
 accompanist = "0.37.3"
-netcipher = "2.2.0-alpha"
-okhttp = "4.12.0"
-permissionx = "1.8.1"
-picasso = "2.8"
+okhttp = "5.3.2"
 preference = "1.2.1"
 recyclerview = "1.4.0"
-simple-c2pa = "0.0.13"
-jna = "5.13.0"
-recyclerview-selection = "1.2.0"
-reorderable = "3.0.0"
+reorderable = "3.1.0"
 retrofit = "3.0.0"
 robolectric = "4.16.1"
-room = "3.0.0-alpha02"
+room = "3.0.0-alpha03"
 satyan-sugar = "1.5"
-serialization = "1.10.0"
+serialization = "1.11.0"
 swiperefreshlayout = "1.2.0"
 timber = "5.0.1"
-tor-android = "0.4.9.5.1"
-viewpager2 = "1.1.0"
+tor-android = "0.4.9.6"
 work = "2.11.2"
 zxing-core = "3.5.4"
 zxing-android-embedded = "4.3.0"
@@ -120,12 +91,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "core-splashscreen" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "androidx-exifinterface" }
-androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
-androidx-constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayout-compos" }
-androidx-coordinatorlayout = { group = "androidx.coordinatorlayout", name = "coordinatorlayout", version.ref = "coordinatorlayout" }
 androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
-androidx-recyclerview-selection = { group = "androidx.recyclerview", name = "recyclerview-selection", version.ref = "recyclerview-selection" }
-androidx-viewpager2 = { group = "androidx.viewpager2", name = "viewpager2", version.ref = "viewpager2" }
 androidx-swiperefresh = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
 
 # AndroidX - Fragment
@@ -146,9 +112,7 @@ androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.re
 
 # AndroidX - Navigation
 androidx-navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment-ktx", version.ref = "navigation" }
-androidx-navigation-ui = { group = "androidx.navigation", name = "navigation-ui-ktx", version.ref = "navigation" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
-androidx-navigation-fragment-compose = { group = "androidx.navigation", name = "navigation-fragment-compose", version.ref = "navigation" }
 
 #AndroidX - Navigation 3
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
@@ -164,7 +128,6 @@ androidx-work = { group = "androidx.work", name = "work-runtime-ktx", version.re
 
 # AndroidX - Room
 androidx-room3-runtime = { group = "androidx.room3", name = "room3-runtime", version.ref = "room" }
-androidx-room3-ktx = { group = "androidx.room3", name = "room3-ktx", version.ref = "room" }
 androidx-room3-compiler = { group = "androidx.room3", name = "room3-compiler", version.ref = "room" }
 
 # AndroidX - Testing
@@ -193,20 +156,13 @@ firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashly
 #google-drive-api = { group = "com.google.apis", name = "google-api-services-drive", version = "v3-rev136-1.25.0" }
 
 # Google
-jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
-picasso = { module = "com.squareup.picasso:picasso", version.ref = "picasso" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing-core" }
 zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxing-android-embedded" }
 
 # Google - Material Design
 google-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-google-mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkit-barcode" }
 
 # Google - Play Services
-#google-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "google-gms-auth" }
-#google-play-asset-delivery-ktx = { group = "com.google.android.play", name = "asset-delivery-ktx", version.ref = "google-play-asset-delivery-ktx" }
-#google-play-feature-delivery = { group = "com.google.android.play", name = "feature-delivery", version.ref = "google-play-feature-delivery" }
-#google-play-feature-delivery-ktx = { group = "com.google.android.play", name = "feature-delivery-ktx", version.ref = "google-play-feature-delivery" }
 google-play-review = { group = "com.google.android.play", name = "review", version.ref = "google-play-review" }
 google-play-review-ktx = { group = "com.google.android.play", name = "review-ktx", version.ref = "google-play-review" }
 google-play-app-update-ktx = { group = "com.google.android.play", name = "app-update-ktx", version.ref = "google-play-app-update-ktx" }
@@ -225,9 +181,6 @@ koin-androidx-navigation = { group = "io.insert-koin", name = "koin-androidx-nav
 koin-compose = { group = "io.insert-koin", name = "koin-compose", version.ref = "koin" }
 koin-compose-viewmodel = { group = "io.insert-koin", name = "koin-compose-viewmodel", version.ref = "koin" }
 koin-compose-viewmodel-navigation = { group = "io.insert-koin", name = "koin-compose-viewmodel-navigation", version.ref = "koin" }
-koin-compose-navigation3 = { group = "io.insert-koin", name = "koin-compose-navigation3", version.ref = "koin" }
-
-koin-annotations = { module = "io.insert-koin:koin-annotations", version.ref = "koin" }
 
 # Kotlin
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
@@ -239,14 +192,9 @@ kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime",
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
-retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 retrofit-kotlinx-serialization = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
-guardianproject-sardine = { group = "com.github.guardianproject", name = "sardine-android", version = "89f7eae512" }
 
 # Security & Cryptography
-bouncycastle-bcprov = { group = "org.bouncycastle", name = "bcprov-jdk15to18", version.ref = "bouncycastle-bcprov" }
-bouncycastle-bcpkix = { group = "org.bouncycastle", name = "bcpkix-jdk15to18", version.ref = "bouncycastle-bcpkix" }
-bouncycastle-bcpg = { group = "org.bouncycastle", name = "bcpg-jdk15to18", version.ref = "bouncycastle-bcpg" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -254,19 +202,11 @@ robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "
 work-testing = { group = "androidx.work", name = "work-testing", version.ref = "work" }
 
 # Third-Party Libraries
-bitcoinj-core = { group = "org.bitcoinj", name = "bitcoinj-core", version.ref = "bitcoinj-core" }
 clean-insights = { group = "org.cleaninsights.sdk", name = "clean-insights-sdk", version.ref = "clean-insights" }
 dotsindicator = { group = "com.tbuonomo", name = "dotsindicator", version.ref = "dotsindicator" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
-guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
-guava-listenablefuture = { group = "com.google.guava", name = "listenablefuture", version.ref = "guava-listenablefuture" }
-j2v8 = { group = "com.eclipsesource.j2v8", name = "j2v8", version.ref = "j2v8" }
 jtorctl = { group = "info.guardianproject", name = "jtorctl", version.ref = "jtorctl" }
 mixpanel = { group = "com.mixpanel.android", name = "mixpanel-android", version.ref = "mixpanel" }
-netcipher = { group = "info.guardianproject.netcipher", name = "netcipher", version.ref = "netcipher" }
-permissionx = { group = "com.guolindev.permissionx", name = "permissionx", version.ref = "permissionx" }
-simple-c2pa = { group = "org.witness", name = "simple-c2pa", version.ref = "simple-c2pa" }
-jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
 satyan-sugar = { group = "com.github.satyan", name = "sugar", version.ref = "satyan-sugar" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 tor-android = { group = "info.guardianproject", name = "tor-android", version.ref = "tor-android" }
@@ -277,11 +217,6 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 androidx-room3 = { id = "androidx.room3", version.ref = "room" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 detekt-plugin = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
-google-firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "google-firebase-crashlytics" }
-google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "google-gms-google-services" }
-koin-compiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koin-plugin"}
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 navigation-safeargs = { id = "androidx.navigation.safeargs.kotlin", version.ref = "navigation" }
-stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version.ref = "compose-stability" }
