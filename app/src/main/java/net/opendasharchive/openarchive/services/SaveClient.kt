@@ -6,7 +6,6 @@ import net.opendasharchive.openarchive.services.tor.TorConstants
 import net.opendasharchive.openarchive.services.tor.TorServiceManager
 import net.opendasharchive.openarchive.services.common.auth.BasicAuthInterceptor
 import net.opendasharchive.openarchive.util.Prefs
-import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -82,6 +81,11 @@ object SaveClient : KoinComponent {
      * @param user Optional username for basic auth
      * @param password Optional password for basic auth
      * @param isolateCircuit If true, generates a new session ID for circuit isolation
+     * @param forceCloseConnection If true, adds "Connection: close" header to every request.
+     *   Required for WebDAV to prevent partial-upload corruption from connection reuse.
+     *   IA uploads leave this false to allow TCP connection reuse across retries/metadata.
+     * @param allowHttp2 If false, restricts to HTTP/1.1. WebDAV keeps this false because
+     *   HTTP/2 multiplexing conflicts with Nextcloud chunked-upload temp-slot semantics.
      * @return Configured OkHttpClient
      * @throws TorNotReadyException if Tor is enabled but not yet connected
      */
@@ -89,22 +93,27 @@ object SaveClient : KoinComponent {
         context: Context,
         user: String = "",
         password: String = "",
-        isolateCircuit: Boolean = true
+        isolateCircuit: Boolean = true,
+        forceCloseConnection: Boolean = false,
+        allowHttp2: Boolean = true
     ): OkHttpClient {
-        val cacheInterceptor = Interceptor { chain ->
-            val request = chain.request().newBuilder()
-                .addHeader("Connection", "close")
-                .build()
-            chain.proceed(request)
-        }
-
         val builder = OkHttpClient.Builder()
-            .addInterceptor(cacheInterceptor)
             .connectTimeout(60L, TimeUnit.SECONDS)
             .writeTimeout(60L, TimeUnit.SECONDS)
             .readTimeout(60L, TimeUnit.SECONDS)
             .retryOnConnectionFailure(false)
-            .protocols(arrayListOf(Protocol.HTTP_1_1))
+
+        if (forceCloseConnection) {
+            builder.addInterceptor { chain ->
+                chain.proceed(
+                    chain.request().newBuilder().addHeader("Connection", "close").build()
+                )
+            }
+        }
+
+        if (!allowHttp2) {
+            builder.protocols(listOf(Protocol.HTTP_1_1))
+        }
 
         // Add basic auth interceptor if credentials provided
         if (user.isNotEmpty() || password.isNotEmpty()) {
@@ -138,17 +147,32 @@ object SaveClient : KoinComponent {
     /**
      * Creates a Sardine WebDAV client configured for the current settings.
      *
+     * Credentials are injected as a preemptive BasicAuth interceptor on the OkHttpClient
+     * rather than via sardine's setCredentials(). setCredentials() rebuilds the client
+     * with hardcoded 30s timeouts, which kills large-file uploads.
+     *
+     * WebDAV uses forceCloseConnection=true and allowHttp2=false intentionally:
+     * - Connection: close prevents partial-upload corruption from stale keep-alive connections.
+     * - HTTP/1.1 avoids multiplexing conflicts with Nextcloud's chunked-upload temp-slot mechanism.
+     *
      * @param context Application context
-     * @param space The space containing WebDAV credentials
+     * @param user WebDAV username
+     * @param pass WebDAV password
      * @return Configured OkHttpSardine instance
      * @throws TorNotReadyException if Tor is enabled but not yet connected
      */
     suspend fun getSardine(context: Context, user: String, pass: String): OkHttpSardine {
-        // Sardine's execute() never closes response bodies (library bug — no try/finally).
-        // Buffer + close each response immediately in an interceptor so OkHttp can reclaim
-        // the connection. WebDAV response bodies are always small (XML/status); large data
-        // is always in request bodies (uploads), never in responses.
-        val client = get(context).newBuilder()
+        val client = get(
+            context = context,
+            user = user,
+            password = pass,
+            forceCloseConnection = true,
+            allowHttp2 = false
+        ).newBuilder()
+            // Sardine's execute() never closes response bodies (library bug — no try/finally).
+            // Buffer + close each response immediately so OkHttp can reclaim the connection.
+            // WebDAV response bodies are always small (XML/status); large data is always in
+            // request bodies (uploads), never in responses.
             .addInterceptor { chain ->
                 val response = chain.proceed(chain.request())
                 val body = response.body ?: return@addInterceptor response
@@ -158,8 +182,6 @@ object SaveClient : KoinComponent {
                     .build()
             }
             .build()
-        val sardine = OkHttpSardine(client)
-        sardine.setCredentials(user, pass)
-        return sardine
+        return OkHttpSardine(client)
     }
 }

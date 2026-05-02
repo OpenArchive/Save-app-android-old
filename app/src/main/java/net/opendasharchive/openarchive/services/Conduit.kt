@@ -473,14 +473,16 @@ abstract class Conduit(
         const val FOLDER_DATETIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss'GMT'ZZZZZ"
 
         /**
-         * 2 MByte
+         * 10 MByte — larger chunks mean fewer HTTP round trips and less PROPFIND overhead.
+         * Was 2 MB (50 chunks for 100 MB); now 10 MB (10 chunks for 100 MB).
          */
-        const val CHUNK_SIZE: Long = 2 * 1024 * 1024
+        const val CHUNK_SIZE: Long = 10 * 1024 * 1024
 
         /**
-         * 10 MByte
+         * 20 MByte — files below this use a single PUT instead of chunked upload.
+         * Raised from 10 MB to match the new chunk size floor.
          */
-        const val CHUNK_FILESIZE_THRESHOLD = 10 * 1024 * 1024
+        const val CHUNK_FILESIZE_THRESHOLD = 20 * 1024 * 1024
 
         suspend fun get(evidence: Evidence, context: Context): Conduit? {
             val spaceRepository: SpaceRepository = GlobalContext.get().get()

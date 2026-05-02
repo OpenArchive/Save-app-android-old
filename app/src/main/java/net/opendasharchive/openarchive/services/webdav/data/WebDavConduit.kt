@@ -146,6 +146,17 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
         return try {
             createFolders(tmpBase, tmpPath)
 
+            // Single PROPFIND to determine if we're resuming a previous upload attempt.
+            // If the temp folder already has chunks, scan forward to find where to resume.
+            // If it's a fresh upload, skip all per-chunk exists checks (N chunks × 1–2 RTTs saved).
+            val tempFolderPath = construct(tmpBase, tmpPath)
+            var isResuming = try {
+                mClient.exists(tempFolderPath) &&
+                    mClient.list(tempFolderPath).size > 1  // >1: folder entry + at least one chunk
+            } catch (e: Throwable) { false }
+
+            AppLogger.i(if (isResuming) "Resuming chunked upload..." else "Fresh chunked upload, skipping per-chunk existence checks")
+
             var offset = 0
 
             // Use contentResolver to support both file:// and content:// URIs
@@ -160,28 +171,37 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
 
                     val total = offset + length
                     val chunkPath = construct(tmpBase, tmpPath, "$offset-$total")
-                    val chunkExists = mClient.exists(chunkPath)
-                    var chunkLengthMatches = false
 
-                    if (chunkExists) {
-                        val dirList = mClient.list(chunkPath)
-                        chunkLengthMatches =
-                            !dirList.isNullOrEmpty() && dirList.first().contentLength == length.toLong()
+                    // Only check existence when resuming. Once we find the first missing chunk,
+                    // all subsequent chunks are also missing — stop scanning.
+                    if (isResuming) {
+                        val chunkExists = mClient.exists(chunkPath)
+                        if (chunkExists) {
+                            val dirList = mClient.list(chunkPath)
+                            val sizeMatches = !dirList.isNullOrEmpty() &&
+                                dirList.first().contentLength == length.toLong()
+                            if (sizeMatches) {
+                                AppLogger.i("Resuming: chunk $offset-$total already present, skipping")
+                                offset = total
+                                continue
+                            }
+                        } else {
+                            // First missing chunk — no more resume scanning needed from here
+                            isResuming = false
+                        }
                     }
 
-                    if (!chunkExists || !chunkLengthMatches) {
-                        mClient.put(
-                            chunkPath,
-                            buffer,
-                            mEvidence.mimeType,
-                            object : SardineListener {
-                                override fun transferred(bytes: Long) {
-                                    jobProgress(offset.toLong() + bytes)
-                                }
+                    mClient.put(
+                        chunkPath,
+                        buffer,
+                        mEvidence.mimeType,
+                        object : SardineListener {
+                            override fun transferred(bytes: Long) {
+                                jobProgress(offset.toLong() + bytes)
+                            }
 
-                                override fun continueUpload(): Boolean = !mCancelled
-                            })
-                    }
+                            override fun continueUpload(): Boolean = !mCancelled
+                        })
 
                     // Fix: offset = total (was total + 1, which skipped 1 byte per chunk boundary)
                     offset = total

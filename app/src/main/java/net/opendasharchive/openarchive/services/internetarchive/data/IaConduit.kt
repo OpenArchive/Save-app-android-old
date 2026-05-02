@@ -200,6 +200,10 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
             .add("x-amz-auto-make-bucket", "1")
             .add("x-archive-interactive-priority", "1")
             .add("x-archive-meta-language", "eng") // FIXME set based on locale or selected.
+            // Defer IA's derive pipeline until all files in the item are uploaded.
+            // Without this, IA starts transcoding/OCR immediately on each PUT, which
+            // competes for server resources and slows down the upload ACK for large files.
+            .add("x-archive-queue-derive", "0")
             .add("Authorization", "LOW " + auth.username + ":" + auth.secret)
 
         val author = mEvidence.author

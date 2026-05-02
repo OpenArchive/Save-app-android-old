@@ -53,7 +53,7 @@ object RequestBodyUtil {
         }
     }
 
-    private const val SEGMENT_SIZE = 2048 // okio.Segment.SIZE
+    private const val SEGMENT_SIZE = 65536
     fun create(
         cr: ContentResolver,
         uri: Uri,
