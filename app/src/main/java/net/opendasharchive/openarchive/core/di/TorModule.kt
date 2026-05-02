@@ -13,5 +13,5 @@ import org.koin.dsl.module
  */
 val torModule = module {
     single { TorServiceManager(androidContext(), get()) }
-    single { UploadGate(androidApplication(), get(), get(), get()) }
+    single { UploadGate(androidApplication(), get(), get(), get(), get()) }
 }

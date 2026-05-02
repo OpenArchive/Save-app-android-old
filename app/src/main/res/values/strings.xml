@@ -559,16 +559,18 @@
     <string name="tor_url" translatable="false">https://play.google.com/store/apps/details?id=org.torproject.android</string>
 
     <string name="wifi_not_connected">Wi-Fi not connected</string>
-    <string name="wifi_required_upload_message">Uploads are blocked until you connect to a Wi-Fi network or allow uploads over a mobile connection.</string>
+    <string name="wifi_required_upload_message">Uploads are blocked until you connect to a Wi-Fi network or allow uploads over a mobile connection again.</string>
     <string name="allow_any_connection">Allow any connection</string>
+    <string name="wait_for_wifi">Wait for Wi-Fi</string>
     <string name="ignore">Ignore</string>
 
     <string name="tor_not_connected">Tor not connected</string>
-    <string name="tor_not_connected_message">Tor routing is enabled, however connection is not established / disconnected. Do you want to disable Tor?</string>
-    <string name="tor_still_connecting_message">Tor is still connecting. Do you want to disable Tor and proceed with the upload?</string>
-    <string name="tor_error_message">Tor encountered an error and is not connected. Do you want to disable Tor and proceed with the upload?</string>
+    <string name="tor_not_connected_message">Tor is enabled but not connected. Turn off Tor to upload now, or wait for Tor to connect.</string>
+    <string name="tor_still_connecting_message">Tor is still connecting. Turn off Tor to upload now, or wait for the connection to complete.</string>
+    <string name="tor_error_message">Tor encountered an error and is not connected. Turn off Tor to upload now, or wait.</string>
     <string name="proceed">Proceed</string>
     <string name="upload_once">Upload once</string>
-    <string name="disable_tor">Disable TOR</string>
+    <string name="disable_tor">Turn off Tor and proceed</string>
+    <string name="wait_for_tor">Wait for Tor</string>
     <string name="ok">OK</string>
 </resources>

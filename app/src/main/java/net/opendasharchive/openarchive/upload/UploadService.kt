@@ -79,6 +79,22 @@ class UploadService : JobService() {
             }
         }
 
+        // Stop queue immediately if TOR drops mid-upload
+        if (Prefs.useTor) {
+            serviceScope.launch {
+                torServiceManager.torStatus.collect {
+                    if (mRunning && !torServiceManager.isReady()) {
+                        AppLogger.i("TOR disconnected mid-upload, stopping queue")
+                        mKeepUploading = false
+                        synchronized(mConduits) {
+                            mConduits.forEach { it.cancel() }
+                            mConduits.clear()
+                        }
+                    }
+                }
+            }
+        }
+
         serviceScope.launch {
             upload {
                 jobFinished(params, false)
@@ -149,6 +165,13 @@ class UploadService : JobService() {
                 if (uploadableResults.isEmpty()) break
 
                 for (media in uploadableResults) {
+                    // Guard against Tor dropping between items in a batch (race with onStartJob watcher).
+                    if (Prefs.useTor && !torServiceManager.isReady()) {
+                        AppLogger.i("Tor not ready before item ${media.id}, pausing queue")
+                        mKeepUploading = false
+                        break
+                    }
+
                     totalCount++
                     var updatedMedia = media
                     if (updatedMedia.status != EvidenceStatus.UPLOADING) {

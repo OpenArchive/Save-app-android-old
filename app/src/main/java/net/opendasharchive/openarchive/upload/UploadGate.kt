@@ -1,8 +1,16 @@
 package net.opendasharchive.openarchive.upload
 
 import android.app.Application
+import android.app.job.JobInfo
+import android.app.job.JobScheduler
+import android.content.ComponentName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.core.domain.VaultType
@@ -22,9 +30,13 @@ import net.opendasharchive.openarchive.util.Prefs
  *
  * Checks (in order):
  *  1. Wi-Fi only setting — applies to ALL vault types.
- *     "Allow any connection" → disables wifi-only and proceeds.
+ *     "Allow any connection" → disables wifi-only and proceeds immediately.
+ *     "Wait for Wi-Fi" → schedules job with NETWORK_TYPE_UNMETERED; uploads
+ *     resume automatically when Wi-Fi connects.
  *  2. Tor connection — applies to all vault types EXCEPT DWeb (Snowbird routes its own traffic).
- *     "Proceed" → disables Tor, stops the service, and proceeds.
+ *     "Turn off Tor and proceed" → disables Tor and proceeds immediately.
+ *     "Wait for Tor" → watches torStatus flow; uploads resume automatically
+ *     when Tor becomes connected.
  *
  * [check] — for explicit user actions (always runs checks).
  * [checkIfQueued] — for background resume (skips checks silently if queue is empty).
@@ -37,7 +49,23 @@ class UploadGate(
     private val dialogManager: DialogStateManager,
     private val torServiceManager: TorServiceManager,
     private val mediaRepository: MediaRepository,
+    private val uploadJobScheduler: UploadJobScheduler,
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var torWatcherJob: Job? = null
+
+    init {
+        // When TOR reconnects in background, reschedule any queued uploads
+        scope.launch {
+            torServiceManager.torStatus
+                .filter { it == TorStatus.On || it is TorStatus.Verified }
+                .collect {
+                    if (Prefs.useTor && mediaRepository.getQueue().isNotEmpty()) {
+                        uploadJobScheduler.schedule()
+                    }
+                }
+        }
+    }
 
     /** For explicit user-initiated upload actions. Always runs checks. */
     fun check(vaultType: VaultType? = null, onProceed: () -> Unit) {
@@ -50,7 +78,7 @@ class UploadGate(
      * every time the user returns to the app with an empty queue.
      */
     fun checkIfQueued(vaultType: VaultType? = null, onProceed: () -> Unit) {
-        CoroutineScope(Dispatchers.Main).launch {
+        scope.launch {
             val hasQueued = mediaRepository.getQueue().isNotEmpty()
             if (hasQueued) {
                 checkWifi(vaultType = vaultType, onProceed = onProceed)
@@ -60,24 +88,25 @@ class UploadGate(
 
     private fun checkWifi(vaultType: VaultType?, onProceed: () -> Unit) {
         if (Prefs.uploadWifiOnly && !NetworkUtils.isOnWifi(application)) {
+            // Schedule a job that fires when Wi-Fi is available. This covers the
+            // "Wait for Wi-Fi" path — JobScheduler auto-resumes uploads on reconnect.
+            scheduleWhenWifiAvailable()
+
             dialogManager.showDialog(dialogManager.requireResourceProvider()) {
                 type = DialogType.Warning
                 title = R.string.wifi_not_connected.asUiText()
                 message = R.string.wifi_required_upload_message.asUiText()
                 positiveButton {
-                    // Permanently disable WiFi-only setting and proceed
+                    // Permanently disable WiFi-only setting and proceed immediately
                     text = UiText.Resource(R.string.allow_any_connection)
                     action = {
                         Prefs.uploadWifiOnly = false
                         checkTor(vaultType = vaultType, onProceed = onProceed)
                     }
                 }
-                neutralButton {
-                    // One-time override — proceed without changing the setting
-                    text = UiText.Resource(R.string.upload_once)
-                    action = {
-                        checkTor(vaultType = vaultType, onProceed = onProceed)
-                    }
+                destructiveButton {
+                    // Dismiss — unmetered job above handles auto-resume when Wi-Fi connects
+                    text = UiText.Resource(R.string.wait_for_wifi)
                 }
             }
             return
@@ -99,31 +128,68 @@ class UploadGate(
                 is TorStatus.Error    -> R.string.tor_error_message
                 else                  -> R.string.tor_not_connected_message
             }
+
+            // If Tor is still connecting (not errored), watch for it to become ready
+            // and auto-proceed when it does — covers the "Wait for Tor" path.
+            if (torStatus is TorStatus.Starting) {
+                watchTorAndProceed(onProceed)
+            }
+
             dialogManager.showDialog(dialogManager.requireResourceProvider()) {
                 type = DialogType.Warning
                 title = R.string.tor_not_connected.asUiText()
                 message = messageRes.asUiText()
                 positiveButton {
-                    // One-time override — upload now without disabling TOR setting
-                    text = UiText.Resource(R.string.upload_once)
-                    action = { onProceed() }
-                }
-                destructiveButton {
-                    // Permanently disable TOR and proceed
+                    // Permanently disable Tor and proceed immediately
                     text = UiText.Resource(R.string.disable_tor)
                     action = {
+                        torWatcherJob?.cancel()
                         Prefs.useTor = false
                         torServiceManager.stop()
                         onProceed()
                     }
                 }
-                neutralButton {
-                    text = UiText.Resource(R.string.action_cancel)
+                destructiveButton {
+                    // Dismiss — torWatcherJob above handles auto-resume when Tor connects
+                    text = UiText.Resource(R.string.wait_for_tor)
                 }
             }
             return
         }
 
         onProceed()
+    }
+
+    /**
+     * Schedules the upload job to fire when an unmetered (Wi-Fi) network is available.
+     * Replaces any existing pending job with the same ID.
+     */
+    private fun scheduleWhenWifiAvailable() {
+        val jobScheduler = application.getSystemService(JobScheduler::class.java) ?: return
+        val job = JobInfo.Builder(
+            UploadJobConfig.JOB_ID,
+            ComponentName(application, UploadService::class.java)
+        )
+            .setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED)
+            .setRequiresCharging(false)
+            .build()
+        jobScheduler.schedule(job)
+    }
+
+    /**
+     * Observes torStatus and calls [onProceed] as soon as Tor becomes ready.
+     * Cancels any previous watcher to avoid double-triggering.
+     */
+    private fun watchTorAndProceed(onProceed: () -> Unit) {
+        torWatcherJob?.cancel()
+        torWatcherJob = scope.launch {
+            torServiceManager.torStatus
+                .filter { it == TorStatus.On || it is TorStatus.Verified }
+                .first()
+            // Tor is now ready — proceed if Tor is still enabled (user may have disabled it)
+            if (Prefs.useTor) {
+                onProceed()
+            }
+        }
     }
 }

@@ -9,6 +9,7 @@ import net.opendasharchive.openarchive.util.Prefs
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.net.Authenticator
@@ -143,7 +144,21 @@ object SaveClient : KoinComponent {
      * @throws TorNotReadyException if Tor is enabled but not yet connected
      */
     suspend fun getSardine(context: Context, user: String, pass: String): OkHttpSardine {
-        val sardine = OkHttpSardine(get(context))
+        // Sardine's execute() never closes response bodies (library bug — no try/finally).
+        // Buffer + close each response immediately in an interceptor so OkHttp can reclaim
+        // the connection. WebDAV response bodies are always small (XML/status); large data
+        // is always in request bodies (uploads), never in responses.
+        val client = get(context).newBuilder()
+            .addInterceptor { chain ->
+                val response = chain.proceed(chain.request())
+                val body = response.body ?: return@addInterceptor response
+                val buffered = body.bytes()
+                response.newBuilder()
+                    .body(buffered.toResponseBody(body.contentType()))
+                    .build()
+            }
+            .build()
+        val sardine = OkHttpSardine(client)
         sardine.setCredentials(user, pass)
         return sardine
     }

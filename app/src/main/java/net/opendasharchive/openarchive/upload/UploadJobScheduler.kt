@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.os.Build
 import androidx.core.content.ContextCompat
+import net.opendasharchive.openarchive.util.Prefs
 
 interface UploadJobScheduler {
     fun schedule()
@@ -23,10 +24,15 @@ class JobSchedulerUploadJobScheduler(
     override fun schedule() {
         val jobScheduler =
             ContextCompat.getSystemService(appContext, JobScheduler::class.java) ?: return
+        val networkType = if (Prefs.uploadWifiOnly) {
+            JobInfo.NETWORK_TYPE_UNMETERED
+        } else {
+            JobInfo.NETWORK_TYPE_ANY
+        }
         var jobBuilder = JobInfo.Builder(
             UploadJobConfig.JOB_ID,
             ComponentName(appContext, UploadService::class.java)
-        ).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+        ).setRequiredNetworkType(networkType)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             jobBuilder = jobBuilder.setUserInitiated(true)
         }

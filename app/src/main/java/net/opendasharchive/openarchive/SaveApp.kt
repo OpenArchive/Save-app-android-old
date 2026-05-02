@@ -1,5 +1,6 @@
 package net.opendasharchive.openarchive
 
+import android.app.Application
 import android.app.NotificationChannel
 import android.os.Build
 import android.app.NotificationManager
@@ -69,6 +70,10 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
 
         // Initialize logging first
         AppLogger.init(applicationContext, initDebugger = true)
+
+        // ACRA spawns a secondary :acra process to collect/send crash reports.
+        // Skip all main-process initialisation (WorkManager, Koin, TOR, analytics) there.
+        if (!isMainProcess()) return
 
         Prefs.load(this)
 
@@ -242,6 +247,17 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
 
         notificationManager.createNotificationChannel(chimeChannel)
         notificationManager.createNotificationChannel(silentChannel)
+    }
+
+    private fun isMainProcess(): Boolean {
+        val name = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            Application.getProcessName()
+        } else {
+            val pid = android.os.Process.myPid()
+            (getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager)
+                ?.runningAppProcesses?.firstOrNull { it.pid == pid }?.processName
+        }
+        return name == packageName
     }
 
     companion object {

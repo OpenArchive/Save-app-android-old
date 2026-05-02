@@ -43,22 +43,42 @@ class MigrationWorker(
             )
 
             if (state.stage == "IDLE" || state.stage == "SPACES") {
-                migrateSpaces()
+                try {
+                    migrateSpaces()
+                } catch (e: Exception) {
+                    AppLogger.e("migrateSpaces failed — treating as empty, continuing", e)
+                    migrationDao.upsert(MigrationStateEntity(stage = "PROJECTS", processedCount = 0, totalCount = 0))
+                }
                 state = migrationDao.getMigrationState()!!
             }
 
             if (state.stage == "PROJECTS") {
-                migrateProjects()
+                try {
+                    migrateProjects()
+                } catch (e: Exception) {
+                    AppLogger.e("migrateProjects failed — treating as empty, continuing", e)
+                    migrationDao.upsert(MigrationStateEntity(stage = "COLLECTIONS", processedCount = 0, totalCount = 0))
+                }
                 state = migrationDao.getMigrationState()!!
             }
 
             if (state.stage == "COLLECTIONS") {
-                migrateCollections()
+                try {
+                    migrateCollections()
+                } catch (e: Exception) {
+                    AppLogger.e("migrateCollections failed — treating as empty, continuing", e)
+                    migrationDao.upsert(MigrationStateEntity(stage = "MEDIA", processedCount = 0, totalCount = 0))
+                }
                 state = migrationDao.getMigrationState()!!
             }
 
             if (state.stage == "MEDIA") {
-                migrateMedia()
+                try {
+                    migrateMedia()
+                } catch (e: Exception) {
+                    AppLogger.e("migrateMedia failed — treating as empty, continuing", e)
+                    migrationDao.upsert(MigrationStateEntity(stage = "DONE", processedCount = 0, totalCount = 0))
+                }
                 state = migrationDao.getMigrationState()!!
             }
 
@@ -67,6 +87,14 @@ class MigrationWorker(
             Prefs.isRoomMigrated = true
             Prefs.isMigrationInProgress = false
             AppLogger.i("Migration to Room completed successfully")
+
+            try {
+                applicationContext.deleteDatabase("openarchive.db")
+                AppLogger.i("Sugar ORM database deleted after migration")
+            } catch (e: Exception) {
+                AppLogger.e("Failed to delete Sugar ORM database (non-fatal)", e)
+            }
+
             return Result.success()
         } catch (e: Exception) {
             AppLogger.e("Migration to Room failed", e)
@@ -166,7 +194,7 @@ class MigrationWorker(
                     status = when (media.sStatus) {
                         SugarMedia.Status.Local -> EvidenceStatus.LOCAL
                         SugarMedia.Status.Queued -> EvidenceStatus.QUEUED
-                        SugarMedia.Status.Uploading -> EvidenceStatus.UPLOADING
+                        SugarMedia.Status.Uploading -> EvidenceStatus.QUEUED  // restart interrupted uploads cleanly
                         SugarMedia.Status.Uploaded -> EvidenceStatus.UPLOADED
                         SugarMedia.Status.Error -> EvidenceStatus.ERROR
                         else -> EvidenceStatus.NEW

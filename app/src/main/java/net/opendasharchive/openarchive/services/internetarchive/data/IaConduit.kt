@@ -5,6 +5,7 @@ import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.core.domain.Evidence
 import net.opendasharchive.openarchive.core.domain.VaultAuth
@@ -12,6 +13,7 @@ import net.opendasharchive.openarchive.core.domain.Vault
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.services.Conduit
 import net.opendasharchive.openarchive.services.SaveClient
+import okhttp3.Call
 import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -27,6 +29,14 @@ import net.opendasharchive.openarchive.services.common.network.createListener
 import net.opendasharchive.openarchive.util.Utility
 
 class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, context) {
+
+    @Volatile
+    private var currentCall: Call? = null
+
+    override fun cancel() {
+        super.cancel()
+        currentCall?.cancel()
+    }
 
 
     companion object {
@@ -51,7 +61,11 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
             val auth = spaceRepository.getVaultAuth(mEvidence.vaultId) ?: return false
             val mimeType = mEvidence.mimeType
 
-            val client = SaveClient.get(mContext)
+            // Use a longer read timeout — IA S3 processes the file before ACKing, which
+            // can take well over 60s for large files, especially over TOR.
+            val client = SaveClient.get(mContext).newBuilder()
+                .readTimeout(5, TimeUnit.MINUTES)
+                .build()
 
             val fileName = getUploadFileName(mEvidence, true)
             val metaJson = getMetadata()
@@ -64,8 +78,22 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                 mEvidence = mEvidence.copy(serverUrl = newIdentifier)
             }
 
-            // upload content synchronously for progress
-            client.uploadContent(fileName, mimeType, vault, auth)
+            // Upload content — retry on transient network errors (connection drop, TOR circuit rotation)
+            var ioAttempt = 0
+            val maxIoRetries = 3
+            while (true) {
+                if (mCancelled) return false
+                try {
+                    client.uploadContent(fileName, mimeType, vault, auth)
+                    break
+                } catch (e: IOException) {
+                    ioAttempt++
+                    if (ioAttempt >= maxIoRetries || mCancelled) throw e
+                    val delayMs = 30_000L * ioAttempt
+                    AppLogger.w("IA upload network error (attempt $ioAttempt/$maxIoRetries), retrying in ${delayMs / 1000}s: ${e.message}")
+                    delay(delayMs)
+                }
+            }
 
             // upload metadata — non-fatal if it fails
             try {
@@ -244,15 +272,27 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
         var delayMs = 30_000L
         val maxRetries = 5
         repeat(maxRetries) { attempt ->
-            val result = withContext(Dispatchers.IO) { newCall(request).execute() }
+            if (mCancelled) throw IOException("Cancelled")
+            val call = newCall(request)
+            currentCall = call
+            val code: Int
+            val message: String
+            try {
+                val response = withContext(Dispatchers.IO) { call.execute() }
+                code = response.code
+                message = response.message
+                response.close()
+            } finally {
+                currentCall = null
+            }
             when {
-                result.isSuccessful -> return
-                result.code == 503 && attempt < maxRetries - 1 -> {
+                code in 200..299 -> return
+                code == 503 && attempt < maxRetries - 1 -> {
                     AppLogger.w("IA returned 503 Slow Down, retrying in ${delayMs / 1000}s (attempt ${attempt + 1})")
                     delay(delayMs)
                     delayMs = minOf(delayMs * 2, 300_000L)
                 }
-                else -> throw RuntimeException("${result.code}: ${result.message}")
+                else -> throw RuntimeException("$code: $message")
             }
         }
         throw RuntimeException("Upload failed after $maxRetries attempts (503 Slow Down)")

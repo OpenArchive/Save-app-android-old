@@ -200,6 +200,22 @@ abstract class Conduit(
     }
 
     suspend fun jobFailed(exception: Throwable) {
+        // TorNotReadyException is transient — re-queue silently so the item retries when Tor connects.
+        if (exception is TorNotReadyException) {
+            AppLogger.i("Tor not ready during upload, re-queuing item ${mEvidence.id}")
+            mEvidence = mEvidence.copy(status = EvidenceStatus.QUEUED, progress = 0, statusMessage = "")
+            mediaRepository.updateEvidence(mEvidence)
+            UploadEventBus.emitChanged(
+                projectId = mEvidence.archiveId,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id,
+                progress = -1,
+                isUploaded = false
+            )
+            scope.cancel()
+            return
+        }
+
         // If an upload was cancelled, reset to QUEUED so it's retried on next session,
         // and clear transientProgress so the UI doesn't show a stuck uploading spinner.
         if (mCancelled) {
