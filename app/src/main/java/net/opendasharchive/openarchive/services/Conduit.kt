@@ -486,11 +486,24 @@ abstract class Conduit(
 
         suspend fun get(evidence: Evidence, context: Context): Conduit? {
             val spaceRepository: SpaceRepository = GlobalContext.get().get()
-            val vault = spaceRepository.getSpaceById(evidence.vaultId) ?: return null
+
+            // evidence.vaultId may be 0 when Sugar ORM's project→space chain fails
+            // (e.g. spaceId not stored directly on the Media row). Fall back through
+            // the archive's vaultId so uploads aren't blocked by the stale 0.
+            val resolvedVaultId = if (evidence.vaultId > 0) {
+                evidence.vaultId
+            } else {
+                val projectRepository: ProjectRepository = GlobalContext.get().get()
+                projectRepository.getProject(evidence.archiveId)?.vaultId ?: 0L
+            }
+
+            val vault = spaceRepository.getSpaceById(resolvedVaultId) ?: return null
+            val resolvedEvidence = if (evidence.vaultId == resolvedVaultId) evidence
+                                   else evidence.copy(vaultId = resolvedVaultId)
 
             return when (vault.type) {
-                net.opendasharchive.openarchive.core.domain.VaultType.INTERNET_ARCHIVE -> IaConduit(evidence, context)
-                net.opendasharchive.openarchive.core.domain.VaultType.PRIVATE_SERVER -> WebDavConduit(evidence, context)
+                net.opendasharchive.openarchive.core.domain.VaultType.INTERNET_ARCHIVE -> IaConduit(resolvedEvidence, context)
+                net.opendasharchive.openarchive.core.domain.VaultType.PRIVATE_SERVER -> WebDavConduit(resolvedEvidence, context)
                 else -> null
             }
         }

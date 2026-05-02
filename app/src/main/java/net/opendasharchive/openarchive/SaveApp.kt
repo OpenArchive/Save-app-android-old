@@ -82,6 +82,7 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
 
         // Trigger Room migration if needed (SugarORM → Room)
         if (!Prefs.isRoomMigrated) {
+            AppLogger.i("DB: Sugar ORM active — Room migration not yet complete, using Sugar repos this session")
             val migrationRequest = OneTimeWorkRequestBuilder<MigrationWorker>()
                 .build()
             WorkManager.getInstance(this).enqueueUniqueWork(
@@ -89,6 +90,13 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
                 ExistingWorkPolicy.KEEP,
                 migrationRequest
             )
+        } else {
+            // Migration already done in a previous run — safe to delete Sugar DB now.
+            // Koin will bind Room repos this startup, so the Sugar file is truly unused.
+            val sugarDbFile = getDatabasePath("openarchive.db")
+            val existed = sugarDbFile.exists()
+            deleteDatabase("openarchive.db")
+            AppLogger.i("DB: Room active — Sugar ORM retired. Sugar DB ${if (existed) "deleted" else "already absent"}")
         }
 
         // Initialize Koin DI

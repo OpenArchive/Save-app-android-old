@@ -86,14 +86,12 @@ class MigrationWorker(
 
             Prefs.isRoomMigrated = true
             Prefs.isMigrationInProgress = false
-            AppLogger.i("Migration to Room completed successfully")
+            AppLogger.i("DB: Migration to Room complete — isRoomMigrated=true. Sugar DB will be deleted on next startup.")
 
-            try {
-                applicationContext.deleteDatabase("openarchive.db")
-                AppLogger.i("Sugar ORM database deleted after migration")
-            } catch (e: Exception) {
-                AppLogger.e("Failed to delete Sugar ORM database (non-fatal)", e)
-            }
+            // Sugar DB deletion is deferred to next app startup (SaveApp.onCreate).
+            // Deleting here causes SQLite 1032 (SQLITE_READONLY_DBMOVED): Koin already
+            // bound MediaRepository → SugarMediaRepository for this process lifetime,
+            // so any addEvidence() call after deletion hits a dead file descriptor.
 
             return Result.success()
         } catch (e: Exception) {

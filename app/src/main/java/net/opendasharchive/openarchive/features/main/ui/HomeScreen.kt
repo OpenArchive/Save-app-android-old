@@ -208,7 +208,13 @@ fun HomeScreen(
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    snackbarHostState.showSnackbar("Failed to import: ${e.localizedMessage}")
+                    // Use scope.launch (fire-and-forget) so catch returns immediately,
+                    // letting finally set manualImportInProgress=false and dismiss
+                    // the "Importing media..." (Indefinite) snackbar before this one
+                    // tries to acquire the snackbar mutex — otherwise deadlock.
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Failed to import: ${e.localizedMessage}")
+                    }
                 }
             } finally {
                 withContext(Dispatchers.Main) {

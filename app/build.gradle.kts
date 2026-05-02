@@ -246,7 +246,6 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.adaptive)
-    //implementation(libs.androidx.compose.icons.extended)
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.compose.runtime.livedata)
     implementation(libs.compose.preferences)
@@ -308,19 +307,10 @@ dependencies {
     implementation(libs.androidx.media3.ui)
 
     // Google Play Services (GMS builds only)
-    //implementation(libs.google.auth)
-    //implementation(libs.google.play.asset.delivery.ktx)
-    //implementation(libs.google.play.feature.delivery)
-    //implementation(libs.google.play.feature.delivery.ktx)
     "gmsImplementation"(libs.google.play.review)
     "gmsImplementation"(libs.google.play.review.ktx)
     "gmsImplementation"(libs.google.play.app.update.ktx)
     "gmsImplementation"("com.google.android.gms:play-services-location:21.1.0")
-
-    // Google Drive API
-    //implementation(libs.google.api.client.android)
-    //implementation(libs.google.http.client.gson)
-    //implementation(libs.google.drive.api)
 
     // Tor
     implementation(libs.tor.android)
