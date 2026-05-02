@@ -59,8 +59,11 @@ abstract class BaseComposeActivity : AppCompatActivity() {
 
     override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
         if (event != null) {
-            val obscuredTouch = event.flags and MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED != 0
-            if (obscuredTouch) return false
+            // FLAG_WINDOW_IS_OBSCURED = fully covered by another window (genuine tapjack risk).
+            // FLAG_WINDOW_IS_PARTIALLY_OBSCURED also fires for screen-recorder control overlays,
+            // which would freeze all touch input while a recorder is active.
+            val tapjacked = event.flags and MotionEvent.FLAG_WINDOW_IS_OBSCURED != 0
+            if (tapjacked) return false
         }
 
         return super.dispatchTouchEvent(event)
