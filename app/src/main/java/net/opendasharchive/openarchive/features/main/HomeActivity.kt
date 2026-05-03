@@ -7,7 +7,6 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.take
@@ -45,14 +44,20 @@ class HomeActivity : BaseComposeActivity(), AndroidScopeComponent {
     /** URIs received via share sheet while the app was locked — delivered after authentication. */
     private var pendingSharedUris: List<Uri>? = null
 
+    /**
+     * True only on the very first onStart after a fresh launch (not config-change recreation).
+     * Dark mode toggle recreates the activity — savedInstanceState is non-null in that case,
+     * so one-shot setup that must not repeat is gated on savedInstanceState == null in onCreate
+     * and this flag in onStart.
+     */
+    private var isFirstStart = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Register PasscodeGate on the process lifecycle so onStop only fires when the
-        // entire app goes to background — not during Activity-to-Activity transitions
-        // (e.g. PasscodeEntryActivity / PasscodeSetupActivity launching over HomeActivity).
-        ProcessLifecycleOwner.get().lifecycle.addObserver(passcodeGate)
+        val isRecreating = savedInstanceState != null
 
+        // Always call — needed to transition away from Theme.SaveApp.Starting on every recreation
         installSplashScreen()
 
         enableEdgeToEdge(
@@ -75,7 +80,7 @@ class HomeActivity : BaseComposeActivity(), AndroidScopeComponent {
             }
         }
 
-        if (appConfig.isDwebEnabled) {
+        if (appConfig.isDwebEnabled && !isRecreating) {
             permissionManager = PermissionManager(this, dialogManager)
             permissionManager.checkNotificationPermission {
                 AppLogger.i("Notification permission granted")
@@ -84,7 +89,7 @@ class HomeActivity : BaseComposeActivity(), AndroidScopeComponent {
             startForegroundService(Intent(this, SnowbirdService::class.java))
         }
 
-        if (savedInstanceState == null) {
+        if (!isRecreating) {
             importSharedMedia(intent)
         }
     }
@@ -92,19 +97,22 @@ class HomeActivity : BaseComposeActivity(), AndroidScopeComponent {
     override fun onStart() {
         super.onStart()
         C2paHelper.init(this)
-        uploadGate.checkIfQueued { uploadJobScheduler.schedule() }
-
-        // Flush any share URIs that arrived while the app was locked
-        lifecycleScope.launch {
-            passcodeGate.locked
-                .filter { !it }
-                .take(1)
-                .collect {
-                    pendingSharedUris?.let { uris ->
-                        sharedImportState.setPendingUris(uris)
-                        pendingSharedUris = null
+        if (isFirstStart) {
+            isFirstStart = false
+            lifecycleScope.launch {
+                // Wait until app is unlocked before running upload gate check and flushing
+                // pending share URIs — prevents dialogs appearing on the passcode screen.
+                passcodeGate.locked
+                    .filter { !it }
+                    .take(1)
+                    .collect {
+                        uploadGate.checkIfQueued { uploadJobScheduler.schedule() }
+                        pendingSharedUris?.let { uris ->
+                            sharedImportState.setPendingUris(uris)
+                            pendingSharedUris = null
+                        }
                     }
-                }
+            }
         }
     }
 

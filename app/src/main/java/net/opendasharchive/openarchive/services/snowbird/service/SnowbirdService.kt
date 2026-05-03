@@ -45,6 +45,7 @@ import kotlin.time.Duration.Companion.seconds
 class SnowbirdService : Service() {
 
     private val torServiceManager: TorServiceManager by inject()
+    private var isForegroundStarted = false
 
     companion object {
         var DEFAULT_BACKEND_DIRECTORY = ""
@@ -95,17 +96,20 @@ class SnowbirdService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(
-                    SaveApp.SNOWBIRD_SERVICE_ID,
-                    createNotification("Snowbird Server is starting up."),
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-                )
-            } else {
-                startForeground(
-                    SaveApp.SNOWBIRD_SERVICE_ID,
-                    createNotification("Snowbird Server is starting up."),
-                )
+            if (!isForegroundStarted) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    startForeground(
+                        SaveApp.SNOWBIRD_SERVICE_ID,
+                        createNotification("DWeb Storage is starting."),
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+                    )
+                } else {
+                    startForeground(
+                        SaveApp.SNOWBIRD_SERVICE_ID,
+                        createNotification("DWeb Storage is starting."),
+                    )
+                }
+                isForegroundStarted = true
             }
         } catch (e: Exception) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&

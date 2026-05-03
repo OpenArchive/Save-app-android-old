@@ -40,6 +40,7 @@ import net.opendasharchive.openarchive.core.di.coreModule
 import net.opendasharchive.openarchive.core.di.databaseModule
 import net.opendasharchive.openarchive.core.di.featuresModule
 import net.opendasharchive.openarchive.core.di.passcodeModule
+import net.opendasharchive.openarchive.features.settings.passcode.PasscodeGate
 import net.opendasharchive.openarchive.core.di.retrofitModule
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.util.C2paHelper
@@ -166,6 +167,12 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
                 )
             )
         }
+
+        // Register PasscodeGate once on the process lifecycle — not per-activity — so that
+        // activity recreation (e.g. dark mode toggle) does not cause spurious onStop → onStart
+        // transitions that reset auth state and prompt for passcode.
+        val passcodeGate: PasscodeGate by inject()
+        ProcessLifecycleOwner.get().lifecycle.addObserver(passcodeGate)
 
         applyTheme()
 

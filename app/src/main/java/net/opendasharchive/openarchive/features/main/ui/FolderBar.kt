@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.inputmethod.InputMethodManager
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -218,7 +219,8 @@ private fun RowScope.FolderBarInfoMode(
 
                 DropdownMenu(
                     expanded = state.showOptionsPopup,
-                    onDismissRequest = { onIntent(FolderBarIntent.OptionsDismissed) }
+                    onDismissRequest = { onIntent(FolderBarIntent.OptionsDismissed) },
+                    containerColor = if (isSystemInDarkTheme()) Color(0xFF2C2C2C) else MaterialTheme.colorScheme.surface
                 ) {
                     menu.forEach { item ->
                         val enabled = item !is FolderMenuItem.SelectMedia || state.totalMediaCount > 0

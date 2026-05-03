@@ -34,6 +34,7 @@ import org.torproject.jni.TorService
 class TorForegroundService : TorService() {
     private var statusReceiver: BroadcastReceiver? = null
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var isForegroundStarted = false
 
     override fun onCreate() {
         super.onCreate()
@@ -86,14 +87,17 @@ class TorForegroundService : TorService() {
             return START_STICKY
         }
 
-        // Create and show foreground notification
-        val notification = createNotification(getString(R.string.tor_notification_connecting))
-
-        startForeground(
-            TorConstants.TOR_NOTIFICATION_ID,
-            notification,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-        )
+        // Only call startForeground once — subsequent startForegroundService calls (e.g. from
+        // TorServiceManager.start() being called again) must not re-post the notification.
+        if (!isForegroundStarted) {
+            val notification = createNotification(getString(R.string.tor_notification_connecting))
+            startForeground(
+                TorConstants.TOR_NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            )
+            isForegroundStarted = true
+        }
 
         return super.onStartCommand(intent, flags, startId)
     }
@@ -120,13 +124,10 @@ class TorForegroundService : TorService() {
 
     private fun updateNotification(contentText: String) {
         val notification = createNotification(contentText)
-        // Use startForeground to update notification - this maintains the foreground service binding
-        // and ensures the notification cannot be dismissed
-        startForeground(
-            TorConstants.TOR_NOTIFICATION_ID,
-            notification,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-        )
+        // Use NotificationManager.notify() to update text in-place — avoids re-posting
+        // the notification (which causes it to re-appear/flash on every status change).
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(TorConstants.TOR_NOTIFICATION_ID, notification)
     }
 
     private fun createNotification(contentText: String): Notification {
@@ -152,10 +153,6 @@ class TorForegroundService : TorService() {
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
                 .setShowWhen(false) // Don't show timestamp
 
-        // For Android 12+, ensure immediate foreground service notification
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            builder.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-        }
 
         return builder.build()
     }
