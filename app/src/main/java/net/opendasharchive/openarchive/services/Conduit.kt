@@ -24,6 +24,7 @@ import net.opendasharchive.openarchive.core.repositories.CollectionRepository
 import net.opendasharchive.openarchive.core.repositories.MediaRepository
 import net.opendasharchive.openarchive.core.repositories.ProjectRepository
 import net.opendasharchive.openarchive.core.repositories.SpaceRepository
+import net.opendasharchive.openarchive.services.IaSlowDownException
 import net.opendasharchive.openarchive.services.internetarchive.data.IaConduit
 import net.opendasharchive.openarchive.services.webdav.data.WebDavConduit
 import net.opendasharchive.openarchive.upload.BroadcastManager
@@ -212,6 +213,28 @@ abstract class Conduit(
         if (exception is TorNotReadyException) {
             AppLogger.i("Tor not ready during upload, re-queuing item ${mEvidence.id}")
             mEvidence = mEvidence.copy(status = EvidenceStatus.QUEUED, progress = 0, statusMessage = "")
+            mediaRepository.updateEvidence(mEvidence)
+            UploadEventBus.emitChanged(
+                projectId = mEvidence.archiveId,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id,
+                progress = -1,
+                isUploaded = false
+            )
+            scope.cancel()
+            return@withContext
+        }
+
+        // IaSlowDownException is transient server overload — re-queue so the item retries
+        // on the next upload session rather than permanently erroring.
+        // IA's catalog queue is shared globally; staff response is "wait hours to days".
+        if (exception is IaSlowDownException) {
+            AppLogger.i("IA server overloaded, re-queuing item ${mEvidence.id} for later retry")
+            mEvidence = mEvidence.copy(
+                status = EvidenceStatus.QUEUED,
+                progress = 0,
+                statusMessage = "Internet Archive servers are busy. Will retry automatically."
+            )
             mediaRepository.updateEvidence(mEvidence)
             UploadEventBus.emitChanged(
                 projectId = mEvidence.archiveId,

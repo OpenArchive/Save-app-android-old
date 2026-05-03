@@ -12,6 +12,7 @@ import net.opendasharchive.openarchive.core.domain.VaultAuth
 import net.opendasharchive.openarchive.core.domain.Vault
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.services.Conduit
+import net.opendasharchive.openarchive.services.IaSlowDownException
 import net.opendasharchive.openarchive.services.SaveClient
 import okhttp3.Call
 import okhttp3.Headers
@@ -19,6 +20,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import androidx.core.net.toFile
@@ -71,27 +73,38 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
             val metaJson = getMetadata()
 
             if (mEvidence.serverUrl.isBlank()) {
-                // TODO this should make sure we aren't accidentally using one of archive.org's metadata fields by accident
                 val slug = getSlug(mEvidence.title)
                 val newIdentifier = "$slug-${Utility.RandomString(4).nextString()}"
-                // create an identifier for the upload
                 mEvidence = mEvidence.copy(serverUrl = newIdentifier)
             }
 
-            // Upload content — retry on transient network errors (connection drop, TOR circuit rotation)
-            var ioAttempt = 0
-            val maxIoRetries = 3
-            while (true) {
-                if (mCancelled) return false
-                try {
-                    client.uploadContent(fileName, mimeType, vault, auth)
-                    break
-                } catch (e: IOException) {
-                    ioAttempt++
-                    if (ioAttempt >= maxIoRetries || mCancelled) throw e
-                    val delayMs = 30_000L * ioAttempt
-                    AppLogger.w("IA upload network error (attempt $ioAttempt/$maxIoRetries), retrying in ${delayMs / 1000}s: ${e.message}")
-                    delay(delayMs)
+            // If this is a retry and the file is already on IA, skip re-uploading.
+            if (client.isAlreadyUploaded(fileName, auth)) {
+                AppLogger.i("IA: $fileName already uploaded to ${mEvidence.serverUrl}, skipping content upload")
+            } else {
+                // Pre-flight: check IA queue capacity before attempting upload.
+                // https://s3.us.archive.org/?check_limit=1&accesskey=…&bucket=…
+                // Returns over_limit=1 when the task queue is full and uploads will 503.
+                client.waitForIaCapacity(auth)
+
+                // Upload content — retry on transient network errors (connection drop, TOR circuit rotation)
+                var ioAttempt = 0
+                val maxIoRetries = 3
+                while (true) {
+                    if (mCancelled) return false
+                    try {
+                        client.uploadContent(fileName, mimeType, vault, auth)
+                        break
+                    } catch (e: IOException) {
+                        ioAttempt++
+                        if (ioAttempt >= maxIoRetries || mCancelled) throw e
+                        // Short base delay + jitter so parallel retries don't hit IA in lockstep.
+                        val baseMs = 2_000L * ioAttempt
+                        val jitterMs = (Math.random() * 500).toLong()
+                        val delayMs = baseMs + jitterMs
+                        AppLogger.w("IA upload network error (attempt $ioAttempt/$maxIoRetries), retrying in ${delayMs / 1000}s: ${e.message}")
+                        delay(delayMs)
+                    }
                 }
             }
 
@@ -273,33 +286,111 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
 
     @Throws(Exception::class)
     private suspend fun OkHttpClient.execute(request: Request) {
-        var delayMs = 30_000L
+        // Start at 2 s and double each attempt (2 → 4 → 8 → 16 → 20 s) with ±500 ms jitter.
+        // iOS background URLSession retries transparently at the OS level; we approximate that
+        // here without the 30 s penalty that was making uploads feel stalled on Android.
+        var delayMs = 2_000L
         val maxRetries = 5
+        var activeRequest = request
         repeat(maxRetries) { attempt ->
             if (mCancelled) throw IOException("Cancelled")
-            val call = newCall(request)
+            val call = newCall(activeRequest)
             currentCall = call
             val code: Int
             val message: String
+            val location: String?
             try {
                 val response = withContext(Dispatchers.IO) { call.execute() }
                 code = response.code
                 message = response.message
+                location = response.header("Location")
                 response.close()
             } finally {
                 currentCall = null
             }
             when {
                 code in 200..299 -> return
+                // IA is "much more likely to issue 307 redirects than Amazon" (IAS3 docs).
+                // OkHttp won't follow 307 on PUT with a streaming body — handle manually.
+                code == 307 || code == 301 || code == 302 -> {
+                    if (location.isNullOrBlank()) throw RuntimeException("$code redirect with no Location header")
+                    AppLogger.i("IA redirect $code → $location (attempt ${attempt + 1})")
+                    activeRequest = activeRequest.newBuilder().url(location).build()
+                    // No delay — redirect should be followed immediately
+                }
                 code == 503 && attempt < maxRetries - 1 -> {
-                    AppLogger.w("IA returned 503 Slow Down, retrying in ${delayMs / 1000}s (attempt ${attempt + 1})")
-                    delay(delayMs)
-                    delayMs = minOf(delayMs * 2, 300_000L)
+                    val jitterMs = (Math.random() * 500).toLong()
+                    val waitMs = delayMs + jitterMs
+                    AppLogger.w("IA returned 503 Slow Down, retrying in ${waitMs / 1000}s (attempt ${attempt + 1}/$maxRetries)")
+                    delay(waitMs)
+                    delayMs = minOf(delayMs * 2, 20_000L)
                 }
                 else -> throw RuntimeException("$code: $message")
             }
         }
-        throw RuntimeException("Upload failed after $maxRetries attempts (503 Slow Down)")
+        throw IaSlowDownException("IA returned 503 Slow Down after $maxRetries attempts — re-queuing for later retry")
+    }
+
+    /**
+     * Checks IA's task queue via the check_limit API before uploading.
+     * If over_limit=1, waits with exponential backoff until capacity is available.
+     * Prevents 503 SlowDown by not even attempting upload when queue is full.
+     * https://archive.org/developers/ias3.html
+     */
+    private suspend fun OkHttpClient.waitForIaCapacity(auth: VaultAuth) {
+        var delayMs = 3_000L
+        val maxWaitAttempts = 5
+        repeat(maxWaitAttempts) { attempt ->
+            if (mCancelled) return
+            try {
+                val url = "$ARCHIVE_API_ENDPOINT/?check_limit=1&accesskey=${auth.username}&bucket=${mEvidence.serverUrl}"
+                val request = Request.Builder().url(url).get().build()
+                val body = withContext(Dispatchers.IO) { newCall(request).execute() }.use { it.body?.string() }
+                val overLimit = body?.let { JSONObject(it).optInt("over_limit", 0) } ?: 0
+                if (overLimit == 0) {
+                    AppLogger.i("IA queue capacity OK (attempt ${attempt + 1})")
+                    return
+                }
+                val jitterMs = (Math.random() * 500).toLong()
+                val waitMs = delayMs + jitterMs
+                AppLogger.w("IA queue over limit, waiting ${waitMs / 1000}s before upload (attempt ${attempt + 1}/$maxWaitAttempts)")
+                delay(waitMs)
+                delayMs = minOf(delayMs * 2, 15_000L)
+            } catch (e: Exception) {
+                // check_limit failure is non-fatal — proceed with upload attempt
+                AppLogger.w("IA check_limit failed (non-fatal): ${e.message}")
+                return
+            }
+        }
+        AppLogger.w("IA queue still over limit after $maxWaitAttempts checks — proceeding anyway")
+    }
+
+    /**
+     * Returns true if this file is already present on IA for the current identifier.
+     * Used to skip re-uploading on retry after a partial success (file uploaded but
+     * jobSucceeded() didn't persist, e.g. process was killed).
+     */
+    private suspend fun OkHttpClient.isAlreadyUploaded(fileName: String, auth: VaultAuth): Boolean {
+        if (mEvidence.serverUrl.isBlank()) return false
+        return try {
+            val url = "https://archive.org/metadata/${mEvidence.serverUrl}"
+            val request = Request.Builder()
+                .url(url)
+                .header("Authorization", "LOW ${auth.username}:${auth.secret}")
+                .get()
+                .build()
+            val body = withContext(Dispatchers.IO) { newCall(request).execute() }.use { it.body?.string() }
+            if (body.isNullOrBlank()) return false
+            val json = JSONObject(body)
+            val files = json.optJSONArray("files") ?: return false
+            for (i in 0 until files.length()) {
+                if (files.getJSONObject(i).optString("name") == fileName) return true
+            }
+            false
+        } catch (e: Exception) {
+            AppLogger.w("IA metadata check failed (non-fatal): ${e.message}")
+            false
+        }
     }
 
     private fun sanitizeHeaderValue(value: String): String {

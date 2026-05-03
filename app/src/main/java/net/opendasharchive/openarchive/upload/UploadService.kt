@@ -95,12 +95,9 @@ class UploadService : JobService() {
             }
         }
 
-        serviceScope.launch {
-            upload {
-                jobFinished(params, false)
-            }
-        }
-
+        // On API 34+ use User-Initiated Jobs (setNotification). On older APIs, promote to
+        // foreground service so the OS treats it as user-visible work and won't kill the
+        // process mid-upload — the closest Android equivalent to iOS background URLSession.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             setNotification(
                 params,
@@ -108,6 +105,17 @@ class UploadService : JobService() {
                 prepNotification(),
                 JOB_END_NOTIFICATION_POLICY_REMOVE
             )
+        } else {
+            startForeground(7918, prepNotification())
+        }
+
+        serviceScope.launch {
+            upload {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                }
+                jobFinished(params, false)
+            }
         }
 
         return true
@@ -120,7 +128,9 @@ class UploadService : JobService() {
             mConduits.clear()
         }
         serviceJob.cancel()
-
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        }
         return true
     }
 

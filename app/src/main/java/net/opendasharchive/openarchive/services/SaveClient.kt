@@ -23,6 +23,12 @@ import java.util.concurrent.atomic.AtomicReference
 class TorNotReadyException(message: String) : Exception(message)
 
 /**
+ * Exception thrown when IA returns 503 Slow Down after exhausting all retries.
+ * Treated as transient — item is re-queued rather than permanently errored.
+ */
+class IaSlowDownException(message: String) : Exception(message)
+
+/**
  * Factory for creating OkHttpClient instances with optional Tor proxy support.
  *
  * When Tor is enabled in preferences, the client will route all traffic through
