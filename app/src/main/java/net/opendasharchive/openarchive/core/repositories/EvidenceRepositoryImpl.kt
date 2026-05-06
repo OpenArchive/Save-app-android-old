@@ -155,4 +155,11 @@ class EvidenceRepositoryImpl(
             }
         }
     }
+
+    override suspend fun resetStaleUploading() {
+        withContext(io) {
+            evidenceDao.resetStaleUploading()
+            InvalidationBus.invalidateMedia()
+        }
+    }
 }

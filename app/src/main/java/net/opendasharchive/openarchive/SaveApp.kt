@@ -44,6 +44,7 @@ import net.opendasharchive.openarchive.features.settings.passcode.PasscodeGate
 import net.opendasharchive.openarchive.core.di.retrofitModule
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.util.C2paHelper
+import net.opendasharchive.openarchive.core.repositories.MediaRepository
 import net.opendasharchive.openarchive.util.CleanInsightsManager
 import net.opendasharchive.openarchive.util.Prefs
 import org.koin.android.ext.android.inject
@@ -166,6 +167,14 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
                     cleanInsightsConsentChecker = { CleanInsightsManager.hasConsent() }
                 )
             )
+        }
+
+        // Reset any items stuck in UPLOADING from a previous session that was force-killed
+        // or crashed (no onStopJob callback). Without this, the UI shows a permanent upload
+        // spinner and the items never re-enter the queue.
+        val mediaRepository: MediaRepository by inject()
+        ProcessLifecycleOwner.get().lifecycleScope.launch {
+            mediaRepository.resetStaleUploading()
         }
 
         // Register PasscodeGate once on the process lifecycle — not per-activity — so that

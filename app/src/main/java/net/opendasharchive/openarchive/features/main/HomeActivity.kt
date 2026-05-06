@@ -97,11 +97,18 @@ class HomeActivity : BaseComposeActivity(), AndroidScopeComponent {
     override fun onStart() {
         super.onStart()
         C2paHelper.init(this)
+
+        // On every foreground return: if already unlocked, re-schedule any queued uploads.
+        // This recovers from stalled JobService runs (e.g. OS killed the job mid-upload).
+        if (!passcodeGate.locked.value) {
+            uploadGate.checkIfQueued { uploadJobScheduler.schedule() }
+        }
+
         if (isFirstStart) {
             isFirstStart = false
             lifecycleScope.launch {
-                // Wait until app is unlocked before running upload gate check and flushing
-                // pending share URIs — prevents dialogs appearing on the passcode screen.
+                // Wait until app is unlocked before flushing pending share URIs and
+                // running the initial upload gate check — prevents dialogs on passcode screen.
                 passcodeGate.locked
                     .filter { !it }
                     .take(1)

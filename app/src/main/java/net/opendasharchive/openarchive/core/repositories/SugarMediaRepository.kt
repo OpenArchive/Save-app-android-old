@@ -140,6 +140,8 @@ class SugarMediaRepository(
         }
     }
 
+    override suspend fun resetStaleUploading() { /* no-op: Sugar DB is read-only during migration */ }
+
     override suspend fun retryMedia(mediaId: Long) {
         withContext(io) {
             Media.get(mediaId)?.let {

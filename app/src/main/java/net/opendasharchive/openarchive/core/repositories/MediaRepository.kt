@@ -20,4 +20,5 @@ interface MediaRepository {
     suspend fun updatePriority(mediaId: Long, priority: Int)
     suspend fun updatePriorities(priorities: List<Pair<Long, Int>>)
     suspend fun retryMedia(mediaId: Long)
+    suspend fun resetStaleUploading()
 }

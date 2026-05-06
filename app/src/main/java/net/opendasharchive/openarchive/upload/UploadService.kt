@@ -66,6 +66,11 @@ class UploadService : JobService() {
 
     override fun onStartJob(params: JobParameters): Boolean {
         mKeepUploading = true
+        // Reset mRunning before creating the new scope. If the previous job's coroutine is
+        // stuck in a NonCancellable block (e.g. jobFailed DB writes) when onStartJob fires,
+        // mRunning would still be true — causing upload() to return immediately and silently
+        // drop the entire upload session.
+        mRunning = false
         serviceJob.cancel()
         serviceJob = SupervisorJob()
         serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)

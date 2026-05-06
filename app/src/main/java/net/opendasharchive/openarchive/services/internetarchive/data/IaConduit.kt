@@ -63,31 +63,39 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
             val auth = spaceRepository.getVaultAuth(mEvidence.vaultId) ?: return false
             val mimeType = mEvidence.mimeType
 
-            // Use a longer read timeout — IA S3 processes the file before ACKing, which
-            // can take well over 60s for large files, especially over TOR.
+            // Extended timeouts for IA S3:
+            // - writeTimeout: IA S3 uses streaming PUT; on Tor, throughput can drop to single-digit
+            //   KB/s. OkHttp's default 60s write timeout fires per 64KB segment, causing spurious
+            //   SocketTimeoutException on slow-but-healthy connections.
+            // - readTimeout: IA processes the file server-side before ACKing — can take minutes
+            //   for large files, especially over Tor.
             val client = SaveClient.get(mContext).newBuilder()
+                .writeTimeout(5, TimeUnit.MINUTES)
                 .readTimeout(5, TimeUnit.MINUTES)
                 .build()
 
             val fileName = getUploadFileName(mEvidence, true)
             val metaJson = getMetadata()
 
-            if (mEvidence.serverUrl.isBlank()) {
+            // isRetry = serverUrl was persisted from a previous session (process-killed mid-upload).
+            // A blank serverUrl means this is a first attempt — we'll generate a fresh identifier below.
+            val isRetry = mEvidence.serverUrl.isNotBlank()
+
+            if (!isRetry) {
                 val slug = getSlug(mEvidence.title)
                 val newIdentifier = "$slug-${Utility.RandomString(4).nextString()}"
                 mEvidence = mEvidence.copy(serverUrl = newIdentifier)
             }
 
-            // If this is a retry and the file is already on IA, skip re-uploading.
-            if (client.isAlreadyUploaded(fileName, auth)) {
+            // Only check IA for an existing file on retries — a freshly-generated identifier
+            // can't already have content, so the metadata round-trip is wasted on first attempts.
+            val alreadyUploaded = isRetry && client.isAlreadyUploaded(fileName, auth)
+
+            if (alreadyUploaded) {
                 AppLogger.i("IA: $fileName already uploaded to ${mEvidence.serverUrl}, skipping content upload")
             } else {
-                // Pre-flight: check IA queue capacity before attempting upload.
-                // https://s3.us.archive.org/?check_limit=1&accesskey=…&bucket=…
-                // Returns over_limit=1 when the task queue is full and uploads will 503.
-                client.waitForIaCapacity(auth)
-
-                // Upload content — retry on transient network errors (connection drop, TOR circuit rotation)
+                // Upload content. execute() already handles 503 Slow Down with exponential backoff,
+                // so no pre-flight capacity check is needed here.
                 var ioAttempt = 0
                 val maxIoRetries = 3
                 while (true) {
@@ -96,9 +104,9 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                         client.uploadContent(fileName, mimeType, vault, auth)
                         break
                     } catch (e: IOException) {
+                        // Includes SocketTimeoutException — jobFailed re-queues timeouts automatically.
                         ioAttempt++
                         if (ioAttempt >= maxIoRetries || mCancelled) throw e
-                        // Short base delay + jitter so parallel retries don't hit IA in lockstep.
                         val baseMs = 2_000L * ioAttempt
                         val jitterMs = (Math.random() * 500).toLong()
                         val delayMs = baseMs + jitterMs
@@ -329,40 +337,6 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
             }
         }
         throw IaSlowDownException("IA returned 503 Slow Down after $maxRetries attempts — re-queuing for later retry")
-    }
-
-    /**
-     * Checks IA's task queue via the check_limit API before uploading.
-     * If over_limit=1, waits with exponential backoff until capacity is available.
-     * Prevents 503 SlowDown by not even attempting upload when queue is full.
-     * https://archive.org/developers/ias3.html
-     */
-    private suspend fun OkHttpClient.waitForIaCapacity(auth: VaultAuth) {
-        var delayMs = 3_000L
-        val maxWaitAttempts = 5
-        repeat(maxWaitAttempts) { attempt ->
-            if (mCancelled) return
-            try {
-                val url = "$ARCHIVE_API_ENDPOINT/?check_limit=1&accesskey=${auth.username}&bucket=${mEvidence.serverUrl}"
-                val request = Request.Builder().url(url).get().build()
-                val body = withContext(Dispatchers.IO) { newCall(request).execute() }.use { it.body?.string() }
-                val overLimit = body?.let { JSONObject(it).optInt("over_limit", 0) } ?: 0
-                if (overLimit == 0) {
-                    AppLogger.i("IA queue capacity OK (attempt ${attempt + 1})")
-                    return
-                }
-                val jitterMs = (Math.random() * 500).toLong()
-                val waitMs = delayMs + jitterMs
-                AppLogger.w("IA queue over limit, waiting ${waitMs / 1000}s before upload (attempt ${attempt + 1}/$maxWaitAttempts)")
-                delay(waitMs)
-                delayMs = minOf(delayMs * 2, 15_000L)
-            } catch (e: Exception) {
-                // check_limit failure is non-fatal — proceed with upload attempt
-                AppLogger.w("IA check_limit failed (non-fatal): ${e.message}")
-                return
-            }
-        }
-        AppLogger.w("IA queue still over limit after $maxWaitAttempts checks — proceeding anyway")
     }
 
     /**

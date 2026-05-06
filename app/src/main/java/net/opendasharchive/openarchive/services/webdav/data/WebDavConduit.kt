@@ -17,6 +17,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 
 class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, context) {
@@ -40,13 +41,18 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
 
             // SaveClient.get() with user/pass adds BasicAuthInterceptor and, when Tor is
             // enabled in Prefs, routes all traffic through the SOCKS5 proxy automatically.
+            // Extended write timeout: chunked uploads send 10 MB bodies; on Tor the default
+            // 60s write timeout fires before the chunk is sent, leaving the upload stalled.
             mClient = SaveClient.get(
                 context = mContext,
                 user = auth.username,
                 password = auth.secret,
                 forceCloseConnection = true,
                 allowHttp2 = false
-            )
+            ).newBuilder()
+                .writeTimeout(5, TimeUnit.MINUTES)
+                .readTimeout(5, TimeUnit.MINUTES)
+                .build()
 
             sanitize()
 

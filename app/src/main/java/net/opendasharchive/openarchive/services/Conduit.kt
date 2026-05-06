@@ -42,6 +42,7 @@ import org.koin.core.context.GlobalContext
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.net.SocketTimeoutException
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -212,6 +213,23 @@ abstract class Conduit(
         // TorNotReadyException is transient — re-queue silently so the item retries when Tor connects.
         if (exception is TorNotReadyException) {
             AppLogger.i("Tor not ready during upload, re-queuing item ${mEvidence.id}")
+            mEvidence = mEvidence.copy(status = EvidenceStatus.QUEUED, progress = 0, statusMessage = "")
+            mediaRepository.updateEvidence(mEvidence)
+            UploadEventBus.emitChanged(
+                projectId = mEvidence.archiveId,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id,
+                progress = -1,
+                isUploaded = false
+            )
+            scope.cancel()
+            return@withContext
+        }
+
+        // SocketTimeoutException is a transient network stall (slow Tor circuit, server backpressure).
+        // Re-queue silently so the next session retries — this is never a permanent failure.
+        if (exception is SocketTimeoutException) {
+            AppLogger.i("Upload timed out (transient), re-queuing item ${mEvidence.id}")
             mEvidence = mEvidence.copy(status = EvidenceStatus.QUEUED, progress = 0, statusMessage = "")
             mediaRepository.updateEvidence(mEvidence)
             UploadEventBus.emitChanged(

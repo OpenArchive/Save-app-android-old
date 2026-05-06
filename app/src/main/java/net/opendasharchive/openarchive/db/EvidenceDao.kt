@@ -66,4 +66,8 @@ interface EvidenceDao {
 
     @Query("DELETE FROM evidence WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    // 4 = UPLOADING, 2 = QUEUED (see Converters.kt)
+    @Query("UPDATE evidence SET status = 2, progress = 0 WHERE status = 4")
+    suspend fun resetStaleUploading()
 }
