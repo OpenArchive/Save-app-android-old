@@ -77,6 +77,10 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
             val client = SaveClient.get(mContext).newBuilder()
                 .writeTimeout(5, TimeUnit.MINUTES)
                 .readTimeout(5, TimeUnit.MINUTES)
+                // Force HTTP/1.1: IA S3's HTTP/2 RST_STREAM handling surfaces as ProtocolException
+                // via different code paths than HTTP/1.1 FIN+RST. HTTP/1.1 is more predictable
+                // and our retry/backoff logic was written for its behavior.
+                .protocols(listOf(okhttp3.Protocol.HTTP_1_1))
                 .build()
 
             val fileName = getUploadFileName(mEvidence, true)
@@ -149,11 +153,22 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
 
             // If pre-content metadata upload failed, retry now — the content upload
             // has created the IA item/bucket, so a transient server rejection should resolve.
+            // Try up to 3 times with 2s/4s/6s backoff.
             if (!metadataUploaded) {
-                try {
-                    client.uploadMetaData(metaJson, fileName, auth)
-                } catch (e: Throwable) {
-                    AppLogger.e("Post-content meta.json retry also failed for $fileName: ${e.message}")
+                var metaPostRetry = 0
+                val maxMetaPostRetries = 3
+                while (!metadataUploaded && metaPostRetry < maxMetaPostRetries) {
+                    metaPostRetry++
+                    delay(2_000L * metaPostRetry)
+                    try {
+                        client.uploadMetaData(metaJson, fileName, auth)
+                        metadataUploaded = true
+                    } catch (e: Throwable) {
+                        AppLogger.w("Post-content meta.json retry $metaPostRetry/$maxMetaPostRetries failed for $fileName: ${e.message}")
+                    }
+                }
+                if (!metadataUploaded) {
+                    AppLogger.e("meta.json failed all retries for $fileName — item uploaded without custom metadata")
                 }
             }
 
@@ -325,15 +340,24 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
 
     /// headers for meta-data and proof mode
     private fun metadataHeader(auth: VaultAuth): Headers {
+        // mediatype and collection must match what mainHeader() sets on the content upload.
+        // Mismatching (e.g. "texts"/"opensource" for a video) forces IA's catalog to reconcile
+        // the conflict during derive, adding latency before the item appears on the site.
+        val (mediatype, collection) = when {
+            mEvidence.mimeType.startsWith("video") -> "movies" to "opensource_movies"
+            mEvidence.mimeType.startsWith("audio") -> "audio" to "opensource_audio"
+            mEvidence.mimeType.startsWith("image") -> "image" to "opensource_media"
+            else -> "data" to "opensource_media"
+        }
         return Headers.Builder()
             .add("User-Agent", "SaveApp/${BuildConfig.VERSION_NAME} (Android ${android.os.Build.VERSION.RELEASE})")
             .add("x-amz-auto-make-bucket", "1")
             .add("x-archive-auto-make-bucket", "1")
             .add("x-archive-queue-derive", "0")
-            .add("x-archive-meta-language", "eng") // TODO: FIXME set based on locale or selected
+            .add("x-archive-meta-language", "eng")
             .add("Authorization", "LOW " + auth.username + ":" + auth.secret)
-            .add("x-archive-meta-mediatype", "texts")
-            .add("x-archive-meta-collection", "opensource")
+            .add("x-archive-meta-mediatype", mediatype)
+            .add("x-archive-meta-collection", collection)
             .build()
     }
 
@@ -362,20 +386,21 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                 retryAfterMs = response.header("Retry-After")?.toLongOrNull()?.let { it * 1_000L }
                 response.close()
             } catch (e: java.net.ProtocolException) {
-                // Server closed the TCP connection while we were still writing the request body
-                // or closing it — common when the server sent a 503 and hung up before we
-                // finished. OkHttp pools that now-dead connection and reuses it on the next
-                // attempt, causing ProtocolException on the next body-close. Treat as transient
-                // and retry with backoff; the connection pool will discard the bad socket.
+                // transferred < contentLength at close() time — the flush that drains the Okio
+                // buffer failed (server sent RST before we finished). For large payloads this
+                // is stale-connection reuse; for small metadata payloads it is the first
+                // connection itself whose flush fails after a 503+RST. Evict the pool so the
+                // next attempt always opens a fresh TCP socket, then retry with backoff.
+                connectionPool.evictAll()
                 if (attempt < maxRetries - 1) {
                     val jitterMs = (Math.random() * 500).toLong()
                     val waitMs = delayMs + jitterMs
-                    AppLogger.w("IA protocol error (stale connection), retrying in ${waitMs / 1000}s (attempt ${attempt + 1}/$maxRetries): ${e.message}")
+                    AppLogger.w("IA protocol error, evicted pool, retrying in ${waitMs / 1000}s (attempt ${attempt + 1}/$maxRetries): ${e.message}")
                     delay(waitMs)
                     delayMs = minOf(delayMs * 2, 20_000L)
                     return@repeat
                 }
-                throw IOException("IA connection failed after $maxRetries attempts: ${e.message}", e)
+                throw IaSlowDownException("IA connection failed after $maxRetries attempts (ProtocolException): ${e.message}")
             } finally {
                 currentCall = null
             }

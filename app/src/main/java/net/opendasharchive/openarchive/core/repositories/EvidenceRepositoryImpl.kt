@@ -122,9 +122,10 @@ class EvidenceRepositoryImpl(
     }
 
     override suspend fun getQueue(): List<Evidence> = withContext(io) {
-        val statuses = listOf(EvidenceStatus.UPLOADING, EvidenceStatus.QUEUED, EvidenceStatus.ERROR)
-        // Sorting is handled by evidenceDao.getByStatus (priority DESC, id DESC)
-        evidenceDao.getByStatus(statuses).map { mapToDomain(it) }
+        // UPLOADING: items set to uploading in this session (should be none after resetStaleUploading)
+        // QUEUED: items waiting to upload, filtered by nextRetryAt backoff window
+        val statuses = listOf(EvidenceStatus.UPLOADING, EvidenceStatus.QUEUED)
+        evidenceDao.getQueueNow(statuses, System.currentTimeMillis()).map { mapToDomain(it) }
     }
 
     override suspend fun updatePriority(mediaId: Long, priority: Int) {

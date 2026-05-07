@@ -67,6 +67,7 @@ abstract class Conduit(
     protected val mDateFormat = SimpleDateFormat(FOLDER_DATETIME_FORMAT)
 
     protected var mCancelled = false
+    var wasSlowDown = false
 
     // Track upload start time for analytics
     private var uploadStartTime: Long = System.currentTimeMillis()
@@ -163,7 +164,9 @@ abstract class Conduit(
         mEvidence = mEvidence.copy(
             progress = mEvidence.contentLength,
             status = EvidenceStatus.UPLOADED,
-            uploadPercentage = 100
+            uploadPercentage = 100,
+            retryCount = 0,
+            nextRetryAt = 0L
         )
         mediaRepository.updateEvidence(mEvidence)
         AppLogger.i("media item ${mEvidence.id} is uploaded and saved")
@@ -272,16 +275,30 @@ abstract class Conduit(
             return@withContext
         }
 
-        // IaSlowDownException is transient server overload — re-queue so the item retries
-        // on the next upload session rather than permanently erroring.
-        // IA's catalog queue is shared globally; staff response is "wait hours to days".
+        // IaSlowDownException is transient server overload. Apply iOS-style per-item backoff:
+        // nextRetryAt = now + (retryCount^1.5) minutes. After MAX_IA_RETRIES, mark ERROR.
         if (exception is IaSlowDownException) {
-            AppLogger.i("IA server overloaded, re-queuing item ${mEvidence.id} for later retry")
-            mEvidence = mEvidence.copy(
-                status = EvidenceStatus.QUEUED,
-                progress = 0,
-                statusMessage = "Internet Archive servers are busy. Will retry automatically."
-            )
+            wasSlowDown = true
+            val newRetryCount = mEvidence.retryCount + 1
+            if (newRetryCount >= MAX_IA_RETRIES) {
+                AppLogger.w("IA server overloaded — item ${mEvidence.id} exceeded $MAX_IA_RETRIES retries, marking ERROR")
+                mEvidence = mEvidence.copy(
+                    status = EvidenceStatus.ERROR,
+                    statusMessage = "Internet Archive servers are busy. Retried $MAX_IA_RETRIES times.",
+                    retryCount = newRetryCount
+                )
+            } else {
+                val backoffMs = (Math.pow(newRetryCount.toDouble(), 1.5) * 60_000).toLong()
+                val nextRetryAt = System.currentTimeMillis() + backoffMs
+                AppLogger.i("IA server overloaded — item ${mEvidence.id} retry $newRetryCount/$MAX_IA_RETRIES, backoff ${backoffMs / 60_000}min")
+                mEvidence = mEvidence.copy(
+                    status = EvidenceStatus.QUEUED,
+                    progress = 0,
+                    statusMessage = "Internet Archive servers are busy. Will retry automatically.",
+                    retryCount = newRetryCount,
+                    nextRetryAt = nextRetryAt
+                )
+            }
             mediaRepository.updateEvidence(mEvidence)
             UploadEventBus.emitChanged(
                 projectId = mEvidence.archiveId,
@@ -549,6 +566,7 @@ abstract class Conduit(
 
     companion object {
         const val FOLDER_DATETIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss'GMT'ZZZZZ"
+        const val MAX_IA_RETRIES = 10
 
         /**
          * 10 MByte — larger chunks mean fewer HTTP round trips and less PROPFIND overhead.

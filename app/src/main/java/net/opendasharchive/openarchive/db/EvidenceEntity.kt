@@ -1,5 +1,6 @@
 package net.opendasharchive.openarchive.db
 
+import androidx.room3.ColumnInfo
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
@@ -54,5 +55,7 @@ data class EvidenceEntity(
     val progress: Long,
     val flag: Boolean,
     val priority: Int,
-    val thumbnail: ByteArray? = null
+    val thumbnail: ByteArray? = null,
+    @ColumnInfo(defaultValue = "0") val retryCount: Int = 0,
+    @ColumnInfo(defaultValue = "0") val nextRetryAt: Long = 0L
 )

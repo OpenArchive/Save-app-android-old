@@ -97,7 +97,15 @@ object RequestBodyUtil {
 
     fun BufferedSink.writeAll(source: Source, listener: RequestListener?) {
         if (listener == null) {
+            // writeAll() only emits complete 8KB Okio segments to the underlying sink;
+            // a small payload (< 8KB) sits entirely in the Okio buffer.  OkHttp's
+            // Exchange$RequestBodySink.close() checks transferred == contentLength, and
+            // if the flush inside RealBufferedSink.close() fails (server sent RST before
+            // we could drain the buffer), transferred stays 0 → ProtocolException.
+            // Explicitly flush here so all bytes reach Exchange$RequestBodySink.write()
+            // (and thus transferred is updated) before the outer close() check runs.
             writeAll(source)
+            flush()
         } else {
             var total: Long = 0
             var read: Long

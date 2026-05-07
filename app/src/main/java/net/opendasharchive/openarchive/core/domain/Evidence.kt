@@ -39,7 +39,9 @@ data class Evidence(
     val priority: Int = 0,
     val isSelected: Boolean = false,
     val uploadPercentage: Int? = null,
-    val isDownloaded: Boolean = false
+    val isDownloaded: Boolean = false,
+    val retryCount: Int = 0,
+    val nextRetryAt: Long = 0L
 ) {
     val fileUri: Uri
         get() = originalFilePath.toUri()

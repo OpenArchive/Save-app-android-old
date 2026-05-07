@@ -129,7 +129,9 @@ fun EvidenceEntity.toDomain(vaultId: Long = 0L): Evidence = Evidence(
     uploadPercentage = if (this.contentLength > 0) (this.progress.toFloat() / this.contentLength * 100).toInt() else null,
     isFlagged = this.flag,
     priority = this.priority,
-    isSelected = false // UI only
+    isSelected = false, // UI only
+    retryCount = this.retryCount,
+    nextRetryAt = this.nextRetryAt
 )
 
 fun EvidenceWithDweb.toDomain(vaultId: Long = 0L): Evidence = evidence.toDomain(vaultId).copy(
@@ -159,7 +161,9 @@ fun Evidence.toEvidenceEntity(): EvidenceEntity = EvidenceEntity(
     progress = this.progress,
     flag = this.isFlagged,
     priority = this.priority,
-    thumbnail = this.thumbnail
+    thumbnail = this.thumbnail,
+    retryCount = this.retryCount,
+    nextRetryAt = this.nextRetryAt
 )
 
 fun Evidence.toDwebEntity(): EvidenceDwebEntity = EvidenceDwebEntity(

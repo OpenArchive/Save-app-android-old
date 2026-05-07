@@ -48,15 +48,22 @@ class UploadService : JobService() {
     private val spaceRepository: SpaceRepository by inject()
     private val fileCleanupHelper: FileCleanupHelper by inject()
 
-    companion object {
-        private const val NOTIFICATION_CHANNEL_ID = "oasave_channel_1"
-    }
-
     private var mRunning = false
     private var mKeepUploading = true
     private val mConduits = ArrayList<Conduit>()
     private var serviceJob = SupervisorJob()
     private var serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
+
+    // Circuit breaker: open circuit per vault after consecutive slow-down responses.
+    // In-memory only — resets on app restart, which is intentional (IA may have recovered).
+    private val consecutiveSlowDowns = mutableMapOf<Long, Int>()
+    private val circuitOpenUntil = mutableMapOf<Long, Long>()
+
+    companion object {
+        private const val NOTIFICATION_CHANNEL_ID = "oasave_channel_1"
+        private const val CIRCUIT_BREAKER_THRESHOLD = 3   // slow-downs before opening circuit
+        private const val CIRCUIT_OPEN_DURATION_MS = 10 * 60 * 1000L // 10 minutes
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -115,6 +122,8 @@ class UploadService : JobService() {
         }
 
         serviceScope.launch {
+            // Reset items stuck in UPLOADING from a previous job (killed mid-upload without app restart).
+            mediaRepository.resetStaleUploading()
             upload {
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     stopForeground(STOP_FOREGROUND_REMOVE)
@@ -176,10 +185,8 @@ class UploadService : JobService() {
             ) {
                 val datePublish = DateUtils.nowDateTime
 
-                val uploadableResults = results.filter { it.status != EvidenceStatus.ERROR }
-                if (uploadableResults.isEmpty()) break
-
-                for (media in uploadableResults) {
+                var batchHadWork = false
+                for (media in results) {
                     // Guard against Tor dropping between items in a batch (race with onStartJob watcher).
                     if (Prefs.useTor && !torServiceManager.isReady()) {
                         AppLogger.i("Tor not ready before item ${media.id}, pausing queue")
@@ -187,6 +194,16 @@ class UploadService : JobService() {
                         break
                     }
 
+                    // Circuit breaker: skip items whose vault is in a cool-down period after
+                    // consecutive IaSlowDown responses. Matches iOS UploadManager.space.tries logic.
+                    val vaultOpenUntil = circuitOpenUntil[media.vaultId] ?: 0L
+                    if (vaultOpenUntil > System.currentTimeMillis()) {
+                        val remainingMin = (vaultOpenUntil - System.currentTimeMillis()) / 60_000
+                        AppLogger.i("Circuit open for vault ${media.vaultId} — skipping item ${media.id} (${remainingMin}min remaining)")
+                        continue
+                    }
+
+                    batchHadWork = true
                     totalCount++
                     var updatedMedia = media
                     if (updatedMedia.status != EvidenceStatus.UPLOADING) {
@@ -209,11 +226,23 @@ class UploadService : JobService() {
 
                     try {
                         AppLogger.i("Started uploading", updatedMedia)
-                        val uploadSuccess = upload(updatedMedia)
+                        val (uploadSuccess, wasSlowDown) = upload(updatedMedia)
                         if (uploadSuccess) {
+                            // Reset circuit breaker on success for this vault.
+                            consecutiveSlowDowns[updatedMedia.vaultId] = 0
+                            circuitOpenUntil.remove(updatedMedia.vaultId)
                             serviceScope.launch { fileCleanupHelper.deleteUploadedMediaFiles(updatedMedia) }
                             successCount++
                         } else {
+                            if (wasSlowDown) {
+                                val count = (consecutiveSlowDowns[updatedMedia.vaultId] ?: 0) + 1
+                                consecutiveSlowDowns[updatedMedia.vaultId] = count
+                                if (count >= CIRCUIT_BREAKER_THRESHOLD) {
+                                    val openUntil = System.currentTimeMillis() + CIRCUIT_OPEN_DURATION_MS
+                                    circuitOpenUntil[updatedMedia.vaultId] = openUntil
+                                    AppLogger.w("Circuit opened for vault ${updatedMedia.vaultId} after $count consecutive slow-downs — pausing for 10min")
+                                }
+                            }
                             failedCount++
                         }
                     } catch (ioe: IOException) {
@@ -239,6 +268,9 @@ class UploadService : JobService() {
 
                     if (!mKeepUploading) break
                 }
+                // If every item in this batch was blocked by the circuit breaker, stop the
+                // session rather than spinning. The job will reschedule on next network event.
+                if (!batchHadWork) break
             }
 
             AppLogger.i("Uploads completed")
@@ -263,7 +295,7 @@ class UploadService : JobService() {
     }
 
     @Throws(IOException::class)
-    private suspend fun upload(media: Evidence): Boolean {
+    private suspend fun upload(media: Evidence): Pair<Boolean, Boolean> {
         val updatedMedia = media  // status already set to UPLOADING by the caller
         AppLogger.i("${updatedMedia.id} - media status changed to uploading")
 
@@ -289,13 +321,13 @@ class UploadService : JobService() {
                 progress = -1,
                 isUploaded = false
             )
-            return false
+            return Pair(false, false)
         }
 
         // Final check: if it was deleted from DB, don't start the upload
         if (mediaRepository.getEvidence(updatedMedia.id) == null) {
             AppLogger.i("Media ${updatedMedia.id} was deleted from database, skipping upload")
-            return false
+            return Pair(false, false)
         }
 
         val vault = spaceRepository.getSpaceById(updatedMedia.vaultId)
@@ -306,12 +338,13 @@ class UploadService : JobService() {
         }
 
         val success = conduit.upload()
+        val wasSlowDown = conduit.wasSlowDown
 
         synchronized(mConduits) {
             mConduits.remove(conduit)
         }
 
-        return success
+        return Pair(success, wasSlowDown)
     }
 
     private fun cancelConduitForMedia(mediaId: Long) {
