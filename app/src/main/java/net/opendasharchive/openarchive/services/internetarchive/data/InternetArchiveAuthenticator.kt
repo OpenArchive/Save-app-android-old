@@ -26,35 +26,39 @@ class InternetArchiveAuthenticator(
             return Result.failure(IllegalArgumentException("Invalid credentials type"))
         }
 
-        val authDataResult = withContext(Dispatchers.IO) {
-            SaveClient.get(context).enqueueResult(
-                Request.Builder()
-                    .url(LOGIN_URI)
-                    .post(
-                        FormBody.Builder()
-                            .add("email", credentials.email)
-                            .add("password", credentials.pass).build()
-                    )
-                    .build()
-            ) { response ->
-                val body = response.body?.string() ?: return@enqueueResult Result.failure(Exception("Empty response body"))
-                val data = json.decodeFromString<InternetArchiveLoginResponse>(body)
+        val authDataResult = try {
+            withContext(Dispatchers.IO) {
+                SaveClient.get(context).enqueueResult(
+                    Request.Builder()
+                        .url(LOGIN_URI)
+                        .post(
+                            FormBody.Builder()
+                                .add("email", credentials.email)
+                                .add("password", credentials.pass).build()
+                        )
+                        .build()
+                ) { response ->
+                    val body = response.body?.string() ?: return@enqueueResult Result.failure(Exception("Empty response body"))
+                    val data = json.decodeFromString<InternetArchiveLoginResponse>(body)
 
-                if (!data.success) {
-                    return@enqueueResult Result.failure<LoginIntermediateData>(IllegalArgumentException(data.values.reason ?: "Unknown error"))
+                    if (!data.success) {
+                        return@enqueueResult Result.failure<LoginIntermediateData>(IllegalArgumentException(data.values.reason ?: "Unknown error"))
+                    }
+
+                    val auth = data.values.s3 ?: return@enqueueResult Result.failure<LoginIntermediateData>(Exception("S3 keys missing in response"))
+
+                    Result.success(
+                        LoginIntermediateData(
+                            access = auth.access,
+                            secret = auth.secret,
+                            screenName = data.values.screenname ?: "",
+                            email = data.values.email ?: ""
+                        )
+                    )
                 }
-
-                val auth = data.values.s3 ?: return@enqueueResult Result.failure<LoginIntermediateData>(Exception("S3 keys missing in response"))
-
-                Result.success(
-                    LoginIntermediateData(
-                        access = auth.access,
-                        secret = auth.secret,
-                        screenName = data.values.screenname ?: "",
-                        email = data.values.email ?: ""
-                    )
-                )
             }
+        } catch (e: Exception) {
+            return Result.failure(e)
         }
 
         return authDataResult.fold(
@@ -98,18 +102,22 @@ class InternetArchiveAuthenticator(
     }
 
     private suspend fun testConnectionInternal(access: String, secret: String): Result<Unit> = withContext(Dispatchers.IO) {
-        SaveClient.get(context).enqueueResult(
-            Request.Builder()
-                .url(ARCHIVE_API_ENDPOINT)
-                .method("GET", null)
-                .addHeader("Authorization", "LOW $access:$secret")
-                .build()
-        ) { response ->
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(UnauthenticatedException())
+        try {
+            SaveClient.get(context).enqueueResult(
+                Request.Builder()
+                    .url(ARCHIVE_API_ENDPOINT)
+                    .method("GET", null)
+                    .addHeader("Authorization", "LOW $access:$secret")
+                    .build()
+            ) { response ->
+                if (response.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(UnauthenticatedException())
+                }
             }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

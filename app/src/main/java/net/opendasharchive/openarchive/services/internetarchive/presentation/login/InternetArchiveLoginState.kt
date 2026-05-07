@@ -1,6 +1,14 @@
 package net.opendasharchive.openarchive.services.internetarchive.presentation.login
 
 import androidx.compose.runtime.Immutable
+import net.opendasharchive.openarchive.R
+
+enum class LoginErrorType(val stringRes: Int) {
+    INVALID_CREDENTIALS(R.string.error_incorrect_email_or_password),
+    NETWORK_TIMEOUT(R.string.error_network_timeout),
+    NETWORK_UNAVAILABLE(R.string.error_network_unavailable),
+    TOR_NOT_READY(R.string.error_tor_not_ready),
+}
 
 @Immutable
 data class InternetArchiveLoginState(
@@ -8,7 +16,7 @@ data class InternetArchiveLoginState(
     val password: String = "",
     val isUsernameError: Boolean = false,
     val isPasswordError: Boolean = false,
-    val isLoginError: Boolean = false,
+    val loginErrorType: LoginErrorType? = null,
     val isBusy: Boolean = false,
     val isValid: Boolean = false,
 )

@@ -36,6 +36,9 @@
     <string name="tor_status_verified">Connected, verified.\nExit: %1$s</string>
     <string name="tor_status_verified_with_country">Connected, verified.\nExit: %1$s - %2$s</string>
     <string name="tor_status_error">Tor error: %1$s</string>
+    <string name="error_tor_not_ready">Tor is not yet connected. Please wait for Tor to finish connecting and try again.</string>
+    <string name="error_network_timeout">Connection timed out. Please check your network and try again.</string>
+    <string name="error_network_unavailable">Network error. Please check your connection and try again.</string>
     <string name="tor_notification_permission_title">Notification Permission</string>
     <string name="tor_notification_permission_message">To show Tor connection status in your notification bar, Save needs notification permission. You can still use Tor without this permission.</string>
 

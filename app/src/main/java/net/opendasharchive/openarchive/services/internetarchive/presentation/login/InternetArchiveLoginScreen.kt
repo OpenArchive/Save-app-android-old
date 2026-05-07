@@ -162,12 +162,12 @@ private fun InternetArchiveLoginContent(
             horizontalArrangement = Arrangement.Start
         ) {
             AnimatedVisibility(
-                visible = state.isLoginError,
+                visible = state.loginErrorType != null,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
                 Text(
-                    text = stringResource(R.string.error_incorrect_email_or_password),
+                    text = state.loginErrorType?.let { stringResource(it.stringRes) } ?: "",
                     color = MaterialTheme.colorScheme.error
                 )
             }
@@ -275,7 +275,7 @@ private fun InternetArchiveLoginPreview() {
             state = InternetArchiveLoginState(
                 username = "",
                 password = "",
-                isLoginError = true,
+                loginErrorType = LoginErrorType.INVALID_CREDENTIALS,
                 isPasswordError = true,
                 isUsernameError = true
             ),

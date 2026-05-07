@@ -15,8 +15,11 @@ import net.opendasharchive.openarchive.core.repositories.SpaceRepository
 import net.opendasharchive.openarchive.services.internetarchive.data.InternetArchiveAuthenticator
 import net.opendasharchive.openarchive.features.main.ui.AppRoute
 import net.opendasharchive.openarchive.features.main.ui.Navigator
+import net.opendasharchive.openarchive.services.TorNotReadyException
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.io.IOException
+import java.net.SocketTimeoutException
 
 class InternetArchiveLoginViewModel(
     private val route: AppRoute.IALoginRoute,
@@ -63,7 +66,7 @@ class InternetArchiveLoginViewModel(
             }
 
             is InternetArchiveLoginAction.ErrorClear -> {
-                _uiState.update { it.copy(isLoginError = false, isUsernameError = false, isPasswordError = false) }
+                _uiState.update { it.copy(isUsernameError = false, isPasswordError = false, loginErrorType = null) }
             }
         }
     }
@@ -87,7 +90,21 @@ class InternetArchiveLoginViewModel(
                     navigator.navigateTo(AppRoute.SetupLicenseRoute(spaceId = vaultId, spaceType = VaultType.INTERNET_ARCHIVE))
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(isLoginError = true, isUsernameError = true, isPasswordError = true, isBusy = false) }
+                    val errorType = when (error) {
+                        is TorNotReadyException -> LoginErrorType.TOR_NOT_READY
+                        is SocketTimeoutException -> LoginErrorType.NETWORK_TIMEOUT
+                        is IOException -> LoginErrorType.NETWORK_UNAVAILABLE
+                        else -> LoginErrorType.INVALID_CREDENTIALS
+                    }
+                    val isCredentialError = errorType == LoginErrorType.INVALID_CREDENTIALS
+                    _uiState.update {
+                        it.copy(
+                            loginErrorType = errorType,
+                            isUsernameError = isCredentialError,
+                            isPasswordError = isCredentialError,
+                            isBusy = false
+                        )
+                    }
                     _events.send(InternetArchiveLoginEvent.LoginError(error))
                 }
         }
