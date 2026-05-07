@@ -131,9 +131,9 @@ private fun WebDavContent(
                     onAction(WebDavLoginAction.ClearError)
                     onAction(WebDavLoginAction.UpdateServerUrl(it))
                 },
+                enabled = !state.isLoading,
                 placeholder = stringResource(R.string.enter_url),
                 isError = state.serverError != null,
-                isLoading = state.isLoading,
                 keyboardType = KeyboardType.Uri,
                 imeAction = ImeAction.Next,
                 onImeAction = {
@@ -166,9 +166,9 @@ private fun WebDavContent(
                     onAction(WebDavLoginAction.ClearError)
                     onAction(WebDavLoginAction.UpdateUsername(it))
                 },
+                enabled = !state.isLoading,
                 placeholder = stringResource(R.string.prompt_username),
                 isError = state.usernameError != null || state.isCredentialsError,
-                isLoading = state.isLoading,
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Next,
                 onImeAction = {
@@ -186,9 +186,9 @@ private fun WebDavContent(
                     onAction(WebDavLoginAction.ClearError)
                     onAction(WebDavLoginAction.UpdatePassword(it))
                 },
+                enabled = !state.isLoading,
                 placeholder = stringResource(R.string.prompt_password),
                 isError = state.passwordError != null || state.isCredentialsError,
-                isLoading = state.isLoading,
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done,
                 onImeAction = {
@@ -278,17 +278,6 @@ private fun WebDavContent(
         }
 
 
-        // Loading overlay
-        if (state.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(colorResource(R.color.transparent_loading_overlay)),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        }
     }
 }
 

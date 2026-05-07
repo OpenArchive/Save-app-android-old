@@ -3,6 +3,7 @@ package net.opendasharchive.openarchive.features.main
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import kotlinx.coroutines.Job
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -43,6 +44,7 @@ class HomeActivity : BaseComposeActivity(), AndroidScopeComponent {
 
     /** URIs received via share sheet while the app was locked — delivered after authentication. */
     private var pendingSharedUris: List<Uri>? = null
+    private var pendingUrisFlushJob: Job? = null
 
     /**
      * True only on the very first onStart after a fresh launch (not config-change recreation).
@@ -178,6 +180,21 @@ class HomeActivity : BaseComposeActivity(), AndroidScopeComponent {
                 if (passcodeGate.locked.value) {
                     AppLogger.d("SHARE_DEBUG: app locked, storing pending uris")
                     pendingSharedUris = uris
+                    // Cancel any previous flush job and start a new one waiting for unlock.
+                    // The isFirstStart coroutine in onStart only runs once — this handles
+                    // share intents that arrive after the first start (e.g. via onNewIntent).
+                    pendingUrisFlushJob?.cancel()
+                    pendingUrisFlushJob = lifecycleScope.launch {
+                        passcodeGate.locked
+                            .filter { !it }
+                            .take(1)
+                            .collect {
+                                pendingSharedUris?.let { pending ->
+                                    sharedImportState.setPendingUris(pending)
+                                    pendingSharedUris = null
+                                }
+                            }
+                    }
                 } else {
                     AppLogger.d("SHARE_DEBUG: calling sharedImportState.setPendingUris")
                     sharedImportState.setPendingUris(uris)

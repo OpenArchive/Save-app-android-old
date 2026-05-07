@@ -241,6 +241,7 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
 
     private suspend fun uploadMetadata(base: HttpUrl, path: List<String>, fileName: String) {
         AppLogger.i("Uploading metadata...")
+        AppLogger.d("[C2PA_DEBUG] uploadMetadata: evidenceId=${mEvidence.id} hash=${mEvidence.mediaHashString}")
         val metadata = getMetadata()
 
         if (mCancelled) throw Exception("Cancelled")

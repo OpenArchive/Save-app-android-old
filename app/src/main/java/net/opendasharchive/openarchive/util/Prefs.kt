@@ -19,6 +19,7 @@ object Prefs {
     const val THEME = "theme"
     private const val CURRENT_SPACE_ID = "current_space"
     private const val CURRENT_HOME_PAGE = "current_home_page"
+    private const val LAST_SELECTED_PROJECT_ID = "last_selected_project_id"
     private const val FLAG_HINT_SHOWN = "ft.flag"
     private const val BATCH_HINT_SHOWN = "ft.batch"
     private const val ADD_MEDIA_HINT = "ft.addMedia"
@@ -129,6 +130,12 @@ object Prefs {
         get() = prefs?.getInt(CURRENT_HOME_PAGE, 0) ?: 0
         set(value) {
             prefs?.edit()?.putInt(CURRENT_HOME_PAGE, value)?.apply()
+        }
+
+    var lastSelectedProjectId: Long
+        get() = prefs?.getLong(LAST_SELECTED_PROJECT_ID, -1L) ?: -1L
+        set(value) {
+            prefs?.edit()?.putLong(LAST_SELECTED_PROJECT_ID, value)?.apply()
         }
 
     var flagHintShown: Boolean

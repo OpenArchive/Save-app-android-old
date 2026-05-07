@@ -17,6 +17,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import net.opendasharchive.openarchive.R
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.pager.HorizontalPager
@@ -56,6 +57,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.core.navigation.NavigationResultKeys
@@ -297,7 +299,9 @@ fun HomeScreen(
                 selectedSpace = null
                 viewModel.onAction(HomeAction.DismissSharedImportPicker)
             },
-            sheetState = sheetState
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
         ) {
             Column(modifier = Modifier.padding(bottom = 24.dp)) {
                 if (selectedSpace == null) {
@@ -305,6 +309,7 @@ fun HomeScreen(
                     Text(
                         text = "Select server",
                         style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                     )
                     HorizontalDivider()
@@ -312,6 +317,7 @@ fun HomeScreen(
                         Text(
                             text = "No servers configured. Add a server first.",
                             style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(16.dp)
                         )
                     } else {
@@ -327,13 +333,14 @@ fun HomeScreen(
                                     Icon(
                                         painter = painterResource(R.drawable.ic_folder),
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
+                                        tint = MaterialTheme.colorScheme.tertiary
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
                                         Text(
                                             text = space.friendlyName,
-                                            style = MaterialTheme.typography.bodyLarge
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
                                             text = space.type.friendlyName,
@@ -356,12 +363,14 @@ fun HomeScreen(
                         IconButton(onClick = { selectedSpace = null }) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_arrow_back),
-                                contentDescription = "Back"
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Text(
                             text = selectedSpace!!.friendlyName,
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     HorizontalDivider()
@@ -373,13 +382,14 @@ fun HomeScreen(
                             ) {
                                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text("Loading folders…", style = MaterialTheme.typography.bodyMedium)
+                                Text("Loading folders…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                         spaceFolders.isEmpty() -> {
                             Text(
                                 text = "No folders found in this server.",
                                 style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(16.dp)
                             )
                         }
@@ -428,12 +438,13 @@ fun HomeScreen(
                                         Icon(
                                             painter = painterResource(R.drawable.ic_folder),
                                             contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary
+                                            tint = MaterialTheme.colorScheme.tertiary
                                         )
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Text(
                                             text = project.description ?: "Unnamed folder",
-                                            style = MaterialTheme.typography.bodyLarge
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
@@ -449,7 +460,10 @@ fun HomeScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 ) {
                     Text("Cancel")
                 }
@@ -499,10 +513,13 @@ fun HomeScreenContent(
         scope.launch { drawerState.close() }
     }
 
-    // Sync pager → HomeViewModel ONLY when settled
+    // Sync pager → HomeViewModel ONLY when settled.
+    // drop(1) skips the initial emission (initialPage=0) that would race with
+    // ViewModel-driven scroll to the persisted folder index.
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.settledPage }
             .distinctUntilChanged()
+            .drop(1)
             .collect { settledPage ->
                 onAction(HomeAction.UpdatePager(settledPage))
             }
@@ -744,7 +761,9 @@ fun HomeScreenContent(
             onDismissRequest = {
                 onAction(HomeAction.HideUploadManager)
             },
-            sheetState = sheetState
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
         ) {
             UploadManagerScreen(
                 viewModel = uploadManagerViewModel,

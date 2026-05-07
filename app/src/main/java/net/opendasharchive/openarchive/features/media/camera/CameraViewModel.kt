@@ -116,8 +116,11 @@ class CameraViewModel : ViewModel() {
                     object : ImageCapture.OnImageSavedCallback {
                         override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                             viewModelScope.launch(Dispatchers.IO) {
+                                AppLogger.d("[C2PA_DEBUG] onImageSaved: applyProvenance=$applyProvenance file=${outputFile.absolutePath}")
                                 if (applyProvenance) {
                                     writeProvenanceForPhoto(context, outputFile)
+                                } else {
+                                    AppLogger.w("[C2PA_DEBUG] applyProvenance=false — skipping C2PA for ${outputFile.name}")
                                 }
 
                                 val uri = FileProvider.getUriForFile(
@@ -244,16 +247,22 @@ class CameraViewModel : ViewModel() {
 
     private suspend fun writeProvenanceForPhoto(context: Context, file: File) {
         try {
+            AppLogger.d("[C2PA_DEBUG] writeProvenanceForPhoto: file=${file.absolutePath} exists=${file.exists()} size=${file.length()}")
             val metadata = MetadataCollector.collectMetadata(context)
             MetadataCollector.writeExifMetadata(file, metadata)
+            AppLogger.d("[C2PA_DEBUG] EXIF written, file size after EXIF: ${file.length()}")
             val hash = sha256(file)
+            AppLogger.d("[C2PA_DEBUG] SHA-256 of original capture file: $hash")
             if (hash.isNotEmpty()) {
-                C2paHelper.generateManifest(
+                val manifest = C2paHelper.generateManifest(
                     context   = context,
                     mediaFile = file,
                     mediaHash = hash,
                     metadata  = buildProofMetadata(context, file, hash, metadata)
                 )
+                AppLogger.d("[C2PA_DEBUG] Manifest generated: ${manifest?.absolutePath}, exists=${manifest?.exists()}")
+            } else {
+                AppLogger.w("[C2PA_DEBUG] Empty hash — manifest NOT generated for ${file.name}")
             }
         } catch (e: Exception) {
             AppLogger.e("Provenance write failed for ${file.name}", e)
@@ -262,15 +271,20 @@ class CameraViewModel : ViewModel() {
 
     private suspend fun writeProvenanceForVideo(context: Context, file: File) {
         try {
+            AppLogger.d("[C2PA_DEBUG] writeProvenanceForVideo: file=${file.absolutePath} exists=${file.exists()} size=${file.length()}")
             val metadata = MetadataCollector.collectMetadata(context)
             val hash = sha256(file)
+            AppLogger.d("[C2PA_DEBUG] SHA-256 of original capture file (video): $hash")
             if (hash.isNotEmpty()) {
-                C2paHelper.generateManifest(
+                val manifest = C2paHelper.generateManifest(
                     context   = context,
                     mediaFile = file,
                     mediaHash = hash,
                     metadata  = buildProofMetadata(context, file, hash, metadata)
                 )
+                AppLogger.d("[C2PA_DEBUG] Manifest generated: ${manifest?.absolutePath}, exists=${manifest?.exists()}")
+            } else {
+                AppLogger.w("[C2PA_DEBUG] Empty hash — manifest NOT generated for ${file.name}")
             }
         } catch (e: Exception) {
             AppLogger.e("Provenance write failed for ${file.name}", e)

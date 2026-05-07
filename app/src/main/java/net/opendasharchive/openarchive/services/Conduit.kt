@@ -133,13 +133,19 @@ abstract class Conduit(
         }
 
         try {
+            AppLogger.d("[C2PA_DEBUG] getC2paManifest: evidenceHash=${mEvidence.mediaHashString} evidenceFile=${mEvidence.originalFilePath}")
             val manifestFile = C2paHelper.getC2paFile(mContext, mEvidence.mediaHashString)
+            AppLogger.d("[C2PA_DEBUG] Looking for manifest at: ${manifestFile.absolutePath}")
 
             if (manifestFile.exists()) {
                 AppLogger.d("[C2PA] Manifest found: ${manifestFile.absolutePath}")
                 return manifestFile
             } else {
                 AppLogger.w("[C2PA] Manifest not found for ${mEvidence.mediaHashString}")
+                // List existing manifests to help diagnose hash mismatch
+                val c2paDir = manifestFile.parentFile
+                val existing = c2paDir?.listFiles()?.map { it.name } ?: emptyList()
+                AppLogger.d("[C2PA_DEBUG] Existing manifests: $existing")
                 return null
             }
         } catch (exception: Exception) {

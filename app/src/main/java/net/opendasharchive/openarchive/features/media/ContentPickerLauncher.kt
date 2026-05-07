@@ -21,6 +21,7 @@ import net.opendasharchive.openarchive.core.domain.Evidence
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.core.repositories.ProjectRepository
 import net.opendasharchive.openarchive.core.repositories.MediaRepository
+import net.opendasharchive.openarchive.core.navigation.NavigationResultKeys
 import net.opendasharchive.openarchive.features.main.ui.AppRoute
 import net.opendasharchive.openarchive.features.main.ui.Navigator
 import org.koin.compose.koinInject
@@ -41,6 +42,8 @@ fun rememberContentPickerLaunchers(
     navigator: Navigator? = null,
     useCustomCamera: Boolean = true,
     projectProvider: () -> Archive?,
+    vaultType: net.opendasharchive.openarchive.core.domain.VaultType? = null,
+    cameraResultKey: String = NavigationResultKeys.CAMERA_CAPTURE_RESULT,
     onError: (String) -> Unit,
     onMediaImported: (List<Evidence>) -> Unit,
 ): ContentPickerLaunchers {
@@ -209,7 +212,7 @@ fun rememberContentPickerLaunchers(
                     showGridToggle = true,
                     showCameraSwitch = true
                 )
-                navigator.navigateTo(AppRoute.CameraRoute(projectId = archive.id, config = cameraConfig))
+                navigator.navigateTo(AppRoute.CameraRoute(projectId = archive.id, config = cameraConfig, vaultType = vaultType, resultKey = cameraResultKey))
             } else {
                 errorMessage = "No folder selected"
             }

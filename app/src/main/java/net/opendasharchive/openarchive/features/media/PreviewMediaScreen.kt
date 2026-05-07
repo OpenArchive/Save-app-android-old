@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,11 +84,20 @@ fun PreviewMediaScreen(
     val mediaRepository: MediaRepository = koinInject()
     val spaceRepository: SpaceRepository = koinInject()
 
+    // Use a dedicated result key so HomeScreen's ResultEffect never competes for
+    // results from cameras launched within PreviewMediaScreen. The shared Channel in
+    // ResultEventBus is single-consumer; using the same key caused a race where
+    // HomeScreen won, imported the media, and navigated to a fresh PreviewMediaScreen
+    // (vaultType=null) before the ViewModel loaded the vault — breaking C2PA.
+    val previewCameraResultKey = NavigationResultKeys.CAMERA_CAPTURE_RESULT_FROM_PREVIEW
+
     val pickerLaunchers = rememberContentPickerLaunchers(
         navigator = viewModel.getNavigator(),
         projectProvider = {
             state.selectedProject
         },
+        vaultType = state.vaultType,
+        cameraResultKey = previewCameraResultKey,
         onError = { error ->
             AppLogger.e("Error in PreviewMediaScreen: $error")
 
@@ -98,20 +108,24 @@ fun PreviewMediaScreen(
         }
     )
 
+    // rememberUpdatedState ensures the coroutine always calls the latest pickerLaunchers,
+    // not the one captured at first composition (when vaultType may still be null).
+    val currentPickerLaunchers by rememberUpdatedState(pickerLaunchers)
+
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
             when (event) {
 
                 is PreviewMediaEvent.LaunchPicker -> {
-                    pickerLaunchers.launch(event.type)
+                    currentPickerLaunchers.launch(event.type)
                 }
 
             }
         }
     }
 
-    // Intercept camera capture results so HomeScreen doesn't receive them and navigate to a new PreviewMediaScreen
-    ResultEffect<CameraCaptureResult>(resultKey = NavigationResultKeys.CAMERA_CAPTURE_RESULT) { result ->
+    // Listen on the preview-specific key — HomeScreen never sees these results.
+    ResultEffect<CameraCaptureResult>(resultKey = previewCameraResultKey) { result ->
         scope.launch(Dispatchers.IO) {
             val archive = projectRepository.getProject(result.projectId)
             if (archive != null && result.capturedUris.isNotEmpty()) {

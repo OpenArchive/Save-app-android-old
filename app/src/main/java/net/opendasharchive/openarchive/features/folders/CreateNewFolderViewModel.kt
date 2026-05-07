@@ -63,7 +63,7 @@ class CreateNewFolderViewModel(
 ) : ViewModel() {
 
     companion object {
-        private val INVALID_CHARS = Regex("[\\\\/*\\s]")
+        private val INVALID_CHARS = Regex("[\\\\/*]")
     }
 
     private val _uiState = MutableStateFlow(CreateNewFolderState())

@@ -128,9 +128,9 @@ private fun InternetArchiveLoginContent(
                 onAction(InternetArchiveLoginAction.ErrorClear)
                 onAction(InternetArchiveLoginAction.UpdateUsername(it))
             },
+            enabled = !state.isBusy,
             placeholder = stringResource(R.string.prompt_email),
             isError = state.isUsernameError,
-            isLoading = state.isBusy,
             keyboardType = KeyboardType.Email,
             imeAction = ImeAction.Next,
             onImeAction = {
@@ -146,9 +146,9 @@ private fun InternetArchiveLoginContent(
                 onAction(InternetArchiveLoginAction.ErrorClear)
                 onAction(InternetArchiveLoginAction.UpdatePassword(it))
             },
+            enabled = !state.isBusy,
             placeholder = stringResource(R.string.prompt_password),
             isError = state.isPasswordError,
-            isLoading = state.isBusy,
             keyboardType = KeyboardType.Password,
             imeAction = ImeAction.Done,
             onImeAction = {

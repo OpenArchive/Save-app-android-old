@@ -94,7 +94,8 @@ fun CameraScreen(
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val cameraState by viewModel.state.collectAsState()
     val applyProvenance = vaultType == VaultType.PRIVATE_SERVER && Prefs.useC2pa
-    
+    AppLogger.d("[C2PA_DEBUG] CameraScreen: vaultType=$vaultType useC2pa=${Prefs.useC2pa} applyProvenance=$applyProvenance")
+
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var videoCapture by remember { mutableStateOf<VideoCapture<Recorder>?>(null) }
     var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }

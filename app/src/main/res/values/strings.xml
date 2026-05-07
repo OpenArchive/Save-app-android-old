@@ -169,7 +169,7 @@
     <string name="action_archive_project">Archive Project</string>
     <string name="action_unarchive_project">Unarchive Project</string>
     <string name="new_folder">New Folder</string>
-    <string name="please_do_not_include_special_characters_in_the_name">Please do not include special characters in the name.</string>
+    <string name="please_do_not_include_special_characters_in_the_name">Folder name cannot contain \\ / or * characters.</string>
     <string name="are_you_sure_you_want_to_remove_this_server_from_the_app">Are you sure you want to remove this server from the app?</string>
     <string name="folder_name_already_exists">Folder name already exists.</string>
     <string name="dropbox" translatable="false">Dropbox</string>

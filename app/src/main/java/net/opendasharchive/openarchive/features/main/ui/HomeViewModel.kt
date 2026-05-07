@@ -44,7 +44,9 @@ class HomeViewModel(
     private val sharedImportState: SharedImportState
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HomeState())
+    private val _uiState = MutableStateFlow(
+        HomeState(selectedProjectId = Prefs.lastSelectedProjectId.takeIf { it > 0 })
+    )
     val uiState: StateFlow<HomeState> = _uiState.asStateFlow()
 
     private val _uiEvent = MutableSharedFlow<HomeEvent>()
@@ -79,9 +81,14 @@ class HomeViewModel(
             }
         }.onEach { data ->
             _uiState.update { state ->
-                val selectedProjectId =
-                    state.selectedProjectId?.takeIf { id -> data.projects.any { it.id == id } }
-                        ?: data.projects.firstOrNull()?.id
+                // If projects haven't loaded yet, preserve the current selection rather
+                // than resetting — avoids clobbering the persisted ID on the first
+                // emission of an empty list (common on first compose after passcode unlock).
+                val selectedProjectId = when {
+                    data.projects.isEmpty() -> state.selectedProjectId
+                    data.projects.any { it.id == state.selectedProjectId } -> state.selectedProjectId
+                    else -> data.projects.firstOrNull()?.id
+                }
 
                 val currentSettingsIndex = settingsIndex(state.projects.size)
                 val wasOnSettings = state.pagerIndex == currentSettingsIndex
@@ -91,6 +98,8 @@ class HomeViewModel(
                 } else {
                     resolvePagerIndexForProject(selectedProjectId, data.projects)
                 }
+
+                if (selectedProjectId != null) Prefs.lastSelectedProjectId = selectedProjectId
 
                 state.copy(
                     spaces = data.spaces,
@@ -227,6 +236,7 @@ class HomeViewModel(
     }
 
     private fun selectProject(projectId: Long?) {
+        if (projectId != null) Prefs.lastSelectedProjectId = projectId
         _uiState.update {
             it.copy(
                 selectedProjectId = projectId,
@@ -248,7 +258,10 @@ class HomeViewModel(
             val newSelectedProjectId =
                 if (isMediaPage) state.projects.getOrNull(page)?.id else state.selectedProjectId
             val lastMediaIndex = if (isMediaPage) page else state.lastMediaIndex
-            if (isMediaPage) Prefs.currentHomePage = page
+            if (isMediaPage) {
+                Prefs.currentHomePage = page
+                if (newSelectedProjectId != null) Prefs.lastSelectedProjectId = newSelectedProjectId
+            }
 
             val updated = state.copy(
                 pagerIndex = page,
