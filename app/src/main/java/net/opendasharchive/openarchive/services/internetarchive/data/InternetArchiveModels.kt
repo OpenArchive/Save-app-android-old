@@ -7,7 +7,9 @@ import kotlinx.serialization.Serializable
 data class InternetArchiveLoginRequest(
     val email: String,
     val password: String
-)
+) {
+    override fun toString(): String = "InternetArchiveLoginRequest(email=$email)"
+}
 
 @Serializable
 data class InternetArchiveLoginResponse(
@@ -28,7 +30,9 @@ data class InternetArchiveLoginResponse(
     data class S3(
         val access: String,
         val secret: String
-    )
+    ) {
+        override fun toString(): String = "S3(access=***)"
+    }
 }
 
 class UnauthenticatedException : Exception("Unauthenticated")

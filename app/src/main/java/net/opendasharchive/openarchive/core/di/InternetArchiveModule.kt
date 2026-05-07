@@ -8,7 +8,7 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 val internetArchiveModule = module {
-    single { InternetArchiveAuthenticator(get(), get()) }
+    single { InternetArchiveAuthenticator(get(), get(), get()) }
     single { InternetArchiveRepository() }
 
     viewModelOf(::InternetArchiveDetailsViewModel)

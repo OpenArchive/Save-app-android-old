@@ -12,6 +12,7 @@ import net.opendasharchive.openarchive.core.domain.VaultAuth
 import net.opendasharchive.openarchive.core.domain.Vault
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.services.Conduit
+import net.opendasharchive.openarchive.services.CredentialsExpiredException
 import net.opendasharchive.openarchive.services.IaSlowDownException
 import net.opendasharchive.openarchive.services.SaveClient
 import okhttp3.Call
@@ -28,9 +29,13 @@ import androidx.core.net.toUri
 import net.opendasharchive.openarchive.services.common.network.RequestBodyUtil
 import net.opendasharchive.openarchive.services.common.network.RequestListener
 import net.opendasharchive.openarchive.services.common.network.createListener
+import net.opendasharchive.openarchive.BuildConfig
 import net.opendasharchive.openarchive.util.Utility
+import org.koin.core.component.inject
 
 class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, context) {
+
+    private val authenticator: InternetArchiveAuthenticator by inject()
 
     @Volatile
     private var currentCall: Call? = null
@@ -87,6 +92,19 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                 mEvidence = mEvidence.copy(serverUrl = newIdentifier)
             }
 
+            // Upload metadata FIRST — mirrors iOS sequence. meta.json is small so the IA item
+            // is created quickly; the large content file then lands into an already-existing
+            // item rather than simultaneously creating a new item and streaming a large file.
+            // IA throttles new-item creation more aggressively than appends, so this ordering
+            // reduces the frequency of 503 Slow Down responses on content upload.
+            var metadataUploaded = false
+            try {
+                client.uploadMetaData(metaJson, fileName, auth)
+                metadataUploaded = true
+            } catch (e: Throwable) {
+                AppLogger.e("Failed to upload meta.json for $fileName (non-fatal, will retry after content)", e)
+            }
+
             // Only check IA for an existing file on retries — a freshly-generated identifier
             // can't already have content, so the metadata round-trip is wasted on first attempts.
             val alreadyUploaded = isRetry && client.isAlreadyUploaded(fileName, auth)
@@ -94,15 +112,28 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
             if (alreadyUploaded) {
                 AppLogger.i("IA: $fileName already uploaded to ${mEvidence.serverUrl}, skipping content upload")
             } else {
-                // Upload content. execute() already handles 503 Slow Down with exponential backoff,
-                // so no pre-flight capacity check is needed here.
+                // Upload content. execute() handles 502/503/504 with exponential backoff.
+                // On 401 (expired S3 keys), we auto-revalidate once using the stored login
+                // password and retry — no user intervention needed.
+                var currentAuth = auth
+                var credentialRefreshed = false
                 var ioAttempt = 0
                 val maxIoRetries = 3
                 while (true) {
                     if (mCancelled) return false
                     try {
-                        client.uploadContent(fileName, mimeType, vault, auth)
+                        client.uploadContent(fileName, mimeType, vault, currentAuth)
                         break
+                    } catch (e: CredentialsExpiredException) {
+                        if (credentialRefreshed) throw e  // already retried once, give up
+                        AppLogger.w("IA S3 keys expired for vault ${mEvidence.vaultId}, attempting silent reauth")
+                        val freshAuth = authenticator.reauthenticate(mEvidence.vaultId).getOrElse {
+                            AppLogger.e("Silent reauth failed: ${it.message}")
+                            throw e
+                        }
+                        currentAuth = freshAuth
+                        credentialRefreshed = true
+                        // loop continues with fresh keys — no delay needed
                     } catch (e: IOException) {
                         // Includes SocketTimeoutException — jobFailed re-queues timeouts automatically.
                         ioAttempt++
@@ -116,11 +147,14 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                 }
             }
 
-            // upload metadata — non-fatal if it fails
-            try {
-                client.uploadMetaData(metaJson, fileName, auth)
-            } catch (e: Throwable) {
-                AppLogger.e("Failed to upload meta.json for $fileName", e)
+            // If pre-content metadata upload failed, retry now — the content upload
+            // has created the IA item/bucket, so a transient server rejection should resolve.
+            if (!metadataUploaded) {
+                try {
+                    client.uploadMetaData(metaJson, fileName, auth)
+                } catch (e: Throwable) {
+                    AppLogger.e("Post-content meta.json retry also failed for $fileName: ${e.message}")
+                }
             }
 
             jobSucceeded()
@@ -175,11 +209,18 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
 
     @Throws(IOException::class)
     private suspend fun OkHttpClient.uploadMetaData(content: String, fileName: String, auth: VaultAuth) {
+        // Encode to bytes first so Content-Length is byte count (not char count).
+        // content.length is UTF-16 char units; non-ASCII chars (e.g. accented titles,
+        // CJK locations) produce more UTF-8 bytes → OkHttp FixedLengthSink would see
+        // fewer bytes than declared and throw ProtocolException: unexpected end of stream.
+        // No progress listener — metadata is small, no meaningful progress to report,
+        // and a cancellable listener that exits early also triggers the same ProtocolException.
+        val bytes = content.toByteArray(Charsets.UTF_8)
         val requestBody = RequestBodyUtil.create(
             textMediaType,
-            content.byteInputStream(),
-            content.length.toLong(),
-            createListener(cancellable = { !mCancelled })
+            bytes.inputStream(),
+            bytes.size.toLong(),
+            null
         )
 
         val url = "${ARCHIVE_API_ENDPOINT}/${mEvidence.serverUrl}/$fileName.meta.json"
@@ -217,14 +258,15 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
     private fun mainHeader(vault: Vault, auth: VaultAuth): Headers {
         val builder = Headers.Builder()
             .add("Accept", "*/*")
+            .add("User-Agent", "SaveApp/${BuildConfig.VERSION_NAME} (Android ${android.os.Build.VERSION.RELEASE})")
             .add("x-archive-auto-make-bucket", "1")
             .add("x-amz-auto-make-bucket", "1")
             .add("x-archive-interactive-priority", "1")
             .add("x-archive-meta-language", "eng") // FIXME set based on locale or selected.
-            // Defer IA's derive pipeline until all files in the item are uploaded.
-            // Without this, IA starts transcoding/OCR immediately on each PUT, which
-            // competes for server resources and slows down the upload ACK for large files.
-            .add("x-archive-queue-derive", "0")
+            // x-archive-queue-derive intentionally NOT set on content upload — mirrors iOS
+            // behaviour. The metadata upload (first) already sets it to defer derive.
+            // Setting it on the content upload (last file) puts the item in a lower-priority
+            // batch derive queue on IA's side, which causes more 503 Slow Down responses.
             .add("Authorization", "LOW " + auth.username + ":" + auth.secret)
 
         val author = mEvidence.author
@@ -284,7 +326,10 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
     /// headers for meta-data and proof mode
     private fun metadataHeader(auth: VaultAuth): Headers {
         return Headers.Builder()
+            .add("User-Agent", "SaveApp/${BuildConfig.VERSION_NAME} (Android ${android.os.Build.VERSION.RELEASE})")
             .add("x-amz-auto-make-bucket", "1")
+            .add("x-archive-auto-make-bucket", "1")
+            .add("x-archive-queue-derive", "0")
             .add("x-archive-meta-language", "eng") // TODO: FIXME set based on locale or selected
             .add("Authorization", "LOW " + auth.username + ":" + auth.secret)
             .add("x-archive-meta-mediatype", "texts")
@@ -307,12 +352,30 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
             val code: Int
             val message: String
             val location: String?
+            val retryAfterMs: Long?
             try {
                 val response = withContext(Dispatchers.IO) { call.execute() }
                 code = response.code
                 message = response.message
                 location = response.header("Location")
+                // Retry-After is in seconds; convert to ms. IA typically sends 1–30.
+                retryAfterMs = response.header("Retry-After")?.toLongOrNull()?.let { it * 1_000L }
                 response.close()
+            } catch (e: java.net.ProtocolException) {
+                // Server closed the TCP connection while we were still writing the request body
+                // or closing it — common when the server sent a 503 and hung up before we
+                // finished. OkHttp pools that now-dead connection and reuses it on the next
+                // attempt, causing ProtocolException on the next body-close. Treat as transient
+                // and retry with backoff; the connection pool will discard the bad socket.
+                if (attempt < maxRetries - 1) {
+                    val jitterMs = (Math.random() * 500).toLong()
+                    val waitMs = delayMs + jitterMs
+                    AppLogger.w("IA protocol error (stale connection), retrying in ${waitMs / 1000}s (attempt ${attempt + 1}/$maxRetries): ${e.message}")
+                    delay(waitMs)
+                    delayMs = minOf(delayMs * 2, 20_000L)
+                    return@repeat
+                }
+                throw IOException("IA connection failed after $maxRetries attempts: ${e.message}", e)
             } finally {
                 currentCall = null
             }
@@ -326,17 +389,27 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                     activeRequest = activeRequest.newBuilder().url(location).build()
                     // No delay — redirect should be followed immediately
                 }
-                code == 503 && attempt < maxRetries - 1 -> {
+                // 401: S3 credentials expired or revoked. Not retryable.
+                code == 401 -> throw CredentialsExpiredException(
+                    "Internet Archive credentials have expired. Please remove and re-add your account."
+                )
+                // 502/503/504 are all transient server-side errors — retry with backoff.
+                // Honour IA's Retry-After hint when present; otherwise use exponential backoff.
+                code in setOf(502, 503, 504) && attempt < maxRetries - 1 -> {
                     val jitterMs = (Math.random() * 500).toLong()
-                    val waitMs = delayMs + jitterMs
-                    AppLogger.w("IA returned 503 Slow Down, retrying in ${waitMs / 1000}s (attempt ${attempt + 1}/$maxRetries)")
+                    val waitMs = if (retryAfterMs != null) {
+                        retryAfterMs + jitterMs
+                    } else {
+                        delayMs + jitterMs
+                    }
+                    AppLogger.w("IA returned $code, retrying in ${waitMs / 1000}s (attempt ${attempt + 1}/$maxRetries)")
                     delay(waitMs)
-                    delayMs = minOf(delayMs * 2, 20_000L)
+                    if (retryAfterMs == null) delayMs = minOf(delayMs * 2, 20_000L)
                 }
                 else -> throw RuntimeException("$code: $message")
             }
         }
-        throw IaSlowDownException("IA returned 503 Slow Down after $maxRetries attempts — re-queuing for later retry")
+        throw IaSlowDownException("IA returned 502/503/504 after $maxRetries attempts — re-queuing for later retry")
     }
 
     /**

@@ -191,6 +191,7 @@ class InternetArchiveDetailsViewModel(
         }
     }
 
+
     private fun updateLicense(license: String?) = viewModelScope.launch {
         vault = vault.copy(licenseUrl = license)
         spaceRepository.updateSpace(route.spaceId, vault)

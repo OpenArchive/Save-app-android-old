@@ -16,6 +16,7 @@ import net.opendasharchive.openarchive.services.internetarchive.data.InternetArc
 import net.opendasharchive.openarchive.features.main.ui.AppRoute
 import net.opendasharchive.openarchive.features.main.ui.Navigator
 import net.opendasharchive.openarchive.services.TorNotReadyException
+import net.opendasharchive.openarchive.services.internetarchive.data.UnauthenticatedException
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.IOException
@@ -84,8 +85,11 @@ class InternetArchiveLoginViewModel(
                 .onSuccess { vault ->
                     val vaultId = spaceRepository.addSpace(vault)
                     spaceRepository.setCurrentSpace(vaultId)
+                    // Store login password encrypted for silent re-authentication when S3 keys expire.
+                    spaceRepository.storeLoginPassword(vaultId, credentials.pass)
 
-                    _uiState.update { it.copy(isBusy = false) }
+                    // Clear credentials from UI state — no reason to hold plaintext in memory post-login.
+                    _uiState.update { it.copy(isBusy = false, password = "", username = "") }
 
                     navigator.navigateTo(AppRoute.SetupLicenseRoute(spaceId = vaultId, spaceType = VaultType.INTERNET_ARCHIVE))
                 }
@@ -93,8 +97,14 @@ class InternetArchiveLoginViewModel(
                     val errorType = when (error) {
                         is TorNotReadyException -> LoginErrorType.TOR_NOT_READY
                         is SocketTimeoutException -> LoginErrorType.NETWORK_TIMEOUT
-                        is IOException -> LoginErrorType.NETWORK_UNAVAILABLE
-                        else -> LoginErrorType.INVALID_CREDENTIALS
+                        is IOException -> if (error.message?.startsWith("IA server error 5") == true) {
+                            LoginErrorType.SERVER_ERROR
+                        } else {
+                            LoginErrorType.NETWORK_UNAVAILABLE
+                        }
+                        is UnauthenticatedException -> LoginErrorType.INVALID_CREDENTIALS
+                        is IllegalArgumentException -> LoginErrorType.INVALID_CREDENTIALS
+                        else -> LoginErrorType.SERVER_ERROR
                     }
                     val isCredentialError = errorType == LoginErrorType.INVALID_CREDENTIALS
                     _uiState.update {

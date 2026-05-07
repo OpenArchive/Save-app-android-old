@@ -29,6 +29,12 @@ class TorNotReadyException(message: String) : Exception(message)
 class IaSlowDownException(message: String) : Exception(message)
 
 /**
+ * Exception thrown when IA returns 401 during upload.
+ * S3 credentials have expired or been revoked — user must re-add their account.
+ */
+class CredentialsExpiredException(message: String) : Exception(message)
+
+/**
  * Factory for creating OkHttpClient instances with optional Tor proxy support.
  *
  * When Tor is enabled in preferences, the client will route all traffic through
@@ -99,13 +105,14 @@ object SaveClient : KoinComponent {
         password: String = "",
         isolateCircuit: Boolean = true,
         forceCloseConnection: Boolean = false,
-        allowHttp2: Boolean = true
+        allowHttp2: Boolean = true,
+        retryOnConnectionFailure: Boolean = false
     ): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .connectTimeout(60L, TimeUnit.SECONDS)
             .writeTimeout(60L, TimeUnit.SECONDS)
             .readTimeout(60L, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(false)
+            .retryOnConnectionFailure(retryOnConnectionFailure)
 
         if (forceCloseConnection) {
             builder.addInterceptor { chain ->

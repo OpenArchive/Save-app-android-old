@@ -121,7 +121,16 @@ class VaultRepositoryImpl(
         vaultDao.getById(id)?.let {
             vaultDao.delete(it)
             credentialStore.deleteSecret(id)
+            credentialStore.deleteLoginPassword(id)
             true
         } ?: false
+    }
+
+    override suspend fun storeLoginPassword(vaultId: Long, password: String) = withContext(io) {
+        credentialStore.putLoginPassword(vaultId, password)
+    }
+
+    override suspend fun getLoginPassword(vaultId: Long): String? = withContext(io) {
+        credentialStore.getLoginPassword(vaultId)
     }
 }

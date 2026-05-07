@@ -150,4 +150,12 @@ class SugarSpaceRepository(
         }
         deleted
     }
+
+    override suspend fun storeLoginPassword(vaultId: Long, password: String) {
+
+    }
+
+    override suspend fun getLoginPassword(vaultId: Long): String? {
+        return null
+    }
 }

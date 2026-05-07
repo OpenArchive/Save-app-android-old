@@ -49,39 +49,22 @@ class TinkVaultCredentialStore(
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .setKeySize(256)
+                .setRandomizedEncryptionRequired(true)
+                // setUserAuthenticationRequired intentionally omitted: the upload foreground
+                // service must be able to silently re-authenticate and decrypt credentials
+                // while the device is locked (e.g. overnight background uploads). Requiring
+                // user-presence would break that flow. Storage is protected by Android
+                // Keystore hardware isolation + AES-256-GCM + app-private DataStore.
                 .build()
         )
         return kg.generateKey()
     }
 
-    override suspend fun putSecret(vaultId: Long, secret: String) = withContext(io) {
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
-        val iv = cipher.iv
-        val ciphertext = cipher.doFinal(secret.toByteArray(Charsets.UTF_8))
-        val payload = iv + ciphertext  // 12-byte IV prepended
-        dataStore.edit { prefs ->
-            prefs[secretKey(vaultId)] = Base64.encodeToString(payload, Base64.NO_WRAP)
-        }
-        Unit
-    }
+    override suspend fun putSecret(vaultId: Long, secret: String) =
+        encryptToSlot(secretKey(vaultId), secret)
 
-    override suspend fun getSecret(vaultId: Long): String? = withContext(io) {
-        val encoded = dataStore.data.first()[secretKey(vaultId)] ?: return@withContext null
-        runCatching {
-            val payload = Base64.decode(encoded, Base64.NO_WRAP)
-            val iv = payload.sliceArray(0 until GCM_IV_LENGTH)
-            val ciphertext = payload.sliceArray(GCM_IV_LENGTH until payload.size)
-            val cipher = Cipher.getInstance(TRANSFORMATION)
-            cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(GCM_TAG_BITS, iv))
-            String(cipher.doFinal(ciphertext), Charsets.UTF_8)
-        }.getOrElse {
-            // Decrypt failed — likely Tink-encrypted data from before migration.
-            // Clear the stale entry so user can re-enter credentials.
-            dataStore.edit { prefs -> prefs.remove(secretKey(vaultId)) }
-            null
-        }
-    }
+    override suspend fun getSecret(vaultId: Long): String? =
+        decryptFromSlot(secretKey(vaultId))
 
     override suspend fun hasSecret(vaultId: Long): Boolean = withContext(io) {
         dataStore.data.first().contains(secretKey(vaultId))
@@ -92,7 +75,42 @@ class TinkVaultCredentialStore(
         Unit
     }
 
+    override suspend fun putLoginPassword(vaultId: Long, password: String) =
+        encryptToSlot(loginPasswordKey(vaultId), password)
+
+    override suspend fun getLoginPassword(vaultId: Long): String? =
+        decryptFromSlot(loginPasswordKey(vaultId))
+
+    override suspend fun deleteLoginPassword(vaultId: Long) = withContext(io) {
+        dataStore.edit { prefs -> prefs.remove(loginPasswordKey(vaultId)) }
+        Unit
+    }
+
+    private suspend fun encryptToSlot(key: Preferences.Key<String>, plaintext: String) = withContext(io) {
+        val cipher = Cipher.getInstance(TRANSFORMATION)
+        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
+        val payload = cipher.iv + cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8))
+        dataStore.edit { prefs -> prefs[key] = Base64.encodeToString(payload, Base64.NO_WRAP) }
+        Unit
+    }
+
+    private suspend fun decryptFromSlot(key: Preferences.Key<String>): String? = withContext(io) {
+        val encoded = dataStore.data.first()[key] ?: return@withContext null
+        runCatching {
+            val payload = Base64.decode(encoded, Base64.NO_WRAP)
+            val iv = payload.sliceArray(0 until GCM_IV_LENGTH)
+            val ciphertext = payload.sliceArray(GCM_IV_LENGTH until payload.size)
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(GCM_TAG_BITS, iv))
+            String(cipher.doFinal(ciphertext), Charsets.UTF_8)
+        }.getOrElse {
+            dataStore.edit { prefs -> prefs.remove(key) }
+            null
+        }
+    }
+
     private fun secretKey(vaultId: Long) = stringPreferencesKey("vault_secret_$vaultId")
+    private fun loginPasswordKey(vaultId: Long) = stringPreferencesKey("vault_login_$vaultId")
 
     companion object {
         const val DATASTORE_FILE_NAME = "vault_secure_credentials"

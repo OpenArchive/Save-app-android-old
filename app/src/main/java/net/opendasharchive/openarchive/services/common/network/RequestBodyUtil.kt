@@ -53,7 +53,7 @@ object RequestBodyUtil {
         }
     }
 
-    private const val SEGMENT_SIZE = 65536
+    private const val SEGMENT_SIZE = 262144  // 256 KB — 4× fewer loop iterations than 64 KB
     fun create(
         cr: ContentResolver,
         uri: Uri,
@@ -133,22 +133,10 @@ object RequestBodyUtil {
                 init()
                 val stream = inputStream ?: throw IOException("File not found: ${fileSource.path}")
                 val source = stream.source()
-                if (listener == null) {
-                    sink.writeAll(source)
-                } else {
-                    try {
-                        var total: Long = 0
-                        var read: Long
-                        while (source.read(sink.buffer, SEGMENT_SIZE.toLong())
-                                .also { read = it } != -1L
-                        ) {
-                            total += read
-                            listener.transferred(total)
-                        }
-                        sink.flush()
-                    } finally {
-                        source.closeQuietly()
-                    }
+                try {
+                    sink.writeAll(source, listener)
+                } finally {
+                    source.closeQuietly()
                 }
             }
         }

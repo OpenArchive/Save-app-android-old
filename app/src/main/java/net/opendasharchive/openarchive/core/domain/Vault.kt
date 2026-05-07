@@ -37,6 +37,10 @@ data class Vault(
 
     val hostUrl: HttpUrl?
         get() = host.toHttpUrlOrNull()
+
+    // Exclude password and vaultKey — data class auto-toString would expose secrets in logs/traces.
+    override fun toString(): String =
+        "Vault(id=$id, type=$type, name=$name, username=$username, host=$host)"
 }
 
 /**

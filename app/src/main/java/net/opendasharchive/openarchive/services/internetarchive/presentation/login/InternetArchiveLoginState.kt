@@ -8,6 +8,7 @@ enum class LoginErrorType(val stringRes: Int) {
     NETWORK_TIMEOUT(R.string.error_network_timeout),
     NETWORK_UNAVAILABLE(R.string.error_network_unavailable),
     TOR_NOT_READY(R.string.error_tor_not_ready),
+    SERVER_ERROR(R.string.error_server_unavailable),
 }
 
 @Immutable

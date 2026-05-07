@@ -24,6 +24,7 @@ import net.opendasharchive.openarchive.core.repositories.CollectionRepository
 import net.opendasharchive.openarchive.core.repositories.MediaRepository
 import net.opendasharchive.openarchive.core.repositories.ProjectRepository
 import net.opendasharchive.openarchive.core.repositories.SpaceRepository
+import net.opendasharchive.openarchive.services.CredentialsExpiredException
 import net.opendasharchive.openarchive.services.IaSlowDownException
 import net.opendasharchive.openarchive.services.internetarchive.data.IaConduit
 import net.opendasharchive.openarchive.services.webdav.data.WebDavConduit
@@ -238,6 +239,28 @@ abstract class Conduit(
             AppLogger.i("Upload timed out (transient), re-queuing item ${mEvidence.id}")
             mEvidence = mEvidence.copy(status = EvidenceStatus.QUEUED, progress = 0, statusMessage = "")
             mediaRepository.updateEvidence(mEvidence)
+            UploadEventBus.emitChanged(
+                projectId = mEvidence.archiveId,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id,
+                progress = -1,
+                isUploaded = false
+            )
+            scope.cancel()
+            return@withContext
+        }
+
+        // CredentialsExpiredException means S3 keys are invalid — permanently fail with a
+        // message directing the user to re-add their account. Do NOT re-queue; it will
+        // just fail again until credentials are refreshed.
+        if (exception is CredentialsExpiredException) {
+            AppLogger.w("IA credentials expired for item ${mEvidence.id}")
+            mEvidence = mEvidence.copy(
+                status = EvidenceStatus.ERROR,
+                statusMessage = exception.message ?: "Internet Archive credentials expired. Please re-add your account."
+            )
+            mediaRepository.updateEvidence(mEvidence)
+            BroadcastManager.postChange(context = mContext, collectionId = mEvidence.submissionId, mediaId = mEvidence.id)
             UploadEventBus.emitChanged(
                 projectId = mEvidence.archiveId,
                 collectionId = mEvidence.submissionId,
