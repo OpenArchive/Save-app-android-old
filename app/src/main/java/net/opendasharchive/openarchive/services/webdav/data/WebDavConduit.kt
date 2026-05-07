@@ -2,6 +2,7 @@ package net.opendasharchive.openarchive.services.webdav.data
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.core.domain.Evidence
@@ -178,16 +179,23 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
             AppLogger.i(if (isResuming) "Resuming chunked upload..." else "Fresh chunked upload, skipping per-chunk existence checks")
 
             var offset = 0
+            // Single reusable buffer — avoids allocating 10 MB per chunk and the extra
+            // copyOfRange() copy for the last (short) chunk.
+            val chunkBuffer = ByteArray(CHUNK_SIZE.toInt())
 
             // Use contentResolver to support both file:// and content:// URIs
             (mContext.contentResolver.openInputStream(mEvidence.fileUri)
                 ?: throw IOException("Cannot open input stream for ${mEvidence.fileUri}")).use { inputStream ->
                 while (!mCancelled && offset < mEvidence.contentLength) {
-                    var buffer = ByteArray(CHUNK_SIZE.toInt())
-                    val length = inputStream.read(buffer)
+                    // Read until buffer is full or EOF — same as readNBytes() (API 33+).
+                    // Avoids short-read mid-file from a single read(byte[]) call.
+                    var length = 0
+                    while (length < chunkBuffer.size) {
+                        val n = inputStream.read(chunkBuffer, length, chunkBuffer.size - length)
+                        if (n == -1) break
+                        length += n
+                    }
                     if (length < 1) break
-
-                    if (length < CHUNK_SIZE) buffer = buffer.copyOfRange(0, length)
 
                     val total = offset + length
                     val chunkPath = construct(tmpBase, tmpPath, "$offset-$total")
@@ -208,7 +216,7 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
                         }
                     }
 
-                    val chunkBody = buffer.toRequestBody(mEvidence.mimeType.toMediaTypeOrNull())
+                    val chunkBody = chunkBuffer.toRequestBody(mEvidence.mimeType.toMediaTypeOrNull(), byteCount = length)
                     execute(Request.Builder().url(chunkPath).put(chunkBody).build())
                     jobProgress(total.toLong())
 
@@ -316,16 +324,40 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
 
     @Throws(IOException::class)
     private suspend fun execute(request: Request) {
-        val call = mClient.newCall(request)
-        currentCall = call
-        try {
-            val response = withContext(Dispatchers.IO) { call.execute() }
-            val code = response.code
-            val message = response.message
-            response.close()
-            if (code !in 200..299) throw IOException("$code: $message")
-        } finally {
-            currentCall = null
+        var delayMs = 2_000L
+        val maxRetries = 3
+        repeat(maxRetries) { attempt ->
+            val call = mClient.newCall(request)
+            currentCall = call
+            try {
+                val response = withContext(Dispatchers.IO) { call.execute() }
+                val code = response.code
+                val message = response.message
+                response.close()
+                when {
+                    code in 200..299 -> return
+                    // 5xx transient — retry with backoff. Covers server hiccups and Tor circuit issues.
+                    code in 500..599 && attempt < maxRetries - 1 -> {
+                        val jitterMs = (Math.random() * 500).toLong()
+                        AppLogger.w("WebDAV $code on ${request.url}, retrying in ${(delayMs + jitterMs) / 1000}s (attempt ${attempt + 1}/$maxRetries)")
+                        delay(delayMs + jitterMs)
+                        delayMs = minOf(delayMs * 2, 16_000L)
+                    }
+                    else -> throw IOException("$code: $message")
+                }
+            } catch (e: IOException) {
+                if (attempt < maxRetries - 1) {
+                    val jitterMs = (Math.random() * 500).toLong()
+                    AppLogger.w("WebDAV network error on ${request.url}, retrying in ${(delayMs + jitterMs) / 1000}s (attempt ${attempt + 1}/$maxRetries): ${e.message}")
+                    delay(delayMs + jitterMs)
+                    delayMs = minOf(delayMs * 2, 16_000L)
+                } else {
+                    throw e
+                }
+            } finally {
+                currentCall = null
+            }
         }
+        throw IOException("WebDAV request failed after $maxRetries attempts: ${request.url}")
     }
 }

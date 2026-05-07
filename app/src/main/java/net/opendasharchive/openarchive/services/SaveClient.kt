@@ -52,37 +52,10 @@ object SaveClient : KoinComponent {
     private val currentSessionId = AtomicReference<String>(null)
 
     /**
-     * SOCKS5 Authenticator for circuit isolation.
-     *
-     * When Tor is configured with IsolateSOCKSAuth, each unique username/password
-     * combination gets a separate Tor circuit. This prevents correlation of
-     * different requests through the same circuit.
+     * Generates a unique session ID for Tor circuit isolation.
+     * Each session ID will result in a separate Tor circuit via IsolateSOCKSAuth.
      */
-    private val socksAuthenticator = object : Authenticator() {
-        override fun getPasswordAuthentication(): PasswordAuthentication? {
-            return if (requestorType == RequestorType.PROXY) {
-                val sessionId = currentSessionId.get() ?: return null
-                // Use session ID as both username and password
-                // Tor only cares that different values = different circuits
-                PasswordAuthentication(sessionId, sessionId.toCharArray())
-            } else {
-                null
-            }
-        }
-    }
-
-    init {
-        // Set the default authenticator for SOCKS proxy authentication
-        Authenticator.setDefault(socksAuthenticator)
-    }
-
-    /**
-     * Generates a unique session ID for circuit isolation.
-     * Each session ID will result in a separate Tor circuit.
-     */
-    private fun generateSessionId(): String {
-        return UUID.randomUUID().toString()
-    }
+    private fun generateSessionId(): String = UUID.randomUUID().toString()
 
     /**
      * Creates an OkHttpClient configured for the current settings.
@@ -139,7 +112,7 @@ object SaveClient : KoinComponent {
 
             val port = torServiceManager.socksPort.value
 
-            // Generate new session ID for circuit isolation
+            // Generate new session ID for circuit isolation (IsolateSOCKSAuth)
             if (isolateCircuit) {
                 currentSessionId.set(generateSessionId())
             }
@@ -150,6 +123,22 @@ object SaveClient : KoinComponent {
                     InetSocketAddress(TorConstants.SOCKS5_PROXY_ADDRESS, port)
                 )
             )
+
+            // OkHttp's proxyAuthenticator handles HTTP 407 responses (HTTP CONNECT proxies only).
+            // For SOCKS5, Java calls Authenticator.getPasswordAuthentication() at socket handshake
+            // level — so we must use Authenticator.setDefault(). We scope it to the exact Tor
+            // proxy host+port so it never responds to any other SOCKS5 challenge in the process.
+            val sessionId = currentSessionId.get()
+            if (sessionId != null) {
+                Authenticator.setDefault(object : Authenticator() {
+                    override fun getPasswordAuthentication(): PasswordAuthentication? {
+                        if (requestingHost == TorConstants.SOCKS5_PROXY_ADDRESS && requestingPort == port) {
+                            return PasswordAuthentication(sessionId, sessionId.toCharArray())
+                        }
+                        return null
+                    }
+                })
+            }
         }
 
         return builder.build()
