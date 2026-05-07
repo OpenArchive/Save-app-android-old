@@ -1,7 +1,6 @@
 package net.opendasharchive.openarchive.services.internetarchive.data
 
 import android.content.Context
-import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -20,12 +19,13 @@ import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import org.json.JSONObject
-import java.io.File
 import java.io.IOException
 import androidx.core.net.toFile
 import androidx.core.net.toUri
+import java.io.File
 import net.opendasharchive.openarchive.services.common.network.RequestBodyUtil
 import net.opendasharchive.openarchive.services.common.network.RequestListener
 import net.opendasharchive.openarchive.services.common.network.createListener
@@ -96,21 +96,9 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                 mEvidence = mEvidence.copy(serverUrl = newIdentifier)
             }
 
-            // Upload metadata FIRST — mirrors iOS sequence. meta.json is small so the IA item
-            // is created quickly; the large content file then lands into an already-existing
-            // item rather than simultaneously creating a new item and streaming a large file.
-            // IA throttles new-item creation more aggressively than appends, so this ordering
-            // reduces the frequency of 503 Slow Down responses on content upload.
-            var metadataUploaded = false
-            try {
-                client.uploadMetaData(metaJson, fileName, auth)
-                metadataUploaded = true
-            } catch (e: Throwable) {
-                AppLogger.e("Failed to upload meta.json for $fileName (non-fatal, will retry after content)", e)
-            }
-
-            // Only check IA for an existing file on retries — a freshly-generated identifier
-            // can't already have content, so the metadata round-trip is wasted on first attempts.
+            // Upload content FIRST. An IA item with content but no meta.json is harmless —
+            // IA will derive defaults. The reverse (meta.json with no content) creates an
+            // orphaned item stub that IA cannot clean up automatically, corrupting the identifier.
             val alreadyUploaded = isRetry && client.isAlreadyUploaded(fileName, auth)
 
             if (alreadyUploaded) {
@@ -129,7 +117,7 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                         client.uploadContent(fileName, mimeType, vault, currentAuth)
                         break
                     } catch (e: CredentialsExpiredException) {
-                        if (credentialRefreshed) throw e  // already retried once, give up
+                        if (credentialRefreshed) throw e
                         AppLogger.w("IA S3 keys expired for vault ${mEvidence.vaultId}, attempting silent reauth")
                         val freshAuth = authenticator.reauthenticate(mEvidence.vaultId).getOrElse {
                             AppLogger.e("Silent reauth failed: ${it.message}")
@@ -137,9 +125,7 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                         }
                         currentAuth = freshAuth
                         credentialRefreshed = true
-                        // loop continues with fresh keys — no delay needed
                     } catch (e: IOException) {
-                        // Includes SocketTimeoutException — jobFailed re-queues timeouts automatically.
                         ioAttempt++
                         if (ioAttempt >= maxIoRetries || mCancelled) throw e
                         val baseMs = 2_000L * ioAttempt
@@ -151,25 +137,23 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                 }
             }
 
-            // If pre-content metadata upload failed, retry now — the content upload
-            // has created the IA item/bucket, so a transient server rejection should resolve.
-            // Try up to 3 times with 2s/4s/6s backoff.
+            // Upload metadata after content succeeds — non-fatal if it fails.
+            // IA item already exists with content; missing meta.json just means IA uses defaults.
+            var metadataUploaded = false
+            var metaAttempt = 0
+            val maxMetaRetries = 3
+            while (!metadataUploaded && metaAttempt < maxMetaRetries) {
+                if (metaAttempt > 0) delay(2_000L * metaAttempt)
+                metaAttempt++
+                try {
+                    client.uploadMetaData(metaJson, fileName, auth)
+                    metadataUploaded = true
+                } catch (e: Throwable) {
+                    AppLogger.w("meta.json attempt $metaAttempt/$maxMetaRetries failed for $fileName: ${e.message}")
+                }
+            }
             if (!metadataUploaded) {
-                var metaPostRetry = 0
-                val maxMetaPostRetries = 3
-                while (!metadataUploaded && metaPostRetry < maxMetaPostRetries) {
-                    metaPostRetry++
-                    delay(2_000L * metaPostRetry)
-                    try {
-                        client.uploadMetaData(metaJson, fileName, auth)
-                        metadataUploaded = true
-                    } catch (e: Throwable) {
-                        AppLogger.w("Post-content meta.json retry $metaPostRetry/$maxMetaPostRetries failed for $fileName: ${e.message}")
-                    }
-                }
-                if (!metadataUploaded) {
-                    AppLogger.e("meta.json failed all retries for $fileName — item uploaded without custom metadata")
-                }
+                AppLogger.e("meta.json failed all retries for $fileName — item uploaded without custom metadata")
             }
 
             jobSucceeded()
@@ -239,27 +223,6 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
         )
 
         val url = "${ARCHIVE_API_ENDPOINT}/${mEvidence.serverUrl}/$fileName.meta.json"
-
-        val request = Request.Builder()
-            .url(url)
-            .put(requestBody)
-            .headers(metadataHeader(auth))
-            .build()
-
-        execute(request)
-    }
-
-    /// upload proof mode
-    @Throws(IOException::class)
-    private suspend fun OkHttpClient.uploadProofFiles(uploadFile: File, auth: VaultAuth) {
-        val requestBody = RequestBodyUtil.create(
-            mContext.contentResolver,
-            Uri.fromFile(uploadFile),
-            uploadFile.length(),
-            textMediaType, createListener(cancellable = { !mCancelled })
-        )
-
-        val url = "$ARCHIVE_API_ENDPOINT/${mEvidence.serverUrl}/${uploadFile.name}"
 
         val request = Request.Builder()
             .url(url)
@@ -410,9 +373,14 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                 // OkHttp won't follow 307 on PUT with a streaming body — handle manually.
                 code == 307 || code == 301 || code == 302 -> {
                     if (location.isNullOrBlank()) throw RuntimeException("$code redirect with no Location header")
+                    // Validate redirect stays on IA-owned domains — prevents credential
+                    // leakage to attacker-controlled hosts via MITM or malicious Location header.
+                    val redirectHost = location.toHttpUrl().host
+                    if (!redirectHost.endsWith(".archive.org") && redirectHost != "archive.org") {
+                        throw SecurityException("IA redirect to non-archive.org host blocked: $redirectHost")
+                    }
                     AppLogger.i("IA redirect $code → $location (attempt ${attempt + 1})")
                     activeRequest = activeRequest.newBuilder().url(location).build()
-                    // No delay — redirect should be followed immediately
                 }
                 // 401: S3 credentials expired or revoked. Not retryable.
                 code == 401 -> throw CredentialsExpiredException(
@@ -466,6 +434,9 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
     }
 
     private fun sanitizeHeaderValue(value: String): String {
-        return value.replace("[^\\x20-\\x7E]".toRegex(), "") // Removes non-ASCII characters
+        // Strip only HTTP header control characters (CR, LF, NUL) that would break the
+        // header wire format. Preserve all other Unicode so non-ASCII titles, locations,
+        // and descriptions (Japanese, Arabic, accented Latin, etc.) reach IA intact.
+        return value.replace("[\r\n ]".toRegex(), " ").trim()
     }
 }

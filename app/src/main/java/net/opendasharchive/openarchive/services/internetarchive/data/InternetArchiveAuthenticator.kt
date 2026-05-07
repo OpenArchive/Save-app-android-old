@@ -73,12 +73,11 @@ class InternetArchiveAuthenticator(
 
         return authDataResult.fold(
             onSuccess = { intermediate ->
-                // Test connection (now outside the lambda, so suspension works)
-                val testResult = testConnectionInternal(intermediate.access, intermediate.secret)
-                if (testResult.isFailure) {
-                    return Result.failure(testResult.exceptionOrNull() ?: Exception("Connection test failed"))
-                }
-
+                // xauthn success already proves credentials are valid — S3 keys came directly
+                // from IA's auth server. Skipping the S3 HEAD test here because Tor exit nodes
+                // can trigger IA's IP-based rate limiting, making S3 return 403 even with valid
+                // credentials, which previously surfaced as a false "invalid credentials" error.
+                // testConnectionInternal() is still available for checking existing vault health.
                 val metaData = InternetArchiveMetadata(
                     screenName = intermediate.screenName,
                     email = intermediate.email
