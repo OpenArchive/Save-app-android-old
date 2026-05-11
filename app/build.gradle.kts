@@ -68,7 +68,7 @@ android {
         minSdk = 29
         targetSdk = 36
         versionCode = 30041
-        versionName = "4.0.22"
+        versionName = "4.0.5"
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
