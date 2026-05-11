@@ -4,38 +4,60 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
 import android.webkit.MimeTypeMap
-import com.google.common.net.UrlEscapers
-import com.google.gson.GsonBuilder
+import android.net.Uri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.R
 import net.opendasharchive.openarchive.analytics.api.AnalyticsEvent
 import net.opendasharchive.openarchive.analytics.api.AnalyticsManager
 import net.opendasharchive.openarchive.analytics.api.session.SessionTracker
+import net.opendasharchive.openarchive.core.domain.Evidence
+import net.opendasharchive.openarchive.core.domain.EvidenceStatus
+import net.opendasharchive.openarchive.core.domain.toMetadata
 import net.opendasharchive.openarchive.core.logger.AppLogger
-import net.opendasharchive.openarchive.db.Media
-import net.opendasharchive.openarchive.db.Space
-import net.opendasharchive.openarchive.services.internetarchive.IaConduit
-import net.opendasharchive.openarchive.services.webdav.WebDavConduit
+import net.opendasharchive.openarchive.core.repositories.CollectionRepository
+import net.opendasharchive.openarchive.core.repositories.MediaRepository
+import net.opendasharchive.openarchive.core.repositories.ProjectRepository
+import net.opendasharchive.openarchive.core.repositories.SpaceRepository
+import net.opendasharchive.openarchive.services.CredentialsExpiredException
+import net.opendasharchive.openarchive.services.IaSlowDownException
+import net.opendasharchive.openarchive.services.internetarchive.data.IaConduit
+import net.opendasharchive.openarchive.services.webdav.data.WebDavConduit
 import net.opendasharchive.openarchive.upload.BroadcastManager
+import net.opendasharchive.openarchive.upload.UploadEventBus
+import net.opendasharchive.openarchive.util.C2paHelper
 import net.opendasharchive.openarchive.util.Prefs
+import net.opendasharchive.openarchive.util.toJavaDate
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import net.opendasharchive.openarchive.util.DateUtils
 import okhttp3.HttpUrl
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import org.witness.proofmode.storage.DefaultStorageProvider
+import org.koin.core.context.GlobalContext
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.net.SocketTimeoutException
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 abstract class Conduit(
-    protected val mMedia: Media,
+    protected var mEvidence: Evidence,
     protected val mContext: Context
 ) : KoinComponent {
+
+    val id: Long get() = mEvidence.id
+
+    protected val mediaRepository: MediaRepository by inject()
+    protected val collectionRepository: CollectionRepository by inject()
+    protected val projectRepository: ProjectRepository by inject()
+    protected val spaceRepository: SpaceRepository by inject()
 
     protected val analyticsManager: AnalyticsManager by inject()
     protected val sessionTracker: SessionTracker by inject()
@@ -45,6 +67,7 @@ abstract class Conduit(
     protected val mDateFormat = SimpleDateFormat(FOLDER_DATETIME_FORMAT)
 
     protected var mCancelled = false
+    var wasSlowDown = false
 
     // Track upload start time for analytics
     private var uploadStartTime: Long = System.currentTimeMillis()
@@ -57,14 +80,15 @@ abstract class Conduit(
     private fun trackUploadStarted() {
         uploadStartTime = System.currentTimeMillis()
 
-        val backendType = mMedia.space?.tType?.friendlyName ?: "Unknown"
-        val fileSizeKB = mMedia.contentLength / 1024
-        val fileType = getFileType(mMedia.mimeType)
-
-        // Add breadcrumb for crash analysis
-        AppLogger.breadcrumb("Upload Started", "$fileType to $backendType (${fileSizeKB}KB)")
-
         scope.launch {
+            val vault = spaceRepository.getSpaceById(mEvidence.vaultId)
+            val backendType = vault?.type?.friendlyName ?: "Unknown"
+            val fileSizeKB = mEvidence.contentLength / 1024
+            val fileType = getFileType(mEvidence.mimeType)
+
+            // Add breadcrumb for crash analysis
+            AppLogger.breadcrumb("Upload Started", "$fileType to $backendType (${fileSizeKB}KB)")
+
             analyticsManager.trackUploadStarted(
                 backendType = backendType,
                 fileType = fileType,
@@ -97,22 +121,38 @@ abstract class Conduit(
 
     open fun cancel() {
         mCancelled = true
+        scope.cancel()
     }
 
-    fun getProof(): Array<out File> {
-        if (!Prefs.useProofMode) return emptyArray()
+    /**
+     * Get C2PA manifest file for this media
+     * Returns the sidecar .c2pa.json file if C2PA is enabled and manifest exists
+     */
+    fun getC2paManifest(): File? {
+        if (!Prefs.useC2pa) {
+            AppLogger.d("[C2PA] Disabled, skipping manifest retrieval")
+            return null
+        }
+
         try {
-        // Here we are simply fetching the files. Don't generate proof here. This is only called during upload.
-        // Generating Proof here won't make sense because the file can be created well before it could be uploaded.
-          //var files = ProofMode.getProofDir(mContext, mMedia.mediaHashString).listFiles() ?: emptyArray()
-          var files = DefaultStorageProvider(mContext).getHashStorageDir(mMedia.mediaHashString)?.listFiles() ?: emptyArray()
-          return files
-        } catch (exception: FileNotFoundException) {
-            AppLogger.e(exception)
-            return emptyArray()
-        } catch (exception: SecurityException) {
-            AppLogger.e(exception)
-            return emptyArray()
+            AppLogger.d("[C2PA_DEBUG] getC2paManifest: evidenceHash=${mEvidence.mediaHashString} evidenceFile=${mEvidence.originalFilePath}")
+            val manifestFile = C2paHelper.getC2paFile(mContext, mEvidence.mediaHashString)
+            AppLogger.d("[C2PA_DEBUG] Looking for manifest at: ${manifestFile.absolutePath}")
+
+            if (manifestFile.exists()) {
+                AppLogger.d("[C2PA] Manifest found: ${manifestFile.absolutePath}")
+                return manifestFile
+            } else {
+                AppLogger.w("[C2PA] Manifest not found for ${mEvidence.mediaHashString}")
+                // List existing manifests to help diagnose hash mismatch
+                val c2paDir = manifestFile.parentFile
+                val existing = c2paDir?.listFiles()?.map { it.name } ?: emptyList()
+                AppLogger.d("[C2PA_DEBUG] Existing manifests: $existing")
+                return null
+            }
+        } catch (exception: Exception) {
+            AppLogger.e("[C2PA] Error retrieving manifest", exception)
+            return null
         }
     }
 
@@ -120,25 +160,33 @@ abstract class Conduit(
      * result is a site specific unique id that we can use to fetch the data,
      * build an embed tag, etc. for some sites this might be a URL
      */
-    fun jobSucceeded() {
-        mMedia.progress = mMedia.contentLength
-        mMedia.sStatus = Media.Status.Uploaded
-        mMedia.save()
-        AppLogger.i("media item ${mMedia.id} is uploaded and saved")
+    suspend fun jobSucceeded() {
+        mEvidence = mEvidence.copy(
+            progress = mEvidence.contentLength,
+            status = EvidenceStatus.UPLOADED,
+            uploadPercentage = 100,
+            retryCount = 0,
+            nextRetryAt = 0L
+        )
+        mediaRepository.updateEvidence(mEvidence)
+        AppLogger.i("media item ${mEvidence.id} is uploaded and saved")
 
-        // Track successful upload analytics
-        val uploadDuration = (System.currentTimeMillis() - uploadStartTime) / 1000
-        val fileSizeKB = mMedia.contentLength / 1024
-        val backendType = mMedia.space?.tType?.friendlyName ?: "Unknown"
-        val fileType = getFileType(mMedia.mimeType)
+            // Track successful upload analytics
+            val uploadDuration = (System.currentTimeMillis() - uploadStartTime) / 1000
+            val fileSizeKB = mEvidence.contentLength / 1024
+            val vault = spaceRepository.getSpaceById(mEvidence.vaultId)
+            val backendType = vault?.type?.friendlyName ?: "Unknown"
+            val fileType = getFileType(mEvidence.mimeType)
 
-        // Calculate upload speed
-        val uploadSpeedKBps = if (uploadDuration > 0) fileSizeKB / uploadDuration else 0
+            // Calculate upload speed
+            val uploadSpeedKBps = if (uploadDuration > 0) fileSizeKB / uploadDuration else 0
 
-        // Add breadcrumb for crash analysis
-        AppLogger.breadcrumb("Upload Completed", "$fileType (${uploadDuration}s, ${uploadSpeedKBps}KB/s)")
+            // Add breadcrumb for crash analysis
+            AppLogger.breadcrumb(
+                "Upload Completed",
+                "$fileType (${uploadDuration}s, ${uploadSpeedKBps}KB/s)"
+            )
 
-        scope.launch {
             analyticsManager.trackUploadCompleted(
                 backendType = backendType,
                 fileType = fileType,
@@ -146,53 +194,156 @@ abstract class Conduit(
                 durationSeconds = uploadDuration,
                 uploadSpeedKBps = uploadSpeedKBps
             )
-        }
 
-        // Track in session
-        sessionTracker.trackUploadCompleted()
+            // Track in session
+            sessionTracker.trackUploadCompleted()
 
-        BroadcastManager.postSuccess(
-            context = mContext,
-            collectionId = mMedia.collectionId,
-            mediaId = mMedia.id
-        )
+            BroadcastManager.postSuccess(
+                context = mContext,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id
+            )
+            UploadEventBus.emitChanged(
+                projectId = mEvidence.archiveId,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id,
+                progress = 100,
+                isUploaded = true
+            )
+        scope.cancel()
     }
 
-    fun jobFailed(exception: Throwable) {
-        // If an upload was cancelled, track and return.
+    suspend fun jobFailed(exception: Throwable) = withContext(NonCancellable) {
+        // NonCancellable ensures DB writes and bus events always complete even if the
+        // parent serviceScope is being cancelled (e.g. onStopJob). Without it,
+        // suspension points inside jobFailed throw CancellationException, which propagates
+        // to the outer catch in upload() and calls jobFailed a second time — producing
+        // duplicate "Upload cancelled" log entries and leaving evidence in a bad state.
+
+        // TorNotReadyException is transient — re-queue silently so the item retries when Tor connects.
+        if (exception is TorNotReadyException) {
+            AppLogger.i("Tor not ready during upload, re-queuing item ${mEvidence.id}")
+            mEvidence = mEvidence.copy(status = EvidenceStatus.QUEUED, progress = 0, statusMessage = "")
+            mediaRepository.updateEvidence(mEvidence)
+            UploadEventBus.emitChanged(
+                projectId = mEvidence.archiveId,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id,
+                progress = -1,
+                isUploaded = false
+            )
+            scope.cancel()
+            return@withContext
+        }
+
+        // SocketTimeoutException is a transient network stall (slow Tor circuit, server backpressure).
+        // Re-queue silently so the next session retries — this is never a permanent failure.
+        if (exception is SocketTimeoutException) {
+            AppLogger.i("Upload timed out (transient), re-queuing item ${mEvidence.id}")
+            mEvidence = mEvidence.copy(status = EvidenceStatus.QUEUED, progress = 0, statusMessage = "")
+            mediaRepository.updateEvidence(mEvidence)
+            UploadEventBus.emitChanged(
+                projectId = mEvidence.archiveId,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id,
+                progress = -1,
+                isUploaded = false
+            )
+            scope.cancel()
+            return@withContext
+        }
+
+        // CredentialsExpiredException means S3 keys are invalid — permanently fail with a
+        // message directing the user to re-add their account. Do NOT re-queue; it will
+        // just fail again until credentials are refreshed.
+        if (exception is CredentialsExpiredException) {
+            AppLogger.w("IA credentials expired for item ${mEvidence.id}")
+            mEvidence = mEvidence.copy(
+                status = EvidenceStatus.ERROR,
+                statusMessage = exception.message ?: "Internet Archive credentials expired. Please re-add your account."
+            )
+            mediaRepository.updateEvidence(mEvidence)
+            BroadcastManager.postChange(context = mContext, collectionId = mEvidence.submissionId, mediaId = mEvidence.id)
+            UploadEventBus.emitChanged(
+                projectId = mEvidence.archiveId,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id,
+                progress = -1,
+                isUploaded = false
+            )
+            scope.cancel()
+            return@withContext
+        }
+
+        // IaSlowDownException: IA server overloaded or connection error.
+        // Mark ERROR immediately — queue-level retry handles re-attempt after 503 cooldown.
+        if (exception is IaSlowDownException) {
+            wasSlowDown = true
+            AppLogger.w("IA server error — item ${mEvidence.id} marked ERROR for queue retry: ${exception.message}")
+            mEvidence = mEvidence.copy(
+                status = EvidenceStatus.ERROR,
+                statusMessage = "Internet Archive servers are busy. Will retry automatically.",
+                nextRetryAt = 0L
+            )
+            mediaRepository.updateEvidence(mEvidence)
+            UploadEventBus.emitChanged(
+                projectId = mEvidence.archiveId,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id,
+                progress = -1,
+                isUploaded = false
+            )
+            scope.cancel()
+            return@withContext
+        }
+
+        // If an upload was cancelled, reset to QUEUED so it's retried on next session,
+        // and clear transientProgress so the UI doesn't show a stuck uploading spinner.
         if (mCancelled) {
             AppLogger.i("Upload cancelled", exception)
 
-            // Add breadcrumb
-            val backendType = mMedia.space?.tType?.friendlyName ?: "Unknown"
-            val fileType = getFileType(mMedia.mimeType)
+            val vault = spaceRepository.getSpaceById(mEvidence.vaultId)
+            val backendType = vault?.type?.friendlyName ?: "Unknown"
+            val fileType = getFileType(mEvidence.mimeType)
             AppLogger.breadcrumb("Upload Cancelled", "$fileType to $backendType")
 
-            // Track upload cancellation
-            scope.launch {
-                analyticsManager.trackEvent(
-                    AnalyticsEvent.UploadCancelled(
-                        backendType = backendType,
-                        fileType = fileType,
-                        reason = "user_cancelled"
-                    )
+            analyticsManager.trackEvent(
+                AnalyticsEvent.UploadCancelled(
+                    backendType = backendType,
+                    fileType = fileType,
+                    reason = "user_cancelled"
                 )
-            }
+            )
 
-            return
+            // Reset status from UPLOADING → QUEUED so the item re-enters the queue next session.
+            mEvidence = mEvidence.copy(status = EvidenceStatus.QUEUED, progress = 0, statusMessage = "")
+            mediaRepository.updateEvidence(mEvidence)
+
+            // Emit progress = -1 to clear any stale transientProgress entry in the UI.
+            UploadEventBus.emitChanged(
+                projectId = mEvidence.archiveId,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id,
+                progress = -1,
+                isUploaded = false
+            )
+            scope.cancel()
+            return@withContext
         }
 
-        mMedia.statusMessage =
-            exception.localizedMessage ?: exception.message ?: exception.toString()
-        mMedia.sStatus = Media.Status.Error
-        mMedia.save()
+        mEvidence = mEvidence.copy(
+            statusMessage = exception.message ?: exception.toString(),
+            status = EvidenceStatus.ERROR
+        )
+        mediaRepository.updateEvidence(mEvidence)
 
         AppLogger.e(exception)
 
         // Track failed upload analytics (GDPR-compliant - no PII)
-        val backendType = mMedia.space?.tType?.friendlyName ?: "Unknown"
-        val fileType = getFileType(mMedia.mimeType)
-        val fileSizeKB = mMedia.contentLength / 1024
+        val vault = spaceRepository.getSpaceById(mEvidence.vaultId)
+        val backendType = vault?.type?.friendlyName ?: "Unknown"
+        val fileType = getFileType(mEvidence.mimeType)
+        val fileSizeKB = mEvidence.contentLength / 1024
 
         // Categorize error
         val errorCategory = when (exception) {
@@ -202,47 +353,65 @@ abstract class Conduit(
             else -> "unknown"
         }
 
-        scope.launch {
-            analyticsManager.trackUploadFailed(
-                backendType = backendType,
-                fileType = fileType,
-                errorCategory = errorCategory,
-                fileSizeKB = fileSizeKB
-            )
-        }
+        analyticsManager.trackUploadFailed(
+            backendType = backendType,
+            fileType = fileType,
+            errorCategory = errorCategory,
+            fileSizeKB = fileSizeKB
+        )
 
         // Track in session
         sessionTracker.trackUploadFailed()
 
         // Track error for drop-off analysis
-        scope.launch {
-            analyticsManager.trackError(
-                errorCategory = errorCategory,
-                screenName = "Upload",
-                backendType = backendType
-            )
-        }
+        analyticsManager.trackError(
+            errorCategory = errorCategory,
+            screenName = "Upload",
+            backendType = backendType
+        )
 
         BroadcastManager.postChange(
             context = mContext,
-            collectionId = mMedia.collectionId,
-            mediaId = mMedia.id
+            collectionId = mEvidence.submissionId,
+            mediaId = mEvidence.id
         )
+        UploadEventBus.emitChanged(
+            projectId = mEvidence.archiveId,
+            collectionId = mEvidence.submissionId,
+            mediaId = mEvidence.id,
+            progress = -1,
+            isUploaded = false
+        )
+        scope.cancel()
+    }
+
+    /**
+     * Non-suspend version of jobFailed for use in callbacks.
+     */
+    fun jobFailedAsync(exception: Throwable) {
+        scope.launch { jobFailed(exception) }
     }
 
     private var lastReportedProgress: Int? = null
 
     fun jobProgress(uploadedBytes: Long) {
-        mMedia.progress = uploadedBytes
-        val progress = if (uploadedBytes > 0) (uploadedBytes.toFloat() / mMedia.contentLength * 100).toInt() else 0
+        mEvidence = mEvidence.copy(progress = uploadedBytes)
+        val progress = if (uploadedBytes > 0) (uploadedBytes.toFloat() / mEvidence.contentLength * 100).toInt() else 0
         if (progress > (lastReportedProgress ?: 0) + 1) {
             lastReportedProgress = progress
-            AppLogger.i("Media Item ${mMedia.id} progress: $progress/100")
+            AppLogger.i("Media Item ${mEvidence.id} progress: $progress/100")
             BroadcastManager.postProgress(
                 context = mContext,
-                collectionId = mMedia.collectionId,
-                mediaId = mMedia.id,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id,
                 progress = progress,
+            )
+            UploadEventBus.emitChanged(
+                projectId = mEvidence.archiveId,
+                collectionId = mEvidence.submissionId,
+                mediaId = mEvidence.id,
+                progress = progress,
+                isUploaded = false
             )
         }
     }
@@ -252,45 +421,81 @@ abstract class Conduit(
      *
      * reads some values from mMedia and copies them to some other fields of mMedia
      */
-    protected fun sanitize() {
-        val length = mMedia.file.length()
-        if (length > 0) mMedia.contentLength = length
+    protected suspend fun sanitize() {
+        val length = when (mEvidence.fileUri.scheme) {
+            "file" -> try { mEvidence.file.length() } catch (e: Exception) { 0L }
+            "content" -> try {
+                mContext.contentResolver.openFileDescriptor(mEvidence.fileUri, "r")?.use { it.statSize } ?: 0L
+            } catch (e: Exception) { 0L }
+            else -> 0L
+        }
+        var updatedEvidence = mEvidence
+        if (length > 0) updatedEvidence = updatedEvidence.copy(contentLength = length)
 
-        val tags = mMedia.tagSet
+        val tags = updatedEvidence.tags.toMutableList()
 
-        if (mMedia.flag) {
-            tags.add(getFlagText())
+        if (updatedEvidence.isFlagged) {
+            val flagText = getFlagText()
+            if (!tags.contains(flagText)) tags.add(flagText)
         } else {
             tags.remove(getFlagText())
         }
 
-        mMedia.tagSet = tags
+        updatedEvidence = updatedEvidence.copy(tags = tags)
 
-        // Update to the latest project license.
-        mMedia.licenseUrl = mMedia.project?.licenseUrl
+        // Update to the latest vault license.
+        val vault = spaceRepository.getSpaceById(mEvidence.vaultId)
+        updatedEvidence = updatedEvidence.copy(licenseUrl = vault?.licenseUrl)
+
+        mEvidence = updatedEvidence
     }
 
-    protected fun getPath(): List<String>? {
-        val projectName = mMedia.project?.description ?: return null
-        val collectionName =
-            mDateFormat.format(mMedia.collection?.uploadDate ?: mMedia.createDate ?: Date())
+    protected suspend fun getPath(): List<String>? {
+        val project = projectRepository.getProject(mEvidence.archiveId)
+        val projectName = project?.description ?: return null
+
+        // Use the submission bound to this evidence to keep folder grouping stable.
+        val submission = collectionRepository.getCollection(mEvidence.submissionId)
+        val collectionDate =
+            submission?.uploadDate ?: mEvidence.createdAt ?: DateUtils.nowDateTime
+
+        val javaDate = collectionDate.toJavaDate()
+        val collectionName = mDateFormat.format(javaDate)
 
         val path = mutableListOf(projectName, collectionName)
 
-        if (mMedia.flag) {
+        if (mEvidence.isFlagged) {
             path.add(getFlagText())
         }
 
         return path
     }
 
-    protected suspend fun createFolders(base: HttpUrl?, path: List<String>) {
+    protected suspend fun createFolders(base: HttpUrl?, path: List<String>, isFirstSegmentRemote: Boolean = false) {
+        try {
+            createFoldersInternal(base, path, isFirstSegmentRemote)
+        } catch (e: Exception) {
+            if (isFirstSegmentRemote) {
+                AppLogger.w("Remote folder optimization failed, retrying with full check", e)
+                createFoldersInternal(base, path, false)
+            } else {
+                throw e
+            }
+        }
+    }
+
+    private suspend fun createFoldersInternal(base: HttpUrl?, path: List<String>, isFirstSegmentRemote: Boolean) {
         val tmp = mutableListOf<String>()
 
-        for (segment in path) {
+        for ((index, segment) in path.withIndex()) {
             tmp.add(segment)
 
             if (mCancelled) throw Exception("Cancelled")
+
+            if (index == 0 && isFirstSegmentRemote) {
+                AppLogger.i("Skipping remote folder check for first segment: $segment")
+                continue
+            }
 
             val url = construct(base, tmp)
 
@@ -320,21 +525,19 @@ abstract class Conduit(
         }
     }
 
-    protected fun construct(path: List<String>, file: String? = null): String {
-        return construct(null, path, file)
-    }
-
     /**
-     * Generate JSON encoded string of metadata corresponding Media currently
-     * stored in `this.mMedia`.
+     * Generate JSON encoded string of metadata corresponding to Evidence currently
+     * stored in `this.mEvidence`.
      */
-    protected fun getMetadata(): String {
-        val gson = GsonBuilder()
-            .setPrettyPrinting()
-            .excludeFieldsWithoutExposeAnnotation()
-            .create()
+    protected suspend fun getMetadata(): String {
+        val json = Json {
+            prettyPrint = true
+            encodeDefaults = true
+        }
 
-        return gson.toJson(this.mMedia, Media::class.java)
+        val vault = spaceRepository.getSpaceById(mEvidence.vaultId)
+        val metadata = mEvidence.toMetadata(licenseUrl = vault?.licenseUrl)
+        return json.encodeToString(metadata)
     }
 
     /**
@@ -351,45 +554,61 @@ abstract class Conduit(
         const val FOLDER_DATETIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss'GMT'ZZZZZ"
 
         /**
-         * 2 MByte
+         * 10 MByte — larger chunks mean fewer HTTP round trips and less PROPFIND overhead.
+         * Was 2 MB (50 chunks for 100 MB); now 10 MB (10 chunks for 100 MB).
          */
-        const val CHUNK_SIZE: Long = 2 * 1024 * 1024
+        const val CHUNK_SIZE: Long = 10 * 1024 * 1024
 
         /**
-         * 10 MByte
+         * 20 MByte — files below this use a single PUT instead of chunked upload.
+         * Raised from 10 MB to match the new chunk size floor.
          */
-        const val CHUNK_FILESIZE_THRESHOLD = 10 * 1024 * 1024
+        const val CHUNK_FILESIZE_THRESHOLD = 20 * 1024 * 1024
 
-        fun get(media: Media, context: Context): Conduit? {
-            return when (media.project?.space?.tType) {
-                Space.Type.INTERNET_ARCHIVE -> IaConduit(media, context)
+        suspend fun get(evidence: Evidence, context: Context): Conduit? {
+            val spaceRepository: SpaceRepository = GlobalContext.get().get()
 
-                Space.Type.WEBDAV -> WebDavConduit(media, context)
+            // evidence.vaultId may be 0 when Sugar ORM's project→space chain fails
+            // (e.g. spaceId not stored directly on the Media row). Fall back through
+            // the archive's vaultId so uploads aren't blocked by the stale 0.
+            val resolvedVaultId = if (evidence.vaultId > 0) {
+                evidence.vaultId
+            } else {
+                val projectRepository: ProjectRepository = GlobalContext.get().get()
+                projectRepository.getProject(evidence.archiveId)?.vaultId ?: 0L
+            }
 
+            val vault = spaceRepository.getSpaceById(resolvedVaultId) ?: return null
+            val resolvedEvidence = if (evidence.vaultId == resolvedVaultId) evidence
+                                   else evidence.copy(vaultId = resolvedVaultId)
+
+            return when (vault.type) {
+                net.opendasharchive.openarchive.core.domain.VaultType.INTERNET_ARCHIVE -> IaConduit(resolvedEvidence, context)
+                net.opendasharchive.openarchive.core.domain.VaultType.PRIVATE_SERVER -> WebDavConduit(resolvedEvidence, context)
                 else -> null
             }
         }
 
-        fun getUploadFileName(media: Media, escapeTitle: Boolean = false): String {
-            var ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(media.mimeType)
+        fun getUploadFileName(evidence: Evidence, escapeTitle: Boolean = false): String {
+            var ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(evidence.mimeType)
             if (ext.isNullOrEmpty()) {
                 ext = when {
-                    media.mimeType.startsWith("image") -> "jpg"
+                    evidence.mimeType.startsWith("image") -> "jpg"
 
-                    media.mimeType.startsWith("video") -> "mp4"
+                    evidence.mimeType.startsWith("video") -> "mp4"
 
-                    media.mimeType.startsWith("audio") -> "m4a"
+                    evidence.mimeType.startsWith("audio") -> "m4a"
 
                     else -> "txt"
                 }
             }
 
-            var title = media.title
+            var title = evidence.title
 
-            if (title.isBlank()) title = media.mediaHashString
+            if (title.isBlank()) title = evidence.mediaHashString
 
             if (escapeTitle) {
-                title = UrlEscapers.urlPathSegmentEscaper().escape(title) ?: title
+                title = Uri.encode(title) ?: title
             }
 
             if (!title.endsWith(".$ext")) {

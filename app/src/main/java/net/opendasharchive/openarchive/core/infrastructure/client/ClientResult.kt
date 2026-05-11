@@ -20,7 +20,11 @@ suspend fun <T> OkHttpClient.enqueueResult(
         }
 
         override fun onResponse(call: Call, response: Response) {
-            continuation.resume(onResume(response))
+            try {
+                continuation.resume(onResume(response))
+            } catch (e: Throwable) {
+                continuation.resumeWithException(e)
+            }
         }
     })
 

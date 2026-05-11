@@ -1,148 +1,147 @@
 package net.opendasharchive.openarchive.services
 
 import android.content.Context
-import android.content.Intent
-import com.thegrizzlylabs.sardineandroid.impl.OkHttpSardine
-import info.guardianproject.netcipher.client.StrongBuilder
-import info.guardianproject.netcipher.client.StrongBuilderBase
-import info.guardianproject.netcipher.proxy.OrbotHelper
-import net.opendasharchive.openarchive.R
-import net.opendasharchive.openarchive.db.Space
-import net.opendasharchive.openarchive.services.webdav.BasicAuthInterceptor
+import net.opendasharchive.openarchive.services.tor.TorConstants
+import net.opendasharchive.openarchive.services.tor.TorServiceManager
+import net.opendasharchive.openarchive.services.common.auth.BasicAuthInterceptor
 import net.opendasharchive.openarchive.util.Prefs
-import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
-import okhttp3.Request
-import okhttp3.internal.platform.Platform
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+import java.net.Authenticator
+import java.net.InetSocketAddress
+import java.net.PasswordAuthentication
+import java.net.Proxy
+import java.util.UUID
 import java.util.concurrent.TimeUnit
-import kotlin.coroutines.suspendCoroutine
+import java.util.concurrent.atomic.AtomicReference
 
-class SaveClient(context: Context) : StrongBuilderBase<SaveClient, OkHttpClient>(context) {
+/**
+ * Exception thrown when Tor is enabled but not yet ready.
+ */
+class TorNotReadyException(message: String) : Exception(message)
 
-    class OrbotException(message: String): Exception(message)
+/**
+ * Exception thrown when IA returns 503 Slow Down after exhausting all retries.
+ * Treated as transient — item is re-queued rather than permanently errored.
+ */
+class IaSlowDownException(message: String) : Exception(message)
 
-    private var okBuilder: OkHttpClient.Builder
+/**
+ * Exception thrown when IA returns 401 during upload.
+ * S3 credentials have expired or been revoked — user must re-add their account.
+ */
+class CredentialsExpiredException(message: String) : Exception(message)
 
-    init {
-        val cacheInterceptor = Interceptor { chain ->
-            val request = chain.request().newBuilder().addHeader("Connection", "close").build()
-            chain.proceed(request)
-        }
+/**
+ * Factory for creating OkHttpClient instances with optional Tor proxy support.
+ *
+ * When Tor is enabled in preferences, the client will route all traffic through
+ * the embedded Tor SOCKS5 proxy. The SOCKS port is dynamically allocated for
+ * security reasons.
+ *
+ * SECURITY: Uses IsolateSOCKSAuth for circuit isolation - each client gets
+ * a unique session ID which results in a separate Tor circuit.
+ */
+object SaveClient : KoinComponent {
 
-        okBuilder = OkHttpClient.Builder()
-            .addInterceptor(cacheInterceptor)
-            .connectTimeout(40L, TimeUnit.SECONDS)
-            .writeTimeout(40L, TimeUnit.SECONDS)
-            .readTimeout(40L, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(false)
-            .protocols(arrayListOf(Protocol.HTTP_1_1))
-    }
+    private val torServiceManager: TorServiceManager by inject()
+
+    /** Thread-safe holder for current SOCKS auth session */
+    private val currentSessionId = AtomicReference<String>(null)
 
     /**
-     * OkHttp3 [does not support SOCKS proxies.](https://github.com/square/okhttp/issues/2315)
+     * Generates a unique session ID for Tor circuit isolation.
+     * Each session ID will result in a separate Tor circuit via IsolateSOCKSAuth.
+     */
+    private fun generateSessionId(): String = UUID.randomUUID().toString()
+
+    /**
+     * Creates an OkHttpClient configured for the current settings.
      *
-     * @return false
+     * @param context Application context
+     * @param user Optional username for basic auth
+     * @param password Optional password for basic auth
+     * @param isolateCircuit If true, generates a new session ID for circuit isolation
+     * @param forceCloseConnection If true, adds "Connection: close" header to every request.
+     *   Required for WebDAV to prevent partial-upload corruption from connection reuse.
+     *   IA uploads leave this false to allow TCP connection reuse across retries/metadata.
+     * @param allowHttp2 If false, restricts to HTTP/1.1. WebDAV keeps this false because
+     *   HTTP/2 multiplexing conflicts with Nextcloud chunked-upload temp-slot semantics.
+     * @return Configured OkHttpClient
+     * @throws TorNotReadyException if Tor is enabled but not yet connected
      */
-    override fun supportsSocksProxy(): Boolean {
-        return false
-    }
+    suspend fun get(
+        context: Context,
+        user: String = "",
+        password: String = "",
+        isolateCircuit: Boolean = true,
+        forceCloseConnection: Boolean = false,
+        allowHttp2: Boolean = true,
+        retryOnConnectionFailure: Boolean = false
+    ): OkHttpClient {
+        val builder = OkHttpClient.Builder()
+            .connectTimeout(60L, TimeUnit.SECONDS)
+            .writeTimeout(60L, TimeUnit.SECONDS)
+            .readTimeout(60L, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(retryOnConnectionFailure)
 
-    /**
-     * {@inheritDoc}
-     */
-    override fun build(status: Intent): OkHttpClient {
-        if (!status.hasExtra(OrbotHelper.EXTRA_STATUS)) {
-            status.putExtra(OrbotHelper.EXTRA_STATUS, OrbotHelper.STATUS_OFF)
-        }
-
-        return applyTo(okBuilder, status).build()
-    }
-
-    /**
-     * Adds NetCipher configuration to an existing OkHttpClient.Builder,
-     * in case you have additional configuration that you wish to
-     * perform.
-     *
-     * @param builder a new or partially-configured OkHttpClient.Builder
-     * @return the same builder
-     */
-    private fun applyTo(builder: OkHttpClient.Builder, status: Intent?): OkHttpClient.Builder {
-        val factory = buildSocketFactory()
-
-        if (factory != null) {
-            val trustManager = Platform.get().trustManager(factory)
-
-            if (trustManager != null) {
-                builder.sslSocketFactory(factory, trustManager)
+        if (forceCloseConnection) {
+            builder.addInterceptor { chain ->
+                chain.proceed(
+                    chain.request().newBuilder().addHeader("Connection", "close").build()
+                )
             }
         }
 
-        return builder
-            .proxy(buildProxy(status))
-    }
+        if (!allowHttp2) {
+            builder.protocols(listOf(Protocol.HTTP_1_1))
+        }
 
-    @Throws(Exception::class)
-    override fun get(status: Intent, connection: OkHttpClient, url: String): String? {
-        val request: Request = Request.Builder().url(TOR_CHECK_URL).build()
+        // Add basic auth interceptor if credentials provided
+        if (user.isNotEmpty() || password.isNotEmpty()) {
+            builder.addInterceptor(BasicAuthInterceptor(user, password))
+        }
 
-        return connection.newCall(request).execute().body?.string()
-    }
-
-    companion object {
-        suspend fun get(context: Context, user: String = "", password: String = ""): OkHttpClient {
-
-            val strongBuilder = SaveClient(context)
-
-            if (user.isNotEmpty() || password.isNotEmpty()) {
-                strongBuilder.okBuilder.addInterceptor(BasicAuthInterceptor(user, password))
+        // Apply SOCKS5 proxy when Tor is enabled
+        if (Prefs.useTor) {
+            if (!torServiceManager.isReady()) {
+                throw TorNotReadyException("Tor is not yet connected. Please wait for Tor to connect.")
             }
 
-            return suspendCoroutine {
-                val callback = object : StrongBuilder.Callback<OkHttpClient?> {
-                    override fun onConnected(connection: OkHttpClient?) {
-                        val result = if (connection != null) {
-                            Result.success(connection)
+            val port = torServiceManager.socksPort.value
+
+            // Generate new session ID for circuit isolation (IsolateSOCKSAuth)
+            if (isolateCircuit) {
+                currentSessionId.set(generateSessionId())
+            }
+
+            builder.proxy(
+                Proxy(
+                    Proxy.Type.SOCKS,
+                    InetSocketAddress(TorConstants.SOCKS5_PROXY_ADDRESS, port)
+                )
+            )
+
+            // OkHttp's proxyAuthenticator handles HTTP 407 responses (HTTP CONNECT proxies only).
+            // For SOCKS5, Java calls Authenticator.getPasswordAuthentication() at socket handshake
+            // level — so we must use Authenticator.setDefault(). We scope it to the exact Tor
+            // proxy host+port so it never responds to any other SOCKS5 challenge in the process.
+            val sessionId = currentSessionId.get()
+            if (sessionId != null) {
+                Authenticator.setDefault(object : Authenticator() {
+                    override fun getPasswordAuthentication(): PasswordAuthentication? {
+                        if (requestingHost == TorConstants.SOCKS5_PROXY_ADDRESS && requestingPort == port) {
+                            return PasswordAuthentication(sessionId, sessionId.toCharArray())
                         }
-                        else {
-                            Result.failure(OrbotException(context.getString(R.string.tor_connection_exception)))
-                        }
-
-                        it.resumeWith(result)
+                        return null
                     }
-
-                    override fun onConnectionException(e: java.lang.Exception?) {
-                        it.resumeWith(Result.failure(e ?: OrbotException(context.getString(R.string.tor_connection_exception))))
-                    }
-
-                    override fun onTimeout() {
-                        it.resumeWith(Result.failure(OrbotException(context.getString(R.string.tor_connection_timeout))))
-                    }
-
-                    override fun onInvalid() {
-                        it.resumeWith(Result.failure(OrbotException(context.getString(R.string.tor_connection_invalid))))
-                    }
-                }
-
-                if (Prefs.useTor) {
-                    if (!OrbotHelper.requestStartTor(context)) {
-                        callback.onInvalid()
-                    }
-                    else {
-                        strongBuilder.build(callback)
-                    }
-                }
-                else {
-                    callback.onConnected(strongBuilder.build(Intent()))
-                }
+                })
             }
         }
 
-        suspend fun getSardine(context: Context, space: Space): OkHttpSardine {
-            val sardine = OkHttpSardine(get(context))
-            sardine.setCredentials(space.username, space.password)
-
-            return sardine
-        }
+        return builder.build()
     }
+
 }
