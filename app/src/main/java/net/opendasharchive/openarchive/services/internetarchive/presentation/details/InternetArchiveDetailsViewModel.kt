@@ -16,6 +16,7 @@ import net.opendasharchive.openarchive.core.repositories.SpaceRepository
 import net.opendasharchive.openarchive.features.main.ui.AppRoute
 import net.opendasharchive.openarchive.features.main.ui.Navigator
 import net.opendasharchive.openarchive.features.settings.CreativeCommonsLicenseManager
+import net.opendasharchive.openarchive.util.Prefs
 import org.koin.core.component.KoinComponent
 
 class InternetArchiveDetailsViewModel(
@@ -187,6 +188,7 @@ class InternetArchiveDetailsViewModel(
             if (!isSuccess) {
                 return@launch
             }
+            Prefs.lastIa503Timestamp = 0L
             navigator.navigateBack()
         }
     }

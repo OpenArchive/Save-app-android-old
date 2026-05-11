@@ -31,6 +31,7 @@ import net.opendasharchive.openarchive.core.repositories.MediaRepository
 import net.opendasharchive.openarchive.core.repositories.ProjectRepository
 import net.opendasharchive.openarchive.core.repositories.SpaceRepository
 import net.opendasharchive.openarchive.features.main.HomeActivity
+import net.opendasharchive.openarchive.core.domain.VaultType
 import net.opendasharchive.openarchive.services.Conduit
 import net.opendasharchive.openarchive.util.DateUtils
 import net.opendasharchive.openarchive.util.Prefs
@@ -54,15 +55,9 @@ class UploadService : JobService() {
     private var serviceJob = SupervisorJob()
     private var serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
 
-    // Circuit breaker: open circuit per vault after consecutive slow-down responses.
-    // In-memory only — resets on app restart, which is intentional (IA may have recovered).
-    private val consecutiveSlowDowns = mutableMapOf<Long, Int>()
-    private val circuitOpenUntil = mutableMapOf<Long, Long>()
-
     companion object {
         private const val NOTIFICATION_CHANNEL_ID = "oasave_channel_1"
-        private const val CIRCUIT_BREAKER_THRESHOLD = 3   // slow-downs before opening circuit
-        private const val CIRCUIT_OPEN_DURATION_MS = 10 * 60 * 1000L // 10 minutes
+        private const val IA_503_COOLDOWN_MS = 10 * 60 * 1000L // 10 minutes
     }
 
     override fun onCreate() {
@@ -166,7 +161,6 @@ class UploadService : JobService() {
                 return completed()
             }
 
-            var results = emptyList<Evidence>()
             var successCount = 0
             var failedCount = 0
             var totalCount = 0
@@ -180,27 +174,54 @@ class UploadService : JobService() {
                 )
             }
 
-            while (mKeepUploading &&
-                mediaRepository.getQueue().also { results = it }.isNotEmpty()
-            ) {
-                val datePublish = DateUtils.nowDateTime
+            // Tracks ERROR items already attempted in Phase 2 this session — one attempt each.
+            val sessionAttemptedErrorIds = mutableSetOf<Long>()
 
+            // Two-phase upload loop:
+            // Phase 1 — process all QUEUED/UPLOADING items first; skip ERROR items entirely.
+            // Phase 2 — once no active items remain, retry ERROR items once each.
+            //            IA ERROR items are skipped if the 503 cooldown (10 min) hasn't elapsed.
+            while (mKeepUploading) {
+                val allQueue = mediaRepository.getQueue()
+                if (allQueue.isEmpty()) break
+
+                val activeItems = allQueue.filter { it.status != EvidenceStatus.ERROR }
+                val errorItems  = allQueue.filter { it.status == EvidenceStatus.ERROR }
+
+                val phase1 = activeItems.isNotEmpty()
+                val items = if (phase1) activeItems else errorItems
+
+                val datePublish = DateUtils.nowDateTime
                 var batchHadWork = false
-                for (media in results) {
-                    // Guard against Tor dropping between items in a batch (race with onStartJob watcher).
+
+                for (media in items) {
+                    if (!mKeepUploading) break
+
+                    // Guard against Tor dropping between items.
                     if (Prefs.useTor && !torServiceManager.isReady()) {
                         AppLogger.i("Tor not ready before item ${media.id}, pausing queue")
                         mKeepUploading = false
                         break
                     }
 
-                    // Circuit breaker: skip items whose vault is in a cool-down period after
-                    // consecutive IaSlowDown responses. Matches iOS UploadManager.space.tries logic.
-                    val vaultOpenUntil = circuitOpenUntil[media.vaultId] ?: 0L
-                    if (vaultOpenUntil > System.currentTimeMillis()) {
-                        val remainingMin = (vaultOpenUntil - System.currentTimeMillis()) / 60_000
-                        AppLogger.i("Circuit open for vault ${media.vaultId} — skipping item ${media.id} (${remainingMin}min remaining)")
-                        continue
+                    // Resolve vault once — used for both the IA cooldown check and licenseUrl.
+                    val vault = spaceRepository.getSpaceById(media.vaultId)
+
+                    // Phase 2 only: each ERROR item gets one attempt per session.
+                    if (!phase1) {
+                        if (media.id in sessionAttemptedErrorIds) continue
+
+                        // IA ERROR items: respect 503 cooldown before retrying.
+                        if (vault?.type == VaultType.INTERNET_ARCHIVE) {
+                            val elapsed = System.currentTimeMillis() - Prefs.lastIa503Timestamp
+                            if (elapsed < IA_503_COOLDOWN_MS) {
+                                val remainingMin = (IA_503_COOLDOWN_MS - elapsed) / 60_000
+                                AppLogger.i("IA 503 cooldown active — skipping item ${media.id} (${remainingMin}min remaining)")
+                                continue
+                            }
+                        }
+
+                        sessionAttemptedErrorIds.add(media.id)
                     }
 
                     batchHadWork = true
@@ -215,7 +236,6 @@ class UploadService : JobService() {
                         )
                     }
 
-                    val vault = spaceRepository.getSpaceById(media.vaultId)
                     updatedMedia = updatedMedia.copy(licenseUrl = vault?.licenseUrl)
                     mediaRepository.updateEvidence(updatedMedia)
 
@@ -228,27 +248,18 @@ class UploadService : JobService() {
                         AppLogger.i("Started uploading", updatedMedia)
                         val (uploadSuccess, wasSlowDown) = upload(updatedMedia)
                         if (uploadSuccess) {
-                            // Reset circuit breaker on success for this vault.
-                            consecutiveSlowDowns[updatedMedia.vaultId] = 0
-                            circuitOpenUntil.remove(updatedMedia.vaultId)
                             serviceScope.launch { fileCleanupHelper.deleteUploadedMediaFiles(updatedMedia) }
                             successCount++
                         } else {
                             if (wasSlowDown) {
-                                val count = (consecutiveSlowDowns[updatedMedia.vaultId] ?: 0) + 1
-                                consecutiveSlowDowns[updatedMedia.vaultId] = count
-                                if (count >= CIRCUIT_BREAKER_THRESHOLD) {
-                                    val openUntil = System.currentTimeMillis() + CIRCUIT_OPEN_DURATION_MS
-                                    circuitOpenUntil[updatedMedia.vaultId] = openUntil
-                                    AppLogger.w("Circuit opened for vault ${updatedMedia.vaultId} after $count consecutive slow-downs — pausing for 10min")
-                                }
+                                Prefs.lastIa503Timestamp = System.currentTimeMillis()
+                                AppLogger.w("IA 503 recorded for vault ${updatedMedia.vaultId} — cooldown started")
                             }
                             failedCount++
                         }
                     } catch (ioe: IOException) {
                         AppLogger.e(ioe)
-                        // Safety net: conduit should have called jobFailed() already, but guard
-                        // against unhandled IOExceptions escaping the conduit's try/catch.
+                        // Safety net: conduit should have called jobFailed() already.
                         if (mediaRepository.getEvidence(updatedMedia.id)?.status != EvidenceStatus.ERROR) {
                             updatedMedia = updatedMedia.copy(
                                 statusMessage = ioe.message ?: "IOException during upload",
@@ -265,11 +276,9 @@ class UploadService : JobService() {
                         }
                         failedCount++
                     }
-
-                    if (!mKeepUploading) break
                 }
-                // If every item in this batch was blocked by the circuit breaker, stop the
-                // session rather than spinning. The job will reschedule on next network event.
+
+                // No work done in this pass — nothing eligible to process, stop the session.
                 if (!batchHadWork) break
             }
 

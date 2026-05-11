@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
@@ -19,6 +21,8 @@ import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.core.domain.Archive
 import net.opendasharchive.openarchive.core.domain.Vault
 import net.opendasharchive.openarchive.core.domain.VaultType
+import net.opendasharchive.openarchive.core.navigation.NavigationResultKeys
+import net.opendasharchive.openarchive.core.navigation.ResultEventBus
 import net.opendasharchive.openarchive.core.repositories.ProjectRepository
 import net.opendasharchive.openarchive.core.repositories.SpaceRepository
 import net.opendasharchive.openarchive.features.main.ui.HomeEvent.LaunchPicker
@@ -26,6 +30,8 @@ import net.opendasharchive.openarchive.features.main.ui.components.HomeBottomTab
 import net.opendasharchive.openarchive.features.media.AddMediaType
 import net.opendasharchive.openarchive.features.media.MediaPicker
 import net.opendasharchive.openarchive.features.media.camera.CameraConfig
+import net.opendasharchive.openarchive.upload.UploadEvent
+import net.opendasharchive.openarchive.upload.UploadEventBus
 import net.opendasharchive.openarchive.upload.UploadGate
 import net.opendasharchive.openarchive.upload.UploadJobScheduler
 import net.opendasharchive.openarchive.core.logger.AppLogger
@@ -55,6 +61,8 @@ class HomeViewModel(
     init {
         observeData()
         observeSharedImport()
+        observeFolderCreated()
+        observeUploadCompleted()
     }
 
     private fun observeData() {
@@ -84,11 +92,14 @@ class HomeViewModel(
                 // If projects haven't loaded yet, preserve the current selection rather
                 // than resetting — avoids clobbering the persisted ID on the first
                 // emission of an empty list (common on first compose after passcode unlock).
+                val pendingNewProjectId = state.pendingNewProjectId
                 val selectedProjectId = when {
                     data.projects.isEmpty() -> state.selectedProjectId
+                    pendingNewProjectId != null && data.projects.any { it.id == pendingNewProjectId } -> pendingNewProjectId
                     data.projects.any { it.id == state.selectedProjectId } -> state.selectedProjectId
                     else -> data.projects.firstOrNull()?.id
                 }
+                val resolvedPending = if (selectedProjectId == pendingNewProjectId) null else pendingNewProjectId
 
                 val currentSettingsIndex = settingsIndex(state.projects.size)
                 val wasOnSettings = state.pagerIndex == currentSettingsIndex
@@ -107,11 +118,34 @@ class HomeViewModel(
                     currentSpace = data.currentSpace,
                     projects = data.projects,
                     selectedProjectId = selectedProjectId,
+                    pendingNewProjectId = resolvedPending,
                     pagerIndex = newPagerIndex,
                     lastMediaIndex = if (newPagerIndex < settingsIndex(data.projects.size)) newPagerIndex else state.lastMediaIndex
                 )
             }
         }.launchIn(viewModelScope)
+    }
+
+    private fun observeUploadCompleted() {
+        UploadEventBus.events
+            .filterIsInstance<UploadEvent.Changed>()
+            .filter { it.isUploaded && it.projectId == _uiState.value.selectedProjectId }
+            .onEach { event ->
+                _uiState.update { state ->
+                    state.copy(
+                        mediaRefreshProjectId = event.projectId,
+                        mediaRefreshToken = state.mediaRefreshToken + 1L
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observeFolderCreated() {
+        ResultEventBus.getResultFlow<Long>(NavigationResultKeys.FOLDER_CREATED)
+            .filterIsInstance<Long>()
+            .onEach { projectId -> _uiState.update { it.copy(pendingNewProjectId = projectId) } }
+            .launchIn(viewModelScope)
     }
 
     private fun observeSharedImport() {

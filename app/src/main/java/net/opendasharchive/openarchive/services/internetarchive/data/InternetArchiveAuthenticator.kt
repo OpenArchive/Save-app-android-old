@@ -45,7 +45,8 @@ class InternetArchiveAuthenticator(
                 ) { response ->
                     if (!response.isSuccessful) {
                         return@enqueueResult Result.failure<LoginIntermediateData>(
-                            IOException("IA server error ${response.code}")
+                            if (response.code in 400..499) UnauthenticatedException()
+                            else IOException("IA server error ${response.code}")
                         )
                     }
                     val body = response.body?.string() ?: return@enqueueResult Result.failure(Exception("Empty response body"))

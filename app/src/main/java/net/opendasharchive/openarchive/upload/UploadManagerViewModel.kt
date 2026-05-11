@@ -70,10 +70,8 @@ class UploadManagerViewModel(
 
     /**
      * Reactively re-queries getQueue() whenever any media is written to the DB.
-     * This is the primary mechanism for keeping the list correct: every
-     * updateEvidence() call (including upload completion) fires invalidateMedia(),
-     * so UPLOADED items disappear from this list automatically without needing
-     * event-based removeItem() calls.
+     * getQueue() returns active items first (QUEUED/UPLOADING) then ERROR items at the bottom.
+     * UploadService skips already-attempted ERROR items via in-memory set, preventing infinite loops.
      */
     private fun observeQueue() {
         InvalidationBus.media
@@ -237,6 +235,17 @@ class UploadManagerViewModel(
 
             val movedItem = updatedList.removeAt(fromPosition)
             updatedList.add(toPosition, movedItem)
+
+            // If an ERROR item was dragged above any active item, re-queue it.
+            // "above active item" = there is still a QUEUED/UPLOADING item after it in the list.
+            val itemAtNewPosition = updatedList[toPosition]
+            if (itemAtNewPosition.status == EvidenceStatus.ERROR) {
+                updatedList[toPosition] = itemAtNewPosition.copy(
+                    status = EvidenceStatus.QUEUED,
+                    statusMessage = ""
+                )
+                mediaRepository.updateEvidence(updatedList[toPosition])
+            }
 
             _uiState.update { it.copy(mediaList = updatedList) }
 

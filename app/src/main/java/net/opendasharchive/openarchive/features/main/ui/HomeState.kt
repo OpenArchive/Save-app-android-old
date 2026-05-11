@@ -29,4 +29,5 @@ data class HomeState(
     val mediaRefreshToken: Long = 0L,
     val pendingSharedUris: List<Uri>? = null,
     val showProjectPickerForImport: Boolean = false,
+    val pendingNewProjectId: Long? = null,
 )

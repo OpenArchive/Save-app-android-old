@@ -86,11 +86,12 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
             val fileName = getUploadFileName(mEvidence, true)
             val metaJson = getMetadata()
 
-            // isRetry = serverUrl was persisted from a previous session (process-killed mid-upload).
-            // A blank serverUrl means this is a first attempt — we'll generate a fresh identifier below.
-            val isRetry = mEvidence.serverUrl.isNotBlank()
-
-            if (!isRetry) {
+            // serverUrl is blank on a genuine first attempt; it is set (and persisted to DB via
+            // jobFailed) the moment we assign an IA identifier. An ERROR item being retried will
+            // always arrive here with serverUrl already set — either from the failed attempt or
+            // from a previous session that was killed mid-upload.
+            val hadIdentifier = mEvidence.serverUrl.isNotBlank()
+            if (!hadIdentifier) {
                 val slug = getSlug(mEvidence.title)
                 val newIdentifier = "$slug-${Utility.RandomString(4).nextString()}"
                 mEvidence = mEvidence.copy(serverUrl = newIdentifier)
@@ -99,18 +100,19 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
             // Upload content FIRST. An IA item with content but no meta.json is harmless —
             // IA will derive defaults. The reverse (meta.json with no content) creates an
             // orphaned item stub that IA cannot clean up automatically, corrupting the identifier.
-            val alreadyUploaded = isRetry && client.isAlreadyUploaded(fileName, auth)
+            //
+            // Check isAlreadyUploaded whenever we had a prior identifier (retried/errored item).
+            // A freshly assigned identifier cannot have content on IA yet — skip the round-trip.
+            val alreadyUploaded = hadIdentifier && client.isAlreadyUploaded(fileName, auth)
 
             if (alreadyUploaded) {
                 AppLogger.i("IA: $fileName already uploaded to ${mEvidence.serverUrl}, skipping content upload")
             } else {
-                // Upload content. execute() handles 502/503/504 with exponential backoff.
                 // On 401 (expired S3 keys), we auto-revalidate once using the stored login
-                // password and retry — no user intervention needed.
+                // password and retry — no user intervention needed. All other failures propagate
+                // to jobFailed() via the outer catch.
                 var currentAuth = auth
                 var credentialRefreshed = false
-                var ioAttempt = 0
-                val maxIoRetries = 3
                 while (true) {
                     if (mCancelled) return false
                     try {
@@ -125,15 +127,9 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                         }
                         currentAuth = freshAuth
                         credentialRefreshed = true
-                    } catch (e: IOException) {
-                        ioAttempt++
-                        if (ioAttempt >= maxIoRetries || mCancelled) throw e
-                        val baseMs = 2_000L * ioAttempt
-                        val jitterMs = (Math.random() * 500).toLong()
-                        val delayMs = baseMs + jitterMs
-                        AppLogger.w("IA upload network error (attempt $ioAttempt/$maxIoRetries), retrying in ${delayMs / 1000}s: ${e.message}")
-                        delay(delayMs)
                     }
+                    // No IOException retry here — execute() already retries 5x with backoff internally.
+                    // Any failure that survives execute() propagates to jobFailed().
                 }
             }
 
@@ -326,44 +322,31 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
 
     @Throws(Exception::class)
     private suspend fun OkHttpClient.execute(request: Request) {
-        // Start at 2 s and double each attempt (2 → 4 → 8 → 16 → 20 s) with ±500 ms jitter.
-        // iOS background URLSession retries transparently at the OS level; we approximate that
-        // here without the 30 s penalty that was making uploads feel stalled on Android.
-        var delayMs = 2_000L
-        val maxRetries = 5
+        // Single attempt — no HTTP-level retry. Transient failures (5xx, ProtocolException)
+        // mark the item ERROR and let the queue-level retry logic handle re-attempts after
+        // the 503 cooldown window. This avoids blocking the upload queue with multi-second
+        // backoff delays that would stall WebDAV and other items.
         var activeRequest = request
-        repeat(maxRetries) { attempt ->
+        val maxRedirects = 5
+        var redirectCount = 0
+
+        while (redirectCount < maxRedirects) {
             if (mCancelled) throw IOException("Cancelled")
             val call = newCall(activeRequest)
             currentCall = call
             val code: Int
             val message: String
             val location: String?
-            val retryAfterMs: Long?
             try {
                 val response = withContext(Dispatchers.IO) { call.execute() }
                 code = response.code
                 message = response.message
                 location = response.header("Location")
-                // Retry-After is in seconds; convert to ms. IA typically sends 1–30.
-                retryAfterMs = response.header("Retry-After")?.toLongOrNull()?.let { it * 1_000L }
                 response.close()
             } catch (e: java.net.ProtocolException) {
-                // transferred < contentLength at close() time — the flush that drains the Okio
-                // buffer failed (server sent RST before we finished). For large payloads this
-                // is stale-connection reuse; for small metadata payloads it is the first
-                // connection itself whose flush fails after a 503+RST. Evict the pool so the
-                // next attempt always opens a fresh TCP socket, then retry with backoff.
+                // Stale connection or RST mid-stream — treat as transient server error.
                 connectionPool.evictAll()
-                if (attempt < maxRetries - 1) {
-                    val jitterMs = (Math.random() * 500).toLong()
-                    val waitMs = delayMs + jitterMs
-                    AppLogger.w("IA protocol error, evicted pool, retrying in ${waitMs / 1000}s (attempt ${attempt + 1}/$maxRetries): ${e.message}")
-                    delay(waitMs)
-                    delayMs = minOf(delayMs * 2, 20_000L)
-                    return@repeat
-                }
-                throw IaSlowDownException("IA connection failed after $maxRetries attempts (ProtocolException): ${e.message}")
+                throw IaSlowDownException("IA connection error (ProtocolException): ${e.message}")
             } finally {
                 currentCall = null
             }
@@ -372,37 +355,30 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                 // IA is "much more likely to issue 307 redirects than Amazon" (IAS3 docs).
                 // OkHttp won't follow 307 on PUT with a streaming body — handle manually.
                 code == 307 || code == 301 || code == 302 -> {
-                    if (location.isNullOrBlank()) throw RuntimeException("$code redirect with no Location header")
+                    if (location.isNullOrBlank()) throw IOException("$code redirect with no Location header")
                     // Validate redirect stays on IA-owned domains — prevents credential
                     // leakage to attacker-controlled hosts via MITM or malicious Location header.
-                    val redirectHost = location.toHttpUrl().host
+                    val redirectHost = try {
+                        location.toHttpUrl().host
+                    } catch (e: IllegalArgumentException) {
+                        throw IOException("IA redirect $code has malformed URL: $location", e)
+                    }
                     if (!redirectHost.endsWith(".archive.org") && redirectHost != "archive.org") {
                         throw SecurityException("IA redirect to non-archive.org host blocked: $redirectHost")
                     }
-                    AppLogger.i("IA redirect $code → $location (attempt ${attempt + 1})")
+                    AppLogger.i("IA redirect $code → $location")
                     activeRequest = activeRequest.newBuilder().url(location).build()
+                    redirectCount++
                 }
-                // 401: S3 credentials expired or revoked. Not retryable.
                 code == 401 -> throw CredentialsExpiredException(
                     "Internet Archive credentials have expired. Please remove and re-add your account."
                 )
-                // 502/503/504 are all transient server-side errors — retry with backoff.
-                // Honour IA's Retry-After hint when present; otherwise use exponential backoff.
-                code in setOf(502, 503, 504) && attempt < maxRetries - 1 -> {
-                    val jitterMs = (Math.random() * 500).toLong()
-                    val waitMs = if (retryAfterMs != null) {
-                        retryAfterMs + jitterMs
-                    } else {
-                        delayMs + jitterMs
-                    }
-                    AppLogger.w("IA returned $code, retrying in ${waitMs / 1000}s (attempt ${attempt + 1}/$maxRetries)")
-                    delay(waitMs)
-                    if (retryAfterMs == null) delayMs = minOf(delayMs * 2, 20_000L)
-                }
-                else -> throw RuntimeException("$code: $message")
+                // 5xx: transient server-side error — mark ERROR and let queue handle retry after cooldown.
+                code in setOf(500, 502, 503, 504) -> throw IaSlowDownException("IA returned $code")
+                else -> throw IOException("$code: $message")
             }
         }
-        throw IaSlowDownException("IA returned 502/503/504 after $maxRetries attempts — re-queuing for later retry")
+        throw IOException("Too many IA redirects")
     }
 
     /**

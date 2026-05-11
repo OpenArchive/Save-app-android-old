@@ -2,7 +2,6 @@ package net.opendasharchive.openarchive.services.webdav.data
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.core.domain.Evidence
@@ -324,40 +323,16 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
 
     @Throws(IOException::class)
     private suspend fun execute(request: Request) {
-        var delayMs = 2_000L
-        val maxRetries = 3
-        repeat(maxRetries) { attempt ->
-            val call = mClient.newCall(request)
-            currentCall = call
-            try {
-                val response = withContext(Dispatchers.IO) { call.execute() }
-                val code = response.code
-                val message = response.message
-                response.close()
-                when {
-                    code in 200..299 -> return
-                    // 5xx transient — retry with backoff. Covers server hiccups and Tor circuit issues.
-                    code in 500..599 && attempt < maxRetries - 1 -> {
-                        val jitterMs = (Math.random() * 500).toLong()
-                        AppLogger.w("WebDAV $code on ${request.url}, retrying in ${(delayMs + jitterMs) / 1000}s (attempt ${attempt + 1}/$maxRetries)")
-                        delay(delayMs + jitterMs)
-                        delayMs = minOf(delayMs * 2, 16_000L)
-                    }
-                    else -> throw IOException("$code: $message")
-                }
-            } catch (e: IOException) {
-                if (attempt < maxRetries - 1) {
-                    val jitterMs = (Math.random() * 500).toLong()
-                    AppLogger.w("WebDAV network error on ${request.url}, retrying in ${(delayMs + jitterMs) / 1000}s (attempt ${attempt + 1}/$maxRetries): ${e.message}")
-                    delay(delayMs + jitterMs)
-                    delayMs = minOf(delayMs * 2, 16_000L)
-                } else {
-                    throw e
-                }
-            } finally {
-                currentCall = null
-            }
+        val call = mClient.newCall(request)
+        currentCall = call
+        try {
+            val response = withContext(Dispatchers.IO) { call.execute() }
+            val code = response.code
+            val message = response.message
+            response.close()
+            if (code !in 200..299) throw IOException("$code: $message")
+        } finally {
+            currentCall = null
         }
-        throw IOException("WebDAV request failed after $maxRetries attempts: ${request.url}")
     }
 }

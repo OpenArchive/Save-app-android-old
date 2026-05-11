@@ -21,6 +21,8 @@ import net.opendasharchive.openarchive.features.core.dialog.DialogConfig
 import net.opendasharchive.openarchive.features.core.dialog.DialogStateManager
 import net.opendasharchive.openarchive.features.core.dialog.DialogType
 import net.opendasharchive.openarchive.features.core.dialog.showSuccessDialog
+import net.opendasharchive.openarchive.core.navigation.NavigationResultKeys
+import net.opendasharchive.openarchive.core.navigation.ResultEventBus
 import net.opendasharchive.openarchive.features.main.ui.Navigator
 import net.opendasharchive.openarchive.util.DateUtils
 
@@ -202,6 +204,7 @@ class CreateNewFolderViewModel(
 
                 val projectId = projectRepository.addProject(archive)
                 AppLogger.i("Created new project with id $projectId")
+                ResultEventBus.sendResult(resultKey = NavigationResultKeys.FOLDER_CREATED, result = projectId)
                 showFolderCreatedDialog()
 
             } finally {

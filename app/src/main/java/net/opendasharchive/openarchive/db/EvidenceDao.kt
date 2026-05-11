@@ -49,10 +49,13 @@ interface EvidenceDao {
 
     @Query("""
         SELECT * FROM evidence
-        WHERE status IN (:statuses) AND nextRetryAt <= :now
-        ORDER BY priority DESC, id DESC
+        WHERE (status IN (2, 4) AND nextRetryAt <= :now) OR status = 9
+        ORDER BY
+          CASE WHEN status = 9 THEN 1 ELSE 0 END,
+          priority DESC,
+          id DESC
     """)
-    suspend fun getQueueNow(statuses: List<EvidenceStatus>, now: Long): List<EvidenceEntity>
+    suspend fun getQueueWithErrorsLast(now: Long): List<EvidenceEntity>
 
     @Query("SELECT * FROM evidence WHERE status IN (:statuses) ORDER BY priority DESC, id DESC")
     fun observeByStatus(statuses: List<EvidenceStatus>): Flow<List<EvidenceEntity>>

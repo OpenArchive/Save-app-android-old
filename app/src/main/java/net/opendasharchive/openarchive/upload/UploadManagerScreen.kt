@@ -297,6 +297,8 @@ private fun UploadEvidenceItem(
                     append(evidence.title)
                 }
 
+                val isError = evidence.status == EvidenceStatus.ERROR
+
                 if (titleText.isNotBlank()) {
                     Text(
                         text = titleText,
@@ -319,7 +321,8 @@ private fun UploadEvidenceItem(
                         ),
                         maxLines = 1,
                         fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        color = if (isError) colorResource(R.color.colorDanger).copy(alpha = 0.8f)
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
             }

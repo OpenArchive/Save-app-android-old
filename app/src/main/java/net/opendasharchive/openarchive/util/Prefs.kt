@@ -31,6 +31,7 @@ object Prefs {
     private const val IS_MIGRATION_IN_PROGRESS = "is_migration_in_progress"
     private const val IS_ROOM_MIGRATED = "is_room_migrated"
     private const val SUGAR_DB_DELETE_PENDING = "sugar_db_delete_pending"
+    private const val LAST_IA_503_TIMESTAMP = "last_ia_503_timestamp"
     val TOR_DOWNLOAD_URL = Uri.parse("https://play.google.com/store/apps/details?id=org.torproject.android")
 
     private var prefs: SharedPreferences? = null
@@ -221,5 +222,9 @@ object Prefs {
         set(value) {
             putBoolean(SUGAR_DB_DELETE_PENDING, value)
         }
+
+    var lastIa503Timestamp: Long
+        get() = getLong(LAST_IA_503_TIMESTAMP, 0L)
+        set(value) { putLong(LAST_IA_503_TIMESTAMP, value) }
 
 }

@@ -11,4 +11,5 @@ object NavigationResultKeys {
     const val SHARED_MEDIA_IMPORT = "shared_media_import"
     const val REFRESH_SPACES = "refresh_spaces"
     const val REVIEW_MEDIA_SAVED = "review_media_saved"
+    const val FOLDER_CREATED = "folder_created"
 }

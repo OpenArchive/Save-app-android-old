@@ -121,11 +121,10 @@ class EvidenceRepositoryImpl(
         }
     }
 
+    // Active items (QUEUED/UPLOADING) first sorted by priority, ERROR items last sorted by priority.
+    // UploadService skips ERROR items already attempted this session via in-memory set.
     override suspend fun getQueue(): List<Evidence> = withContext(io) {
-        // UPLOADING: items set to uploading in this session (should be none after resetStaleUploading)
-        // QUEUED: items waiting to upload, filtered by nextRetryAt backoff window
-        val statuses = listOf(EvidenceStatus.UPLOADING, EvidenceStatus.QUEUED)
-        evidenceDao.getQueueNow(statuses, System.currentTimeMillis()).map { mapToDomain(it) }
+        evidenceDao.getQueueWithErrorsLast(System.currentTimeMillis()).map { mapToDomain(it) }
     }
 
     override suspend fun updatePriority(mediaId: Long, priority: Int) {

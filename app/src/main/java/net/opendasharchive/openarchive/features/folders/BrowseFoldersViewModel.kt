@@ -12,6 +12,8 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 import net.opendasharchive.openarchive.core.domain.Archive
 import net.opendasharchive.openarchive.core.logger.AppLogger
+import net.opendasharchive.openarchive.core.navigation.NavigationResultKeys
+import net.opendasharchive.openarchive.core.navigation.ResultEventBus
 import net.opendasharchive.openarchive.core.repositories.ProjectRepository
 import net.opendasharchive.openarchive.core.repositories.SpaceRepository
 import net.opendasharchive.openarchive.features.core.UiImage
@@ -134,6 +136,7 @@ class BrowseFoldersViewModel(
 
             val projectId = projectRepository.addProject(archive)
             AppLogger.i("New project added: $projectId")
+            ResultEventBus.sendResult(resultKey = NavigationResultKeys.FOLDER_CREATED, result = projectId)
 
             dialogManager.showDialog(
                 DialogConfig(
