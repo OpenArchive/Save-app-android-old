@@ -6,12 +6,9 @@ import net.opendasharchive.openarchive.features.core.UiText
 @Immutable
 data class WebDavLoginState(
     // Form fields
-    val serverUrl: String = "",
-    val username: String = "",
-    val password: String = "",
-//    val serverUrl: String = "https://nx27277.your-storageshare.de/",
-//    val username: String = "Prathieshna",
-//    val password: String = "J7wc(ka_4#9!13h&",
+    val serverUrl: String = "https://nx27277.your-storageshare.de/",
+    val username: String = "Prathieshna",
+    val password: String = "J7wc(ka_4#9!13h&",
     val name: String = "",
 
     // Field errors

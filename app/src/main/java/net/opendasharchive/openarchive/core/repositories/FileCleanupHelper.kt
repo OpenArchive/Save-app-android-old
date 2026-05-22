@@ -60,7 +60,7 @@ class FileCleanupHelper(private val context: Context) {
 
     private fun deleteC2paSidecar(mediaHashString: String) {
         if (mediaHashString.isNotEmpty()) {
-            C2paHelper.removeC2paFiles(context, mediaHashString)
+            C2paHelper.removeSidecar(context, mediaHashString)
         }
     }
 

@@ -2,12 +2,6 @@ package net.opendasharchive.openarchive.util
 
 import net.opendasharchive.openarchive.core.logger.AppLogger
 
-/**
- * JNI wrapper for C2PA Rust FFI library
- *
- * This class provides a Kotlin interface to the native Rust implementation of C2PA.
- * The Rust library is compiled from source for FOSS builds, ensuring F-Droid compliance.
- */
 object C2paFfi {
 
     private var initialized = false
@@ -15,131 +9,92 @@ object C2paFfi {
 
     init {
         try {
-            // Load the native library compiled from Rust
             System.loadLibrary("c2pa_ffi")
             libraryLoaded = true
-            AppLogger.d("C2PA FFI native library loaded successfully")
+            AppLogger.d("C2PA FFI native library loaded")
         } catch (e: UnsatisfiedLinkError) {
-            AppLogger.e("Failed to load C2PA FFI native library", e)
-            AppLogger.e("Make sure Rust is installed and the library is compiled")
+            AppLogger.e("Failed to load C2PA FFI native library: ${e.message}")
             libraryLoaded = false
         }
     }
 
-    /**
-     * Initialize the C2PA FFI library
-     * Must be called before using any other functions
-     *
-     * @return true if initialization succeeded, false otherwise
-     */
     fun initialize(): Boolean {
-        if (!libraryLoaded) {
-            AppLogger.w("Cannot initialize C2PA FFI - native library not loaded")
-            return false
-        }
-
-        if (initialized) {
-            AppLogger.d("C2PA FFI already initialized")
-            return true
-        }
-
+        if (!libraryLoaded) return false
+        if (initialized) return true
         return try {
             val result = nativeInit()
             initialized = result
-            if (result) {
-                AppLogger.i("C2PA FFI initialized successfully")
-            } else {
-                AppLogger.w("C2PA FFI initialization returned false")
-            }
             result
         } catch (e: Exception) {
-            AppLogger.e("Failed to initialize C2PA FFI", e)
+            AppLogger.e("C2PA FFI init failed", e)
             false
         }
     }
 
-    /**
-     * Generate a C2PA manifest for a media file
-     *
-     * @param filePath Absolute path to the media file
-     * @param metadataJson JSON string containing metadata (title, description, author, etc.)
-     * @return JSON string containing the C2PA manifest, or null if generation failed
-     */
-    fun generateManifest(filePath: String, metadataJson: String): String? {
-        if (!initialized) {
-            AppLogger.w("C2PA FFI not initialized, attempting to initialize now")
-            if (!initialize()) {
-                AppLogger.e("Cannot generate manifest - FFI initialization failed")
-                return null
-            }
-        }
+    fun isAvailable(): Boolean = libraryLoaded && initialized
 
+    /**
+     * Generates a fresh ECDSA P-256 key pair and a self-signed X.509 certificate.
+     * Call once at setup; store the result in C2paKeyStore.
+     *
+     * @return JSON string {"cert_pem":"...","key_der_b64":"..."}, or null on failure.
+     */
+    fun generateKeyAndCertificate(): String? {
+        ensureInit() ?: return null
         return try {
-            val result = nativeGenerateManifest(filePath, metadataJson)
-            if (result != null) {
-                AppLogger.d("C2PA manifest generated for: $filePath")
-            } else {
-                AppLogger.w("C2PA manifest generation returned null for: $filePath")
+            nativeGenerateKeyAndCertificate().also { result ->
+                if (result == null) AppLogger.w("C2PA key/cert generation returned null")
             }
-            result
         } catch (e: Exception) {
-            AppLogger.e("Failed to generate C2PA manifest", e)
+            AppLogger.e("C2PA key/cert generation failed", e)
             null
         }
     }
 
     /**
-     * Verify a C2PA manifest
+     * Signs [filePath] and writes a binary JUMBF .c2pa sidecar to [sidecarPath].
+     * The original file is NOT modified.
      *
-     * @param manifestJson JSON string containing the C2PA manifest
-     * @return true if the manifest is valid, false otherwise
+     * @param filePath     Absolute path to the media asset.
+     * @param sidecarPath  Absolute path for the output .c2pa file.
+     * @param certPem      PEM certificate from C2paKeyStore.
+     * @param keyDerB64    Base64-encoded PKCS#8 DER private key from C2paKeyStore.
+     * @param metadataJson JSON object with optional: title, description, author, location.
+     * @return true on success.
      */
-    fun verifyManifest(manifestJson: String): Boolean {
-        if (!initialized) {
-            AppLogger.w("C2PA FFI not initialized, attempting to initialize now")
-            if (!initialize()) {
-                AppLogger.e("Cannot verify manifest - FFI initialization failed")
-                return false
-            }
-        }
-
+    fun generateSidecar(
+        filePath: String,
+        sidecarPath: String,
+        certPem: String,
+        keyDerB64: String,
+        metadataJson: String
+    ): Boolean {
+        ensureInit() ?: return false
         return try {
-            val result = nativeVerifyManifest(manifestJson)
-            AppLogger.d("C2PA manifest verification result: $result")
-            result
+            nativeGenerateSidecar(filePath, sidecarPath, certPem, keyDerB64, metadataJson)
         } catch (e: Exception) {
-            AppLogger.e("Failed to verify C2PA manifest", e)
+            AppLogger.e("C2PA sidecar generation failed", e)
             false
         }
     }
 
-    /**
-     * Check if the native library is loaded and ready to use
-     *
-     * @return true if library is loaded, false otherwise
-     */
-    fun isAvailable(): Boolean {
-        return libraryLoaded && initialized
+    // ── private ───────────────────────────────────────────────────────────────
+
+    private fun ensureInit(): Unit? {
+        if (!initialize()) {
+            AppLogger.e("C2PA FFI not available")
+            return null
+        }
+        return Unit
     }
 
-    // Native method declarations
-    // These are implemented in rust-c2pa-ffi/src/lib.rs
-
-    /**
-     * Initialize the C2PA FFI library (native implementation)
-     */
     private external fun nativeInit(): Boolean
-
-    /**
-     * Generate C2PA manifest (native implementation)
-     */
-    private external fun nativeGenerateManifest(
+    private external fun nativeGenerateKeyAndCertificate(): String?
+    private external fun nativeGenerateSidecar(
         filePath: String,
+        sidecarPath: String,
+        certPem: String,
+        keyDerB64: String,
         metadataJson: String
-    ): String?
-
-    /**
-     * Verify C2PA manifest (native implementation)
-     */
-    private external fun nativeVerifyManifest(manifestJson: String): Boolean
+    ): Boolean
 }

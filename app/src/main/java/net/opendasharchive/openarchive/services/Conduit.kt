@@ -126,7 +126,7 @@ abstract class Conduit(
 
     /**
      * Get C2PA manifest file for this media
-     * Returns the sidecar .c2pa.json file if C2PA is enabled and manifest exists
+     * Returns the binary .c2pa sidecar if C2PA is enabled and file exists
      */
     fun getC2paManifest(): File? {
         if (!Prefs.useC2pa) {
@@ -136,7 +136,7 @@ abstract class Conduit(
 
         try {
             AppLogger.d("[C2PA_DEBUG] getC2paManifest: evidenceHash=${mEvidence.mediaHashString} evidenceFile=${mEvidence.originalFilePath}")
-            val manifestFile = C2paHelper.getC2paFile(mContext, mEvidence.mediaHashString)
+            val manifestFile = C2paHelper.getSidecarFile(mContext, mEvidence.mediaHashString)
             AppLogger.d("[C2PA_DEBUG] Looking for manifest at: ${manifestFile.absolutePath}")
 
             if (manifestFile.exists()) {

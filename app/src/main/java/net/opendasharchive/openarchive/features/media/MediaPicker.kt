@@ -130,7 +130,7 @@ object MediaPicker {
 
         if (logC2pa) {
             AppLogger.d("[C2PA_DEBUG] MediaPicker hash of copied file: $mediaHashString (file size=${file?.length()})")
-            val expectedManifest = C2paHelper.getC2paFile(context, mediaHashString)
+            val expectedManifest = C2paHelper.getSidecarFile(context, mediaHashString)
             AppLogger.d("[C2PA_DEBUG] Expected C2PA manifest path: ${expectedManifest.absolutePath}, exists=${expectedManifest.exists()}")
             if (!expectedManifest.exists()) {
                 AppLogger.w("[C2PA_DEBUG] *** C2PA MANIFEST MISSING for hash $mediaHashString — upload will skip C2PA ***")

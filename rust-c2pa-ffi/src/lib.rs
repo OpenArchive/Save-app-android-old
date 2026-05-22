@@ -1,185 +1,283 @@
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
+use c2pa::{Builder, CallbackSigner, SigningAlg};
 use jni::objects::{JClass, JObject, JString};
 use jni::sys::{jboolean, jstring};
 use jni::JNIEnv;
 use log::LevelFilter;
-use serde::{Deserialize, Serialize};
-use std::fs;
+use rcgen::{
+    Certificate, CertificateParams, DnType, ExtendedKeyUsagePurpose, IsCa, KeyUsagePurpose,
+    PKCS_ECDSA_P256_SHA256,
+};
+use ring::rand::SystemRandom;
+use ring::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_FIXED_SIGNING};
+use std::io::Cursor;
 
-/// Initialize the C2PA FFI library and logging
+// ── JNI: Init ────────────────────────────────────────────────────────────────
+
 #[no_mangle]
 pub extern "C" fn Java_net_opendasharchive_openarchive_util_C2paFfi_nativeInit(
     _env: JNIEnv,
     _class: JClass,
 ) -> jboolean {
-    // Initialize Android logger
     android_logger::init_once(
         android_logger::Config::default()
             .with_max_level(LevelFilter::Debug)
             .with_tag("C2PA-FFI"),
     );
-
     log::info!("C2PA FFI initialized");
-    1 // true
+    1
 }
 
-/// C2PA Manifest structure for JSON serialization
-#[derive(Serialize, Deserialize, Debug)]
-struct C2paManifest {
-    claim_generator: String,
-    assertions: Vec<Assertion>,
-    signature: SignatureInfo,
-}
+// ── JNI: Key + Certificate Generation ────────────────────────────────────────
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Assertion {
-    label: String,
-    data: serde_json::Value,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct SignatureInfo {
-    algorithm: String,
-    value: String,
-}
-
-/// Generate a C2PA manifest for a media file
-///
-/// # Arguments
-/// * `file_path` - Path to the media file
-/// * `metadata_json` - JSON string containing metadata (title, description, etc.)
-///
-/// # Returns
-/// JSON string containing the C2PA manifest, or null on error
+/// Returns JSON: {"cert_pem":"...", "key_der_b64":"..."}
+/// cert_pem  — PEM-encoded self-signed X.509 certificate (pass to c2pa as signing cert)
+/// key_der_b64 — Base64-encoded PKCS#8 DER private key (store encrypted in C2paKeyStore)
 #[no_mangle]
-pub extern "C" fn Java_net_opendasharchive_openarchive_util_C2paFfi_nativeGenerateManifest(
-    mut env: JNIEnv,
+pub extern "C" fn Java_net_opendasharchive_openarchive_util_C2paFfi_nativeGenerateKeyAndCertificate(
+    env: JNIEnv,
     _class: JClass,
-    file_path: JString,
-    metadata_json: JString,
 ) -> jstring {
-    // Convert JString to Rust String
-    let file_path_str: String = match env.get_string(&file_path) {
-        Ok(s) => s.into(),
+    match generate_key_and_cert() {
+        Ok(json) => env
+            .new_string(json)
+            .map(|s| s.into_raw())
+            .unwrap_or(JObject::null().into_raw()),
         Err(e) => {
-            log::error!("Failed to get file path string: {:?}", e);
-            return JObject::null().into_raw();
-        }
-    };
-
-    let metadata_str: String = match env.get_string(&metadata_json) {
-        Ok(s) => s.into(),
-        Err(e) => {
-            log::error!("Failed to get metadata JSON string: {:?}", e);
-            return JObject::null().into_raw();
-        }
-    };
-
-    log::info!("Generating C2PA manifest for: {}", file_path_str);
-
-    // Parse metadata JSON
-    let metadata: serde_json::Value = match serde_json::from_str(&metadata_str) {
-        Ok(m) => m,
-        Err(e) => {
-            log::error!("Failed to parse metadata JSON: {:?}", e);
-            return JObject::null().into_raw();
-        }
-    };
-
-    // TODO: Implement actual C2PA manifest generation using c2pa crate
-    // For now, create a stub manifest structure
-    let manifest = create_stub_manifest(&file_path_str, metadata);
-
-    // Serialize manifest to JSON
-    let manifest_json = match serde_json::to_string_pretty(&manifest) {
-        Ok(json) => json,
-        Err(e) => {
-            log::error!("Failed to serialize manifest: {:?}", e);
-            return JObject::null().into_raw();
-        }
-    };
-
-    // Convert Rust String to JString
-    match env.new_string(manifest_json) {
-        Ok(s) => s.into_raw(),
-        Err(e) => {
-            log::error!("Failed to create JString: {:?}", e);
+            log::error!("Key/cert generation failed: {}", e);
             JObject::null().into_raw()
         }
     }
 }
 
-/// Create a stub C2PA manifest
-/// TODO: Replace with actual c2pa library implementation
-fn create_stub_manifest(file_path: &str, metadata: serde_json::Value) -> C2paManifest {
-    // Calculate file hash for signature
-    let file_hash = calculate_file_hash(file_path).unwrap_or_else(|_| "unknown".to_string());
+fn generate_key_and_cert() -> Result<String, Box<dyn std::error::Error>> {
+    let mut params = CertificateParams::default();
+    params.alg = &PKCS_ECDSA_P256_SHA256;
+    params.not_before = rcgen::date_time_ymd(2024, 1, 1);
+    params.not_after = rcgen::date_time_ymd(2034, 1, 1);
 
-    C2paManifest {
-        claim_generator: "OpenArchive Save/Rust FFI".to_string(),
-        assertions: vec![
-            Assertion {
-                label: "stds.schema-org.CreativeWork".to_string(),
-                data: metadata,
-            },
-            Assertion {
-                label: "c2pa.hash.data".to_string(),
-                data: serde_json::json!({
-                    "alg": "sha256",
-                    "hash": file_hash,
-                    "name": "jumbf manifest"
-                }),
-            },
-        ],
-        signature: SignatureInfo {
-            algorithm: "es256".to_string(),
-            value: format!("stub_signature_{}", &file_hash[..16]),
-        },
-    }
+    // c2pa check_cert requires:
+    //   - not a self-signed CA (IsCa must be ExplicitNoCa)
+    //   - KeyUsage.digitalSignature
+    //   - EKU with emailProtection (OID 1.3.6.1.5.5.7.3.4) or similar allowed OID
+    //   - AuthorityKeyIdentifier extension present
+    params.is_ca = IsCa::ExplicitNoCa;
+    params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
+    params.extended_key_usages = vec![ExtendedKeyUsagePurpose::EmailProtection];
+    params.use_authority_key_identifier_extension = true;
+
+    params
+        .distinguished_name
+        .push(DnType::CommonName, "OpenArchive Save");
+    params
+        .distinguished_name
+        .push(DnType::OrganizationName, "OpenArchive");
+
+    let cert = Certificate::from_params(params)?;
+    let cert_pem = cert.serialize_pem()?;
+    let key_der_b64 = BASE64.encode(cert.serialize_private_key_der());
+
+    let json = serde_json::json!({
+        "cert_pem": cert_pem,
+        "key_der_b64": key_der_b64
+    });
+
+    Ok(json.to_string())
 }
 
-/// Calculate SHA-256 hash of a file
-fn calculate_file_hash(file_path: &str) -> Result<String, std::io::Error> {
-    use sha2::{Digest, Sha256};
+// ── JNI: Sidecar Generation ───────────────────────────────────────────────────
 
-    let contents = fs::read(file_path)?;
-    let hash = Sha256::digest(&contents);
-    Ok(format!("{:x}", hash))
-}
-
-/// Verify a C2PA manifest
+/// Signs the asset and writes a binary .c2pa sidecar (JUMBF format).
+/// The original file is NOT modified.
 ///
-/// # Arguments
-/// * `manifest_json` - JSON string containing the C2PA manifest
+/// Parameters:
+///   filePath     — absolute path to the media asset
+///   sidecarPath  — absolute path for the output .c2pa file
+///   certPem      — PEM certificate string from C2paKeyStore
+///   keyDerB64    — Base64 PKCS#8 DER private key from C2paKeyStore
+///   metadataJson — JSON object with optional fields: title, description, author, location
 ///
-/// # Returns
-/// true if manifest is valid, false otherwise
+/// Returns 1 on success, 0 on failure.
 #[no_mangle]
-pub extern "C" fn Java_net_opendasharchive_openarchive_util_C2paFfi_nativeVerifyManifest(
+pub extern "C" fn Java_net_opendasharchive_openarchive_util_C2paFfi_nativeGenerateSidecar(
     mut env: JNIEnv,
     _class: JClass,
-    manifest_json: JString,
+    file_path: JString,
+    sidecar_path: JString,
+    cert_pem: JString,
+    key_der_b64: JString,
+    metadata_json: JString,
 ) -> jboolean {
-    let manifest_str: String = match env.get_string(&manifest_json) {
-        Ok(s) => s.into(),
-        Err(e) => {
-            log::error!("Failed to get manifest JSON string: {:?}", e);
-            return 0; // false
-        }
-    };
+    macro_rules! jstr {
+        ($s:expr) => {
+            match env.get_string(&$s) {
+                Ok(s) => String::from(s),
+                Err(e) => {
+                    log::error!("JNI string error: {}", e);
+                    return 0;
+                }
+            }
+        };
+    }
 
-    // Parse manifest JSON
-    match serde_json::from_str::<C2paManifest>(&manifest_str) {
-        Ok(_manifest) => {
-            log::info!("Manifest verification: valid structure");
-            // TODO: Implement actual signature verification using c2pa crate
-            1 // true
-        }
+    let file_path = jstr!(file_path);
+    let sidecar_path = jstr!(sidecar_path);
+    let cert_pem = jstr!(cert_pem);
+    let key_der_b64 = jstr!(key_der_b64);
+    let metadata_json = jstr!(metadata_json);
+
+    match generate_sidecar(
+        &file_path,
+        &sidecar_path,
+        &cert_pem,
+        &key_der_b64,
+        &metadata_json,
+    ) {
+        Ok(()) => 1,
         Err(e) => {
-            log::error!("Manifest verification failed: {:?}", e);
-            0 // false
+            log::error!("Sidecar generation failed for {}: {}", file_path, e);
+            0
         }
     }
 }
 
-// Add sha2 dependency for hashing
-// This will be added to Cargo.toml
+fn generate_sidecar(
+    file_path: &str,
+    sidecar_path: &str,
+    cert_pem: &str,
+    key_der_b64: &str,
+    metadata_json: &str,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Decode PKCS#8 DER private key
+    let key_der = BASE64
+        .decode(key_der_b64)
+        .map_err(|e| format!("Base64 decode: {}", e))?;
+
+    // Detect MIME type from extension
+    let mime_type = mime_from_path(file_path);
+
+    // Parse caller metadata; default to empty object on parse failure
+    let metadata: serde_json::Value =
+        serde_json::from_str(metadata_json).unwrap_or(serde_json::Value::Object(Default::default()));
+
+    let title = metadata
+        .get("title")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            std::path::Path::new(file_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("media")
+                .to_string()
+        });
+
+    // Build C2PA manifest definition.
+    // c2pa.actions with c2pa.created is required by the spec as the first action.
+    let manifest_json = serde_json::json!({
+        "claim_generator_info": [{
+            "name": "OpenArchive Save",
+            "version": env!("CARGO_PKG_VERSION")
+        }],
+        "title": title,
+        "format": mime_type,
+        "assertions": [
+            {
+                "label": "c2pa.actions",
+                "data": {
+                    "actions": [{ "action": "c2pa.created" }]
+                }
+            },
+            {
+                "label": "stds.schema-org.CreativeWork",
+                "data": metadata
+            }
+        ]
+    });
+
+    // Build CallbackSigner: ES256 (ECDSA P-256 + SHA-256), P1363 output
+    let cert_bytes = cert_pem.as_bytes().to_vec();
+    let key_der_for_sign = key_der.clone();
+
+    let signer = CallbackSigner::new(
+        move |_ctx: *const (), data: &[u8]| {
+            sign_es256_p1363(data, &key_der_for_sign).map_err(|e| c2pa::Error::OtherError(e))
+        },
+        SigningAlg::Es256,
+        cert_bytes,
+    );
+
+    // Read asset bytes (signing hashes the original bytes — sidecar stays separate)
+    let asset_bytes =
+        std::fs::read(file_path).map_err(|e| format!("Read asset failed: {}", e))?;
+
+    // Build manifest and sign with no_embed=true → returned bytes are the binary sidecar
+    let mut builder = Builder::from_json(&manifest_json.to_string())?;
+    builder.set_no_embed(true);
+
+    let mut source = Cursor::new(&asset_bytes);
+    let mut sink = Cursor::new(Vec::<u8>::new()); // discard — original file untouched
+
+    let manifest_bytes = builder.sign(&signer, &mime_type, &mut source, &mut sink)?;
+
+    // Write binary JUMBF sidecar
+    if let Some(parent) = std::path::Path::new(sidecar_path).parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Create sidecar dir: {}", e))?;
+    }
+    std::fs::write(sidecar_path, &manifest_bytes)
+        .map_err(|e| format!("Write sidecar: {}", e))?;
+
+    log::info!(
+        "C2PA sidecar written: {} ({} bytes)",
+        sidecar_path,
+        manifest_bytes.len()
+    );
+    Ok(())
+}
+
+// ── Signing ───────────────────────────────────────────────────────────────────
+
+/// ECDSA P-256 + SHA-256 sign, returns P1363 (fixed 64-byte r||s).
+/// This matches c2pa's expected ES256 signature format.
+fn sign_es256_p1363(
+    data: &[u8],
+    key_der: &[u8],
+) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
+    let rng = SystemRandom::new();
+    let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, key_der, &rng)
+        .map_err(|e| format!("ECDSA key parse failed: {:?}", e))?;
+    let sig = key_pair
+        .sign(&rng, data)
+        .map_err(|e| format!("ECDSA sign failed: {:?}", e))?;
+    Ok(sig.as_ref().to_vec())
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+fn mime_from_path(path: &str) -> String {
+    let ext = std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "heic" | "heif" => "image/heic",
+        "mp4" | "m4v" => "video/mp4",
+        "mov" => "video/quicktime",
+        "avi" => "video/avi",
+        "mp3" => "audio/mp3",
+        "wav" => "audio/wav",
+        "m4a" => "audio/m4a",
+        "pdf" => "application/pdf",
+        _ => "image/jpeg", // safe fallback for camera captures
+    }
+    .to_string()
+}

@@ -2,62 +2,50 @@ package net.opendasharchive.openarchive.core.security
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Base64
-import net.opendasharchive.openarchive.core.security.SecureStorage
 
 /**
- * Secure storage for C2PA signing keys using Android Keystore (AES-GCM).
- * Replaces plaintext storage in SharedPreferences.
+ * Encrypted storage for C2PA signing material (AES-GCM via Android Keystore).
+ *
+ * Stores:
+ *   - certPem    — PEM-encoded self-signed X.509 certificate
+ *   - keyDerB64  — Base64-encoded PKCS#8 DER private key
+ *
+ * Both values are generated once by C2paFfi.generateKeyAndCertificate() and
+ * reused for all subsequent signing operations.
  */
 class C2paKeyStore(context: Context) {
 
     private val secureStorage = SecureStorage(context, alias = "C2paKeyStore")
 
     companion object {
-        private const val KEY_SIGNING_KEY = "c2pa_signing_key"
-        private const val KEY_PASSPHRASE = "c2pa_passphrase"
+        private const val KEY_CERT_PEM = "c2pa_cert_pem_v2"
+        private const val KEY_DER_B64 = "c2pa_key_der_b64_v2"
 
-        // Legacy SharedPreferences keys used before this class was introduced
-        private const val LEGACY_KEY_SIGNING_KEY = "c2pa_signing_key"
-        private const val LEGACY_KEY_PASSPHRASE = "c2pa_encrypted_passphrase"
+        // Legacy keys from the pre-rcgen era — migrated and removed on first access
+        private const val LEGACY_SIGNING_KEY = "c2pa_signing_key"
+        private const val LEGACY_PASSPHRASE = "c2pa_encrypted_passphrase"
     }
 
-    fun getSigningKey(): String? = secureStorage.getString(KEY_SIGNING_KEY)
+    fun getCertPem(): String? = secureStorage.getString(KEY_CERT_PEM)
+    fun putCertPem(value: String?) = secureStorage.putString(KEY_CERT_PEM, value)
 
-    fun putSigningKey(value: String?) = secureStorage.putString(KEY_SIGNING_KEY, value)
+    fun getKeyDerB64(): String? = secureStorage.getString(KEY_DER_B64)
+    fun putKeyDerB64(value: String?) = secureStorage.putString(KEY_DER_B64, value)
 
-    fun getPassphrase(): ByteArray? = secureStorage.getString(KEY_PASSPHRASE)
-        ?.let { Base64.decode(it, Base64.DEFAULT) }
-
-    fun putPassphrase(value: ByteArray?) {
-        val encoded = value?.let { Base64.encodeToString(it, Base64.DEFAULT) }
-        secureStorage.putString(KEY_PASSPHRASE, encoded)
-    }
+    fun hasCredentials(): Boolean = getCertPem() != null && getKeyDerB64() != null
 
     fun clear() {
-        secureStorage.remove(KEY_SIGNING_KEY)
-        secureStorage.remove(KEY_PASSPHRASE)
+        secureStorage.remove(KEY_CERT_PEM)
+        secureStorage.remove(KEY_DER_B64)
     }
 
-    /**
-     * One-time migration: moves C2PA keys from plaintext SharedPreferences to SecureStorage,
-     * then removes them from SharedPreferences.
-     */
+    /** One-time migration: drops legacy plaintext keys from SharedPreferences. */
     fun migrateFromPrefsIfNeeded(prefs: SharedPreferences) {
-        val legacyKey = prefs.getString(LEGACY_KEY_SIGNING_KEY, null)
-        if (legacyKey != null && secureStorage.getString(KEY_SIGNING_KEY) == null) {
-            secureStorage.putString(KEY_SIGNING_KEY, legacyKey)
-        }
-        if (legacyKey != null) {
-            prefs.edit().remove(LEGACY_KEY_SIGNING_KEY).apply()
-        }
-
-        val legacyPassphrase = prefs.getString(LEGACY_KEY_PASSPHRASE, null)
-        if (legacyPassphrase != null && secureStorage.getString(KEY_PASSPHRASE) == null) {
-            secureStorage.putString(KEY_PASSPHRASE, legacyPassphrase)
-        }
-        if (legacyPassphrase != null) {
-            prefs.edit().remove(LEGACY_KEY_PASSPHRASE).apply()
+        if (prefs.contains(LEGACY_SIGNING_KEY) || prefs.contains(LEGACY_PASSPHRASE)) {
+            prefs.edit()
+                .remove(LEGACY_SIGNING_KEY)
+                .remove(LEGACY_PASSPHRASE)
+                .apply()
         }
     }
 }

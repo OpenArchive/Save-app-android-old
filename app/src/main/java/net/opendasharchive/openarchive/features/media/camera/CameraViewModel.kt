@@ -254,13 +254,13 @@ class CameraViewModel : ViewModel() {
             val hash = sha256(file)
             AppLogger.d("[C2PA_DEBUG] SHA-256 of original capture file: $hash")
             if (hash.isNotEmpty()) {
-                val manifest = C2paHelper.generateManifest(
+                val manifest = C2paHelper.generateSidecar(
                     context   = context,
                     mediaFile = file,
                     mediaHash = hash,
                     metadata  = buildProofMetadata(context, file, hash, metadata)
                 )
-                AppLogger.d("[C2PA_DEBUG] Manifest generated: ${manifest?.absolutePath}, exists=${manifest?.exists()}")
+                AppLogger.d("[C2PA_DEBUG] Sidecar generated: ${manifest?.absolutePath}, exists=${manifest?.exists()}")
             } else {
                 AppLogger.w("[C2PA_DEBUG] Empty hash — manifest NOT generated for ${file.name}")
             }
@@ -276,13 +276,13 @@ class CameraViewModel : ViewModel() {
             val hash = sha256(file)
             AppLogger.d("[C2PA_DEBUG] SHA-256 of original capture file (video): $hash")
             if (hash.isNotEmpty()) {
-                val manifest = C2paHelper.generateManifest(
+                val manifest = C2paHelper.generateSidecar(
                     context   = context,
                     mediaFile = file,
                     mediaHash = hash,
                     metadata  = buildProofMetadata(context, file, hash, metadata)
                 )
-                AppLogger.d("[C2PA_DEBUG] Manifest generated: ${manifest?.absolutePath}, exists=${manifest?.exists()}")
+                AppLogger.d("[C2PA_DEBUG] Sidecar generated: ${manifest?.absolutePath}, exists=${manifest?.exists()}")
             } else {
                 AppLogger.w("[C2PA_DEBUG] Empty hash — manifest NOT generated for ${file.name}")
             }

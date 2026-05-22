@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 # build-android.sh — Standalone build script for C2PA Rust FFI (all Android ABIs)
 #
 # Usage:
