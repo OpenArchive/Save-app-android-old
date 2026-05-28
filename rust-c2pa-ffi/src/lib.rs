@@ -142,6 +142,8 @@ pub extern "C" fn Java_net_opendasharchive_openarchive_util_C2paFfi_nativeGenera
     }
 }
 
+const TSA_URL: &str = "https://timestamp.digicert.com";
+
 fn generate_sidecar(
     file_path: &str,
     sidecar_path: &str,
@@ -149,15 +151,12 @@ fn generate_sidecar(
     key_der_b64: &str,
     metadata_json: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // Decode PKCS#8 DER private key
     let key_der = BASE64
         .decode(key_der_b64)
         .map_err(|e| format!("Base64 decode: {}", e))?;
 
-    // Detect MIME type from extension
     let mime_type = mime_from_path(file_path);
 
-    // Parse caller metadata; default to empty object on parse failure
     let metadata: serde_json::Value =
         serde_json::from_str(metadata_json).unwrap_or(serde_json::Value::Object(Default::default()));
 
@@ -174,8 +173,6 @@ fn generate_sidecar(
                 .to_string()
         });
 
-    // Build C2PA manifest definition.
-    // c2pa.actions with c2pa.created is required by the spec as the first action.
     let manifest_json = serde_json::json!({
         "claim_generator_info": [{
             "name": "OpenArchive Save",
@@ -186,9 +183,7 @@ fn generate_sidecar(
         "assertions": [
             {
                 "label": "c2pa.actions",
-                "data": {
-                    "actions": [{ "action": "c2pa.created" }]
-                }
+                "data": { "actions": [{ "action": "c2pa.created" }] }
             },
             {
                 "label": "stds.schema-org.CreativeWork",
@@ -197,43 +192,64 @@ fn generate_sidecar(
         ]
     });
 
-    // Build CallbackSigner: ES256 (ECDSA P-256 + SHA-256), P1363 output
+    let manifest_str = manifest_json.to_string();
+    let asset_bytes = std::fs::read(file_path).map_err(|e| format!("Read asset failed: {}", e))?;
+
+    // Try with RFC 3161 trusted timestamp first; fall back if device is offline.
+    match do_sign(cert_pem, &key_der, &mime_type, &manifest_str, &asset_bytes, sidecar_path, Some(TSA_URL)) {
+        Ok(()) => return Ok(()),
+        Err(e) => log::warn!("TSA signing failed ({}), retrying without trusted timestamp", e),
+    }
+
+    do_sign(cert_pem, &key_der, &mime_type, &manifest_str, &asset_bytes, sidecar_path, None)
+}
+
+/// Signs asset bytes and writes binary JUMBF sidecar.
+/// tsa_url: Some → embeds RFC 3161 trusted timestamp; None → no timestamp (offline fallback).
+fn do_sign(
+    cert_pem: &str,
+    key_der: &[u8],
+    mime_type: &str,
+    manifest_str: &str,
+    asset_bytes: &[u8],
+    sidecar_path: &str,
+    tsa_url: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let cert_bytes = cert_pem.as_bytes().to_vec();
-    let key_der_for_sign = key_der.clone();
+    let key_der_owned = key_der.to_vec();
 
-    let signer = CallbackSigner::new(
-        move |_ctx: *const (), data: &[u8]| {
-            sign_es256_p1363(data, &key_der_for_sign).map_err(|e| c2pa::Error::OtherError(e))
-        },
-        SigningAlg::Es256,
-        cert_bytes,
-    );
+    let signer = {
+        let s = CallbackSigner::new(
+            move |_ctx: *const (), data: &[u8]| {
+                sign_es256_p1363(data, &key_der_owned).map_err(|e| c2pa::Error::OtherError(e))
+            },
+            SigningAlg::Es256,
+            cert_bytes,
+        );
+        match tsa_url {
+            Some(url) => s.set_tsa_url(url),
+            None => s,
+        }
+    };
 
-    // Read asset bytes (signing hashes the original bytes — sidecar stays separate)
-    let asset_bytes =
-        std::fs::read(file_path).map_err(|e| format!("Read asset failed: {}", e))?;
-
-    // Build manifest and sign with no_embed=true → returned bytes are the binary sidecar
-    let mut builder = Builder::from_json(&manifest_json.to_string())?;
+    let mut builder = Builder::from_json(manifest_str)?;
     builder.set_no_embed(true);
 
-    let mut source = Cursor::new(&asset_bytes);
-    let mut sink = Cursor::new(Vec::<u8>::new()); // discard — original file untouched
+    let mut source = Cursor::new(asset_bytes);
+    let mut sink = Cursor::new(Vec::<u8>::new());
 
-    let manifest_bytes = builder.sign(&signer, &mime_type, &mut source, &mut sink)?;
+    let manifest_bytes = builder.sign(&signer, mime_type, &mut source, &mut sink)?;
 
-    // Write binary JUMBF sidecar
     if let Some(parent) = std::path::Path::new(sidecar_path).parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Create sidecar dir: {}", e))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("Create sidecar dir: {}", e))?;
     }
-    std::fs::write(sidecar_path, &manifest_bytes)
-        .map_err(|e| format!("Write sidecar: {}", e))?;
+    std::fs::write(sidecar_path, &manifest_bytes).map_err(|e| format!("Write sidecar: {}", e))?;
 
     log::info!(
-        "C2PA sidecar written: {} ({} bytes)",
+        "C2PA sidecar written: {} ({} bytes, TSA: {})",
         sidecar_path,
-        manifest_bytes.len()
+        manifest_bytes.len(),
+        tsa_url.is_some()
     );
     Ok(())
 }
