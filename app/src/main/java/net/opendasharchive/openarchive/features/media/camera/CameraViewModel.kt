@@ -22,9 +22,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.util.MetadataCollector
+import net.opendasharchive.openarchive.util.ProofCompanionGenerator
 import net.opendasharchive.openarchive.util.ProofmodeC2paManager
 import net.opendasharchive.openarchive.util.Utility
 import java.io.File
+import java.security.MessageDigest
 
 class CameraViewModel : ViewModel() {
 
@@ -250,9 +252,17 @@ class CameraViewModel : ViewModel() {
             val metadata = MetadataCollector.collectMetadata(context)
             MetadataCollector.writeExifMetadata(file, metadata)
             AppLogger.d("[C2PA_DEBUG] EXIF written, file size after EXIF: ${file.length()}")
-            ProofmodeC2paManager.embedProof(file, "image/jpeg", metadata, context)
-                ?.let { AppLogger.d("[C2PA] Proof embedded: ${it.name}") }
-                ?: AppLogger.w("[C2PA] Proof embedding skipped/failed for ${file.name}")
+            val mimeType = android.webkit.MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(file.extension.lowercase())
+                ?: "image/jpeg"
+            val signedFile = ProofmodeC2paManager.embedProof(file, mimeType, metadata, context)
+            if (signedFile != null) {
+                AppLogger.d("[C2PA] Proof embedded: ${signedFile.name}")
+                val hash = computeFileHash(signedFile)
+                if (hash.isNotEmpty()) ProofCompanionGenerator.generateLocalProof(context, signedFile, hash)
+            } else {
+                AppLogger.w("[C2PA] Proof embedding skipped/failed for ${file.name}")
+            }
         } catch (e: Exception) {
             AppLogger.e("Provenance write failed for ${file.name}", e)
         }
@@ -262,12 +272,33 @@ class CameraViewModel : ViewModel() {
         try {
             AppLogger.d("[C2PA_DEBUG] writeProvenanceForVideo: file=${file.absolutePath} exists=${file.exists()} size=${file.length()}")
             val metadata = MetadataCollector.collectMetadata(context)
-            ProofmodeC2paManager.embedProof(file, "video/mp4", metadata, context)
-                ?.let { AppLogger.d("[C2PA] Proof embedded: ${it.name}") }
-                ?: AppLogger.w("[C2PA] Proof embedding skipped/failed for ${file.name}")
+            val mimeType = android.webkit.MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(file.extension.lowercase())
+                ?: "video/mp4"
+            val signedFile = ProofmodeC2paManager.embedProof(file, mimeType, metadata, context)
+            if (signedFile != null) {
+                AppLogger.d("[C2PA] Proof embedded: ${signedFile.name}")
+                val hash = computeFileHash(signedFile)
+                if (hash.isNotEmpty()) ProofCompanionGenerator.generateLocalProof(context, signedFile, hash)
+            } else {
+                AppLogger.w("[C2PA] Proof embedding skipped/failed for ${file.name}")
+            }
         } catch (e: Exception) {
             AppLogger.e("Provenance write failed for ${file.name}", e)
         }
+    }
+
+    private fun computeFileHash(file: File): String = try {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { stream ->
+            val buf = ByteArray(8192)
+            var n: Int
+            while (stream.read(buf).also { n = it } != -1) digest.update(buf, 0, n)
+        }
+        digest.digest().joinToString("") { "%02x".format(it) }
+    } catch (e: Exception) {
+        AppLogger.e("[C2PA] Hash computation failed for ${file.name}", e)
+        ""
     }
 
     fun stopVideoRecording() {

@@ -271,6 +271,10 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
                     .build()
             )
         }
+
+        // Delete companion files from local storage after successful upload
+        java.io.File(mContext.filesDir, "proof_companions/${mEvidence.mediaHashString}")
+            .deleteRecursively()
     }
 
     // --- WebDAV HTTP helpers ---

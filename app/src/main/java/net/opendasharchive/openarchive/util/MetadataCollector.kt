@@ -217,9 +217,24 @@ object MetadataCollector {
                 "${metadata.appName} ${metadata.appVersion}"
             )
 
-            // --- Capture datetime ---
+            // --- Capture datetime (local time, per EXIF spec) ---
             val dtFormat = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US)
-            exif.setAttribute(ExifInterface.TAG_DATETIME, dtFormat.format(Date(metadata.captureTime)))
+            val captureDate = Date(metadata.captureTime)
+            val localDateStr = dtFormat.format(captureDate)
+            exif.setAttribute(ExifInterface.TAG_DATETIME, localDateStr)
+            exif.setAttribute(ExifInterface.TAG_DATETIME_ORIGINAL, localDateStr)
+            exif.setAttribute(ExifInterface.TAG_DATETIME_DIGITIZED, localDateStr)
+
+            // UTC offset (EXIF 2.31) — makes timestamps timezone-unambiguous for forensic tools
+            val offsetMs = java.util.TimeZone.getDefault().getOffset(metadata.captureTime)
+            val offsetSign = if (offsetMs >= 0) "+" else "-"
+            val absOffset = kotlin.math.abs(offsetMs)
+            val offsetHours = absOffset / 3_600_000
+            val offsetMins = (absOffset % 3_600_000) / 60_000
+            val offsetStr = "%s%02d:%02d".format(offsetSign, offsetHours, offsetMins)
+            exif.setAttribute(ExifInterface.TAG_OFFSET_TIME, offsetStr)
+            exif.setAttribute(ExifInterface.TAG_OFFSET_TIME_ORIGINAL, offsetStr)
+            exif.setAttribute(ExifInterface.TAG_OFFSET_TIME_DIGITIZED, offsetStr)
 
             exif.saveAttributes()
             AppLogger.d("[Metadata] EXIF written to ${file.name}")
@@ -369,7 +384,10 @@ object MetadataCollector {
             if (entries.isEmpty()) return null
 
             entries.joinToString(",", "[", "]") { entry ->
-                entry.entries.joinToString(",", "{", "}") { (k, v) -> "\"$k\":$v" }
+                // Android returns Int.MAX_VALUE as sentinel for unavailable cell fields — exclude them
+                entry.entries
+                    .filter { (_, v) -> v !is Int || (v != Int.MAX_VALUE && v != Int.MIN_VALUE) }
+                    .joinToString(",", "{", "}") { (k, v) -> "\"$k\":$v" }
             }
         } catch (e: Exception) {
             AppLogger.w("[Metadata] CellInfo unavailable: ${e.message}")

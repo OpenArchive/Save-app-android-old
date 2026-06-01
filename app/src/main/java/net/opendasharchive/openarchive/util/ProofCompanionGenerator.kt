@@ -2,6 +2,8 @@ package net.opendasharchive.openarchive.util
 
 import android.content.Context
 import android.os.Build
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
 import androidx.exifinterface.media.ExifInterface
 import net.opendasharchive.openarchive.BuildConfig
 import net.opendasharchive.openarchive.core.logger.AppLogger
@@ -27,22 +29,37 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.KeyPairGenerator
+import java.security.KeyStore
 import java.security.SecureRandom
 import java.security.Security
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.TimeZone
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.spec.GCMParameterSpec
 
 object ProofCompanionGenerator {
 
     private const val SECRET_KEY_FILE = "proof_pgp_secret.bpg"
     private const val PUBLIC_KEY_FILE = "pubkey.asc"
+    private const val PENDING_OTS_FILE = "pending_ots.txt"
     private const val PGP_IDENTITY = "OpenArchive Save <proof@openarchive.app>"
     private const val OTS_CALENDAR = "https://a.pool.opentimestamps.org/timestamp"
     private const val OTS_TIMEOUT_MS = 15_000
 
+    // PGP BouncyCastle API requires a passphrase for its internal AES layer.
+    // The secret key ring file itself is additionally encrypted at rest via a
+    // Keystore-backed AES-256-GCM key (see writeEncryptedKey / readEncryptedKey).
     private val PASSPHRASE = charArrayOf()
+
+    private const val KEYSTORE_ALIAS = "openarchive_pgp_wrap_key"
+    private const val KEYSTORE_PROVIDER = "AndroidKeyStore"
+    private const val AES_GCM_TRANSFORM = "AES/GCM/NoPadding"
+    private const val GCM_TAG_LEN = 128
 
     private val isoFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
@@ -60,35 +77,55 @@ object ProofCompanionGenerator {
     }
 
     /**
-     * Generate ProofMode-compatible companion files:
-     * {hash}.proof.json, {hash}.asc, {hash}.proof.json.asc, pubkey.asc, {hash}.ots
-     * Returns all files ready for upload.
+     * Called at capture time (no network). Generates proof.json and PGP signatures
+     * immediately after C2PA embedding while the file bytes are known-final.
+     * This ensures PGP signatures are provably of the same bytes the SHA-256 hash covers.
      */
-    fun generateCompanionFiles(context: Context, evidenceFile: File, mediaHash: String): List<File> {
-        if (!Prefs.useC2pa) return emptyList()
-        return try {
+    suspend fun generateLocalProof(context: Context, evidenceFile: File, mediaHash: String) {
+        if (!Prefs.useC2pa) return
+        withContext(Dispatchers.IO) {
+            try {
+                val outDir = File(context.filesDir, "proof_companions/$mediaHash").also { it.mkdirs() }
+
+                val proofJson = buildProofJson(evidenceFile, mediaHash)
+                File(outDir, "$mediaHash.proof.json").writeText(proofJson)
+
+                pgpSignStream(context, evidenceFile, File(outDir, "$mediaHash.asc"))
+                pgpSign(context, proofJson.toByteArray(Charsets.UTF_8), File(outDir, "$mediaHash.proof.json.asc"))
+
+                AppLogger.i("[Proof] Local proof generated at capture time for $mediaHash")
+            } catch (e: Exception) {
+                AppLogger.e("[Proof] Local proof generation failed for $mediaHash", e)
+            }
+        }
+    }
+
+    /**
+     * Called at upload time. Submits OTS (network), falls back to generating proof files
+     * if generateLocalProof was not called at capture, then returns all files for upload.
+     */
+    suspend fun prepareForUpload(context: Context, evidenceFile: File, mediaHash: String): List<File> = withContext(Dispatchers.IO) {
+        if (!Prefs.useC2pa) return@withContext emptyList()
+        try {
             val outDir = File(context.filesDir, "proof_companions/$mediaHash").also { it.mkdirs() }
-
-            // 1. Build proof JSON with ProofMode field names
-            val proofJson = buildProofJson(evidenceFile, mediaHash)
             val proofJsonFile = File(outDir, "$mediaHash.proof.json")
-            proofJsonFile.writeText(proofJson)
+            val mediaSigFile  = File(outDir, "$mediaHash.asc")
+            val jsonSigFile   = File(outDir, "$mediaHash.proof.json.asc")
 
-            // 2. PGP sign the media file
-            val mediaSigFile = File(outDir, "$mediaHash.asc")
-            pgpSign(context, evidenceFile.readBytes(), mediaSigFile)
+            // Defensive fallback — should not occur for camera captures but handles edge cases
+            if (!proofJsonFile.exists() || !mediaSigFile.exists() || !jsonSigFile.exists()) {
+                AppLogger.w("[Proof] Local proof missing for $mediaHash — generating at upload time")
+                val proofJson = buildProofJson(evidenceFile, mediaHash)
+                proofJsonFile.writeText(proofJson)
+                pgpSignStream(context, evidenceFile, mediaSigFile)
+                pgpSign(context, proofJson.toByteArray(Charsets.UTF_8), jsonSigFile)
+            }
 
-            // 3. PGP sign the proof JSON
-            val jsonSigFile = File(outDir, "$mediaHash.proof.json.asc")
-            pgpSign(context, proofJson.toByteArray(Charsets.UTF_8), jsonSigFile)
-
-            // 4. Public key (verifier needs this to check PGP sigs)
-            val pubKeyFile = File(context.filesDir, PUBLIC_KEY_FILE)
-
-            // 5. OpenTimestamps — submit hash to OTS calendar, save .ots
+            // OTS is network-only — submitted at upload time with retry queue
             val otsFile = File(outDir, "$mediaHash.ots")
-            submitOts(mediaHash, otsFile)
+            submitOts(context, mediaHash, otsFile)
 
+            val pubKeyFile = File(context.filesDir, PUBLIC_KEY_FILE)
             buildList {
                 add(proofJsonFile)
                 add(mediaSigFile)
@@ -96,10 +133,10 @@ object ProofCompanionGenerator {
                 if (pubKeyFile.exists()) add(pubKeyFile)
                 if (otsFile.exists()) add(otsFile)
             }.also {
-                AppLogger.i("[Proof] Generated ${it.size} companion files for $mediaHash")
+                AppLogger.i("[Proof] ${it.size} companion files ready for upload: $mediaHash")
             }
         } catch (e: Exception) {
-            AppLogger.e("[Proof] Failed for $mediaHash", e)
+            AppLogger.e("[Proof] Upload prep failed for $mediaHash", e)
             emptyList()
         }
     }
@@ -110,7 +147,20 @@ object ProofCompanionGenerator {
 
     private fun buildProofJson(file: File, hash: String): String {
         val now = isoFmt.format(Date())
-        val created = isoFmt.format(Date(file.lastModified()))
+
+        // Read capture time from EXIF TAG_DATETIME — written at capture time by MetadataCollector,
+        // guaranteed consistent with the C2PA manifest timestamp and the EXIF in the signed file.
+        val exifDtFormat = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+        val created = try {
+            ExifInterface(file.absolutePath)
+                .getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
+                ?.let { raw -> exifDtFormat.parse(raw)?.let { isoFmt.format(it) } }
+                ?: isoFmt.format(Date(file.lastModified()))
+        } catch (_: Exception) {
+            isoFmt.format(Date(file.lastModified()))
+        }
 
         val fields = linkedMapOf<String, String?>()
         fields["File Hash SHA256"] = hash
@@ -163,17 +213,17 @@ object ProofCompanionGenerator {
         val publicFile = File(context.filesDir, PUBLIC_KEY_FILE)
         if (secretFile.exists() && publicFile.exists()) return
 
-        AppLogger.i("[Proof] Generating PGP key pair")
+        AppLogger.i("[Proof] Generating Ed25519 PGP key pair")
 
-        val kpg = KeyPairGenerator.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME)
-        kpg.initialize(2048, SecureRandom())
+        val kpg = KeyPairGenerator.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
+        kpg.initialize(256, SecureRandom())
         val keyPair = kpg.generateKeyPair()
 
         val digestCalc = JcaPGPDigestCalculatorProviderBuilder()
             .setProvider(BouncyCastleProvider.PROVIDER_NAME).build()
             .get(HashAlgorithmTags.SHA1)
 
-        val pgpKeyPair = JcaPGPKeyPair(PGPPublicKey.RSA_GENERAL, keyPair, Date())
+        val pgpKeyPair = JcaPGPKeyPair(PGPPublicKey.EDDSA, keyPair, Date())
 
         val secretKeyEncryptor = JcePBESecretKeyEncryptorBuilder(
             PGPEncryptedData.AES_256, digestCalc
@@ -194,8 +244,10 @@ object ProofCompanionGenerator {
             secretKeyEncryptor
         )
 
-        // Write secret key ring
-        secretFile.outputStream().use { keyRingGen.generateSecretKeyRing().encode(it) }
+        // Write secret key ring — encrypted with Keystore-backed AES-256-GCM
+        val secretBytes = ByteArrayOutputStream()
+            .also { keyRingGen.generateSecretKeyRing().encode(it) }.toByteArray()
+        writeEncryptedKey(secretFile, secretBytes)
 
         // Write public key in ASCII armor
         publicFile.outputStream().use { out ->
@@ -207,31 +259,55 @@ object ProofCompanionGenerator {
     }
 
     private fun pgpSign(context: Context, data: ByteArray, outFile: File) {
+        val sigGen = initPgpSigGen(context) ?: return
+        sigGen.update(data)
+        writePgpSig(sigGen, outFile)
+    }
+
+    private fun pgpSignStream(context: Context, sourceFile: File, outFile: File) {
+        val sigGen = initPgpSigGen(context) ?: return
+        sourceFile.inputStream().use { stream ->
+            val buf = ByteArray(8192)
+            var n: Int
+            while (stream.read(buf).also { n = it } != -1) sigGen.update(buf, 0, n)
+        }
+        writePgpSig(sigGen, outFile)
+    }
+
+    private fun initPgpSigGen(context: Context): PGPSignatureGenerator? {
         val secretFile = File(context.filesDir, SECRET_KEY_FILE)
         if (!secretFile.exists()) {
             ensureKeyExists(context)
-            if (!secretFile.exists()) return
+            if (!secretFile.exists()) return null
         }
-
+        val secretBytes = readEncryptedKey(secretFile) ?: run {
+            // Keystore wrap key lost — wipe and regenerate both PGP key files
+            AppLogger.w("[Proof] Wrap key lost — wiping stale PGP key files and regenerating")
+            File(context.filesDir, SECRET_KEY_FILE).delete()
+            File(context.filesDir, PUBLIC_KEY_FILE).delete()
+            ensureKeyExists(context)
+            readEncryptedKey(File(context.filesDir, SECRET_KEY_FILE)) ?: run {
+                AppLogger.e("[Proof] Failed to decrypt PGP secret key after regeneration")
+                return null
+            }
+        }
         val secretKeyRing = PGPSecretKeyRing(
-            PGPUtil.getDecoderStream(secretFile.inputStream()),
+            PGPUtil.getDecoderStream(secretBytes.inputStream()),
             JcaKeyFingerprintCalculator()
         )
-
         val secretKey = secretKeyRing.secretKey
         val privateKey = secretKey.extractPrivateKey(
             JcePBESecretKeyDecryptorBuilder()
                 .setProvider(BouncyCastleProvider.PROVIDER_NAME)
                 .build(PASSPHRASE)
         )
-
-        val sigGen = PGPSignatureGenerator(
+        return PGPSignatureGenerator(
             JcaPGPContentSignerBuilder(secretKey.publicKey.algorithm, HashAlgorithmTags.SHA256)
                 .setProvider(BouncyCastleProvider.PROVIDER_NAME)
-        )
-        sigGen.init(PGPSignature.BINARY_DOCUMENT, privateKey)
-        sigGen.update(data)
+        ).also { it.init(PGPSignature.BINARY_DOCUMENT, privateKey) }
+    }
 
+    private fun writePgpSig(sigGen: PGPSignatureGenerator, outFile: File) {
         ByteArrayOutputStream().use { baos ->
             ArmoredOutputStream(baos).use { armoredOut ->
                 BCPGOutputStream(armoredOut).use { bcpgOut ->
@@ -243,14 +319,44 @@ object ProofCompanionGenerator {
     }
 
     // ---------------------------------------------------------------------------
-    // OpenTimestamps — submit SHA256 hash to OTS calendar
+    // OpenTimestamps — submit SHA256 hash to OTS calendar with retry queue
     // ---------------------------------------------------------------------------
 
-    private fun submitOts(hexHash: String, outFile: File) {
-        try {
+    private fun submitOts(context: Context, hexHash: String, outFile: File) {
+        // Drain any previously failed hashes before submitting the new one
+        drainPendingOts(context)
+
+        if (!postOts(hexHash, outFile)) {
+            // Network unavailable — queue for next upload
+            enqueuePendingOts(context, hexHash)
+            AppLogger.w("[OTS] Queued $hexHash for retry")
+        }
+    }
+
+    private fun drainPendingOts(context: Context) {
+        val queue = File(context.filesDir, PENDING_OTS_FILE)
+        if (!queue.exists()) return
+        val remaining = mutableListOf<String>()
+        queue.readLines().filter { it.isNotBlank() }.forEach { hash ->
+            val companionDir = File(context.filesDir, "proof_companions/$hash")
+            // Companion dir deleted after upload — nothing left to anchor, drop from queue
+            if (!companionDir.exists()) return@forEach
+            val otsFile = File(companionDir, "$hash.ots")
+            if (otsFile.exists()) return@forEach  // already succeeded
+            if (!postOts(hash, otsFile)) remaining.add(hash)
+        }
+        if (remaining.isEmpty()) queue.delete() else queue.writeText(remaining.joinToString("\n"))
+    }
+
+    private fun enqueuePendingOts(context: Context, hexHash: String) {
+        val queue = File(context.filesDir, PENDING_OTS_FILE)
+        queue.appendText("$hexHash\n")
+    }
+
+    private fun postOts(hexHash: String, outFile: File): Boolean {
+        return try {
             val hashBytes = hexToBytes(hexHash)
-            val url = URL(OTS_CALENDAR)
-            val conn = (url.openConnection() as HttpURLConnection).apply {
+            val conn = (URL(OTS_CALENDAR).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 doOutput = true
                 connectTimeout = OTS_TIMEOUT_MS
@@ -259,18 +365,84 @@ object ProofCompanionGenerator {
                 setRequestProperty("Accept", "application/octet-stream")
             }
             conn.outputStream.use { it.write(hashBytes) }
-            if (conn.responseCode == 200) {
-                val bytes = conn.inputStream.use { it.readBytes() }
-                outFile.writeBytes(bytes)
-                AppLogger.i("[OTS] Timestamp received (${bytes.size} bytes)")
+            val success = conn.responseCode == 200
+            if (success) {
+                outFile.parentFile?.mkdirs()
+                outFile.writeBytes(conn.inputStream.use { it.readBytes() })
+                AppLogger.i("[OTS] Timestamp received for $hexHash")
             } else {
                 AppLogger.w("[OTS] Calendar returned HTTP ${conn.responseCode}")
             }
             conn.disconnect()
+            success
         } catch (e: Exception) {
             AppLogger.w("[OTS] Submission failed: ${e.message}")
+            false
         }
     }
+
+    // ---------------------------------------------------------------------------
+    // AES-256-GCM key wrapping for PGP secret key ring
+    // ---------------------------------------------------------------------------
+
+    private fun ensureWrapKey() {
+        val ks = KeyStore.getInstance(KEYSTORE_PROVIDER).also { it.load(null) }
+        if (ks.containsAlias(KEYSTORE_ALIAS)) return
+        val spec = KeyGenParameterSpec.Builder(
+            KEYSTORE_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256)
+            .build()
+        KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE_PROVIDER)
+            .also { it.init(spec) }
+            .generateKey()
+    }
+
+    private fun writeEncryptedKey(file: File, plaintext: ByteArray) {
+        ensureWrapKey()
+        val ks = KeyStore.getInstance(KEYSTORE_PROVIDER).also { it.load(null) }
+        val key = ks.getKey(KEYSTORE_ALIAS, null) as javax.crypto.SecretKey
+        val cipher = Cipher.getInstance(AES_GCM_TRANSFORM)
+        cipher.init(Cipher.ENCRYPT_MODE, key)
+        val iv = cipher.iv
+        val ciphertext = cipher.doFinal(plaintext)
+        file.outputStream().use { out ->
+            out.write(iv.size.to4Bytes())
+            out.write(iv)
+            out.write(ciphertext)
+        }
+    }
+
+    private fun readEncryptedKey(file: File): ByteArray? {
+        return try {
+            ensureWrapKey()
+            val ks = KeyStore.getInstance(KEYSTORE_PROVIDER).also { it.load(null) }
+            val key = ks.getKey(KEYSTORE_ALIAS, null) as javax.crypto.SecretKey
+            val bytes = file.readBytes()
+            val ivLen = bytes.sliceArray(0..3).from4Bytes()
+            val iv = bytes.sliceArray(4 until 4 + ivLen)
+            val ciphertext = bytes.sliceArray(4 + ivLen until bytes.size)
+            val cipher = Cipher.getInstance(AES_GCM_TRANSFORM)
+            cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(GCM_TAG_LEN, iv))
+            cipher.doFinal(ciphertext)
+        } catch (e: Exception) {
+            AppLogger.e("[Proof] Failed to decrypt PGP key file", e)
+            null
+        }
+    }
+
+    private fun Int.to4Bytes(): ByteArray = byteArrayOf(
+        (this shr 24).toByte(), (this shr 16).toByte(), (this shr 8).toByte(), this.toByte()
+    )
+
+    private fun ByteArray.from4Bytes(): Int =
+        ((this[0].toInt() and 0xFF) shl 24) or
+        ((this[1].toInt() and 0xFF) shl 16) or
+        ((this[2].toInt() and 0xFF) shl 8) or
+        (this[3].toInt() and 0xFF)
 
     // ---------------------------------------------------------------------------
     // Helpers

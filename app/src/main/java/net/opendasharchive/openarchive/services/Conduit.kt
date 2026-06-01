@@ -125,11 +125,12 @@ abstract class Conduit(
     }
 
     /**
-     * Generate ProofMode companion files (.proof.json, .asc, .ots) for the evidence file.
-     * Returns the generated files ready for upload. Call at upload time.
+     * Returns proof companion files for upload.
+     * PGP signatures and proof.json were generated at capture time by CameraViewModel.
+     * This call only submits OTS (network) and returns the pre-generated file list.
      */
-    fun getProofFiles(): List<File> =
-        ProofCompanionGenerator.generateCompanionFiles(mContext, mEvidence.file, mEvidence.mediaHashString)
+    suspend fun getProofFiles(): List<File> =
+        ProofCompanionGenerator.prepareForUpload(mContext, mEvidence.file, mEvidence.mediaHashString)
 
     /**
      * result is a site specific unique id that we can use to fetch the data,
