@@ -177,8 +177,8 @@ object ProofmodeC2paManager {
         val signingKeyExists = keystoreKeyExists()
 
         if (signingKeyExists && caKeyFile.exists() && chainFile.exists() && caFile.exists()) {
-            if (readEncrypted(caKeyFile) != null) return
-            AppLogger.w("[C2PA] Wrap key lost — wiping files and regenerating")
+            if (readEncrypted(caKeyFile) != null && certMatchesKeystoreKey(chainFile)) return
+            AppLogger.w("[C2PA] Wrap key lost or cert/key mismatch — wiping files and regenerating")
         }
         // Wipe any partial state
         listOf(caKeyFile, chainFile, caFile).forEach { it.delete() }
@@ -241,11 +241,37 @@ object ProofmodeC2paManager {
         ks.getCertificate(SIGNING_KEY_ALIAS)?.publicKey
     }.getOrNull()
 
+    /**
+     * Parses the first cert in the on-disk chain file and checks its public key
+     * matches the current Keystore signing key. Guards against stale cert files
+     * left over from a previous key generation (e.g. after app update or key loss).
+     */
+    private fun certMatchesKeystoreKey(chainFile: File): Boolean = runCatching {
+        val keystorePubKey = getKeystorePublicKey() ?: return false
+        val pem = chainFile.readText()
+        val certBytes = java.util.Base64.getDecoder().decode(
+            pem.lines()
+                .filter { !it.startsWith("-----") && it.isNotBlank() }
+                .joinToString("")
+                .takeWhile { it != '-' } // stop at second cert boundary
+                .let {
+                    // Extract only the first cert's base64 block
+                    pem.substringAfter("-----BEGIN CERTIFICATE-----\n")
+                        .substringBefore("\n-----END CERTIFICATE-----")
+                        .replace("\n", "")
+                }
+        )
+        val leafCert = java.security.cert.CertificateFactory.getInstance("X.509")
+            .generateCertificate(certBytes.inputStream()) as java.security.cert.X509Certificate
+        leafCert.publicKey.encoded.contentEquals(keystorePubKey.encoded)
+    }.getOrElse { AppLogger.w("[C2PA] Cert/key match check failed: ${it.message}"); false }
+
     /** Signs data inside the TEE — Keystore private key never leaves secure hardware. */
     private fun keystoreSign(data: ByteArray): ByteArray {
         val ks = KeyStore.getInstance(KEYSTORE_PROVIDER).also { it.load(null) }
         val privateKey = ks.getKey(SIGNING_KEY_ALIAS, null) as PrivateKey
-        return Signature.getInstance("SHA256withECDSA").apply {
+        // Explicit provider ensures dispatch to Android Keystore on all OEM builds
+        return Signature.getInstance("SHA256withECDSA", "AndroidKeyStoreBCWorkaround").apply {
             initSign(privateKey)
             update(data)
         }.sign()

@@ -47,6 +47,7 @@ object ProofCompanionGenerator {
     private const val SECRET_KEY_FILE = "proof_pgp_secret.bpg"
     private const val PUBLIC_KEY_FILE = "pubkey.asc"
     private const val PENDING_OTS_FILE = "pending_ots.txt"
+    private const val OTS_QUEUE_MAX = 500
     private const val PGP_IDENTITY = "OpenArchive Save <proof@openarchive.app>"
     private const val OTS_CALENDAR = "https://a.pool.opentimestamps.org/timestamp"
     private const val OTS_TIMEOUT_MS = 15_000
@@ -350,7 +351,13 @@ object ProofCompanionGenerator {
 
     private fun enqueuePendingOts(context: Context, hexHash: String) {
         val queue = File(context.filesDir, PENDING_OTS_FILE)
-        queue.appendText("$hexHash\n")
+        val existing = if (queue.exists()) queue.readLines().filter { it.isNotBlank() } else emptyList()
+        if (existing.size >= OTS_QUEUE_MAX) {
+            // Drop oldest entries to stay within cap — keeps storage bounded
+            queue.writeText((existing.drop(existing.size - OTS_QUEUE_MAX + 1) + hexHash).joinToString("\n") + "\n")
+        } else {
+            queue.appendText("$hexHash\n")
+        }
     }
 
     private fun postOts(hexHash: String, outFile: File): Boolean {
