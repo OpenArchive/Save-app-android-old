@@ -88,6 +88,7 @@ dependencyResolutionManagement {
                 includeModule("com.github.contentauth", "c2pa-android")
             }
         }
+
     }
 }
 rootProject.name = "save-android-old"

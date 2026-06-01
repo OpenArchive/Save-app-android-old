@@ -319,6 +319,7 @@ dependencies {
     implementation("com.github.contentauth:c2pa-android:0.0.9")
     implementation("org.bouncycastle:bcprov-jdk18on:1.81")
     implementation("org.bouncycastle:bcpkix-jdk18on:1.81")
+    implementation("org.bouncycastle:bcpg-jdk18on:1.81")
 
     // Utilities
     implementation(libs.timber)

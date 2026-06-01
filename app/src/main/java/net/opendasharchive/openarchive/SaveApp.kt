@@ -42,6 +42,7 @@ import net.opendasharchive.openarchive.core.di.passcodeModule
 import net.opendasharchive.openarchive.features.settings.passcode.PasscodeGate
 import net.opendasharchive.openarchive.core.di.retrofitModule
 import net.opendasharchive.openarchive.core.logger.AppLogger
+import net.opendasharchive.openarchive.util.ProofCompanionGenerator
 import net.opendasharchive.openarchive.util.ProofmodeC2paManager
 import net.opendasharchive.openarchive.core.repositories.MediaRepository
 import net.opendasharchive.openarchive.util.CleanInsightsManager
@@ -103,6 +104,9 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
 
         // Initialize ProofmodeC2paManager (generates self-signed key on first run)
         ProofmodeC2paManager.init(this)
+
+        // Initialize PGP key for proof companion files
+        ProofCompanionGenerator.init(this)
 
         // --- 2-launch synchronous migration strategy ---
         // L1: If Sugar DB exists and Room migration hasn't run yet, open Room directly

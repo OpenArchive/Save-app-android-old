@@ -260,6 +260,17 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
                 .build()
         )
 
+        // Upload ProofMode companion files: .proof.json, .asc (PGP sigs), .ots (OpenTimestamps), pubkey.asc
+        for (proofFile in getProofFiles()) {
+            if (mCancelled) throw Exception("Cancelled")
+            AppLogger.d("[ProofMode] Uploading companion file: ${proofFile.name}")
+            execute(
+                Request.Builder()
+                    .url(construct(base, path, proofFile.name))
+                    .put(proofFile.readBytes().toRequestBody("application/octet-stream".toMediaTypeOrNull()))
+                    .build()
+            )
+        }
     }
 
     // --- WebDAV HTTP helpers ---

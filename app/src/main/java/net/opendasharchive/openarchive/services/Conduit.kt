@@ -30,6 +30,7 @@ import net.opendasharchive.openarchive.services.internetarchive.data.IaConduit
 import net.opendasharchive.openarchive.services.webdav.data.WebDavConduit
 import net.opendasharchive.openarchive.upload.BroadcastManager
 import net.opendasharchive.openarchive.upload.UploadEventBus
+import net.opendasharchive.openarchive.util.ProofCompanionGenerator
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.toJavaDate
 import kotlinx.serialization.encodeToString
@@ -122,6 +123,13 @@ abstract class Conduit(
         mCancelled = true
         scope.cancel()
     }
+
+    /**
+     * Generate ProofMode companion files (.proof.json, .asc, .ots) for the evidence file.
+     * Returns the generated files ready for upload. Call at upload time.
+     */
+    fun getProofFiles(): List<File> =
+        ProofCompanionGenerator.generateCompanionFiles(mContext, mEvidence.file, mEvidence.mediaHashString)
 
     /**
      * result is a site specific unique id that we can use to fetch the data,
