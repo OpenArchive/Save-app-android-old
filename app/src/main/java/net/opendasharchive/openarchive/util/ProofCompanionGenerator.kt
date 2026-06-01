@@ -32,12 +32,13 @@ import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.SecureRandom
 import java.security.Security
-import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.TimeZone
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.spec.GCMParameterSpec
@@ -62,9 +63,9 @@ object ProofCompanionGenerator {
     private const val AES_GCM_TRANSFORM = "AES/GCM/NoPadding"
     private const val GCM_TAG_LEN = 128
 
-    private val isoFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-        timeZone = TimeZone.getTimeZone("UTC")
-    }
+    // DateTimeFormatter is immutable + thread-safe — safe for concurrent capture coroutines
+    private val isoFmt: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
 
     fun init(context: Context) {
         try {
@@ -147,20 +148,22 @@ object ProofCompanionGenerator {
     // ---------------------------------------------------------------------------
 
     private fun buildProofJson(file: File, hash: String): String {
-        val now = isoFmt.format(Date())
+        val now = isoFmt.format(Instant.now())
 
         // Read capture time from EXIF TAG_DATETIME — written at capture time by MetadataCollector,
         // guaranteed consistent with the C2PA manifest timestamp and the EXIF in the signed file.
-        val exifDtFormat = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("UTC")
-        }
+        // EXIF datetime is in UTC (MetadataCollector writes it that way).
+        val exifDtFormat = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss").withZone(ZoneOffset.UTC)
         val created = try {
             ExifInterface(file.absolutePath)
                 .getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
-                ?.let { raw -> exifDtFormat.parse(raw)?.let { isoFmt.format(it) } }
-                ?: isoFmt.format(Date(file.lastModified()))
+                ?.let { raw ->
+                    val ldt = java.time.LocalDateTime.parse(raw, exifDtFormat)
+                    isoFmt.format(ldt.toInstant(ZoneOffset.UTC))
+                }
+                ?: isoFmt.format(Instant.ofEpochMilli(file.lastModified()))
         } catch (_: Exception) {
-            isoFmt.format(Date(file.lastModified()))
+            isoFmt.format(Instant.ofEpochMilli(file.lastModified()))
         }
 
         val fields = linkedMapOf<String, String?>()
@@ -349,15 +352,15 @@ object ProofCompanionGenerator {
         if (remaining.isEmpty()) queue.delete() else queue.writeText(remaining.joinToString("\n"))
     }
 
+    @Synchronized
     private fun enqueuePendingOts(context: Context, hexHash: String) {
         val queue = File(context.filesDir, PENDING_OTS_FILE)
         val existing = if (queue.exists()) queue.readLines().filter { it.isNotBlank() } else emptyList()
-        if (existing.size >= OTS_QUEUE_MAX) {
-            // Drop oldest entries to stay within cap — keeps storage bounded
-            queue.writeText((existing.drop(existing.size - OTS_QUEUE_MAX + 1) + hexHash).joinToString("\n") + "\n")
-        } else {
-            queue.appendText("$hexHash\n")
+        if (hexHash in existing) return  // already queued — no duplicate entries
+        val updated = (existing + hexHash).let {
+            if (it.size > OTS_QUEUE_MAX) it.drop(it.size - OTS_QUEUE_MAX) else it  // bound size, drop oldest
         }
+        queue.writeText(updated.joinToString("\n") + "\n")
     }
 
     private fun postOts(hexHash: String, outFile: File): Boolean {

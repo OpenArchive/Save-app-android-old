@@ -43,10 +43,10 @@ import java.security.Security
 import java.security.Signature
 import java.security.cert.X509Certificate
 import java.security.spec.ECGenParameterSpec
-import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.spec.GCMParameterSpec
@@ -76,9 +76,9 @@ object ProofmodeC2paManager {
 
     @Volatile private var trustSettingsLoaded = false
 
-    private val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
-        timeZone = TimeZone.getTimeZone("UTC")
-    }
+    // DateTimeFormatter is thread-safe (unlike SimpleDateFormat) — safe across concurrent coroutines
+    private val isoFormat: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneOffset.UTC)
 
     fun init(context: Context) {
         try {
@@ -104,6 +104,7 @@ object ProofmodeC2paManager {
             return null
         }
 
+        val tmp = File(file.parent, "${file.nameWithoutExtension}_c2pa_tmp.${file.extension}")
         return try {
             val certChainPem = loadPlain(context, CERT_CHAIN_FILE) ?: run {
                 ensureCertsExist(context)
@@ -124,7 +125,6 @@ object ProofmodeC2paManager {
             }
 
             val manifestJson = buildManifestJson(metadata)
-            val tmp = File(file.parent, "${file.nameWithoutExtension}_c2pa_tmp.${file.extension}")
             tmp.delete()
 
             // Signer.withCallback called directly — bypasses the broken KeyStoreSigner.createSigner.
@@ -162,6 +162,7 @@ object ProofmodeC2paManager {
             file
         } catch (e: Exception) {
             AppLogger.e("[C2PA] Failed to embed proof in ${file.name}", e)
+            tmp.delete()  // never leave a partial temp file behind
             null
         }
     }
@@ -170,19 +171,22 @@ object ProofmodeC2paManager {
     // Key and cert management
     // ---------------------------------------------------------------------------
 
+    @Synchronized
     private fun ensureCertsExist(context: Context) {
         val caKeyFile   = File(context.filesDir, CA_KEY_FILE)
         val chainFile   = File(context.filesDir, CERT_CHAIN_FILE)
         val caFile      = File(context.filesDir, CA_CERT_FILE)
-        val signingKeyExists = keystoreKeyExists()
+        // Validate (and repair) the Keystore signing key before anything else.
+        // A stale key from a prior app version may be unusable for ES256 signing —
+        // detect by test-sign and regenerate, so an in-place upgrade self-heals.
+        val signingKeyUsable = ensureUsableSigningKey()
 
-        if (signingKeyExists && caKeyFile.exists() && chainFile.exists() && caFile.exists()) {
+        if (signingKeyUsable && caKeyFile.exists() && chainFile.exists() && caFile.exists()) {
             if (readEncrypted(caKeyFile) != null && certMatchesKeystoreKey(chainFile)) return
             AppLogger.w("[C2PA] Wrap key lost or cert/key mismatch — wiping files and regenerating")
         }
         // Wipe any partial state
         listOf(caKeyFile, chainFile, caFile).forEach { it.delete() }
-        if (!signingKeyExists) generateKeystoreSigningKey()
 
         AppLogger.i("[C2PA] Generating software CA key + cert chain (Keystore pubkey in leaf)")
 
@@ -220,6 +224,33 @@ object ProofmodeC2paManager {
         AppLogger.i("[C2PA] Keystore TEE signing key + cert chain ready")
     }
 
+    /**
+     * Guarantees a usable ES256 signing key exists in the Keystore under SIGNING_KEY_ALIAS.
+     * If the existing key is missing or cannot sign (stale key from a prior app version,
+     * wrong algorithm/purpose, or hardware-invalidated), it is deleted and regenerated.
+     * Returns true if the key was already present and usable (no regeneration needed).
+     */
+    private fun ensureUsableSigningKey(): Boolean {
+        if (keystoreSignWorks()) return true
+        AppLogger.w("[C2PA] Signing key missing or unusable — regenerating")
+        runCatching {
+            val ks = KeyStore.getInstance(KEYSTORE_PROVIDER).also { it.load(null) }
+            if (ks.containsAlias(SIGNING_KEY_ALIAS)) ks.deleteEntry(SIGNING_KEY_ALIAS)
+        }
+        generateKeystoreSigningKey()
+        if (!keystoreSignWorks()) {
+            throw IllegalStateException("Regenerated Keystore signing key still unusable")
+        }
+        return false
+    }
+
+    /** Test-signs a tiny buffer with the Keystore key to confirm it is present and usable. */
+    private fun keystoreSignWorks(): Boolean = runCatching {
+        val ks = KeyStore.getInstance(KEYSTORE_PROVIDER).also { it.load(null) }
+        if (!ks.containsAlias(SIGNING_KEY_ALIAS)) return false
+        keystoreSign(byteArrayOf(0x01)).isNotEmpty()
+    }.getOrDefault(false)
+
     private fun generateKeystoreSigningKey() {
         val spec = KeyGenParameterSpec.Builder(SIGNING_KEY_ALIAS, KeyProperties.PURPOSE_SIGN)
             .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
@@ -230,11 +261,6 @@ object ProofmodeC2paManager {
             .generateKeyPair()
         AppLogger.i("[C2PA] Keystore EC signing key generated")
     }
-
-    private fun keystoreKeyExists(): Boolean = runCatching {
-        val ks = KeyStore.getInstance(KEYSTORE_PROVIDER).also { it.load(null) }
-        ks.containsAlias(SIGNING_KEY_ALIAS)
-    }.getOrDefault(false)
 
     private fun getKeystorePublicKey(): PublicKey? = runCatching {
         val ks = KeyStore.getInstance(KEYSTORE_PROVIDER).also { it.load(null) }
@@ -248,19 +274,14 @@ object ProofmodeC2paManager {
      */
     private fun certMatchesKeystoreKey(chainFile: File): Boolean = runCatching {
         val keystorePubKey = getKeystorePublicKey() ?: return false
-        val pem = chainFile.readText()
-        val certBytes = java.util.Base64.getDecoder().decode(
-            pem.lines()
-                .filter { !it.startsWith("-----") && it.isNotBlank() }
-                .joinToString("")
-                .takeWhile { it != '-' } // stop at second cert boundary
-                .let {
-                    // Extract only the first cert's base64 block
-                    pem.substringAfter("-----BEGIN CERTIFICATE-----\n")
-                        .substringBefore("\n-----END CERTIFICATE-----")
-                        .replace("\n", "")
-                }
-        )
+        // Parse the first (leaf) cert from the chain PEM
+        val leafBase64 = chainFile.readText()
+            .substringAfter("-----BEGIN CERTIFICATE-----")
+            .substringBefore("-----END CERTIFICATE-----")
+            .replace("\n", "")
+            .replace("\r", "")
+            .trim()
+        val certBytes = java.util.Base64.getDecoder().decode(leafBase64)
         val leafCert = java.security.cert.CertificateFactory.getInstance("X.509")
             .generateCertificate(certBytes.inputStream()) as java.security.cert.X509Certificate
         leafCert.publicKey.encoded.contentEquals(keystorePubKey.encoded)
@@ -414,7 +435,7 @@ object ProofmodeC2paManager {
         """{"trust":{"trust_anchors":"${caCertPem.replace("\\","\\\\").replace("\"","\\\"").replace("\n","\\n").replace("\r","\\r")}"}}"""
 
     private fun buildManifestJson(m: MetadataCollector.CaptureMetadata): String {
-        val captureIso    = isoFormat.format(Date(m.captureTime))
+        val captureIso    = isoFormat.format(Instant.ofEpochMilli(m.captureTime))
         val claimGenerator = "OpenArchive Save/${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})"
         val assertions = buildList {
             add(actionsAssertion())
@@ -461,7 +482,7 @@ object ProofmodeC2paManager {
             if (m.locationBearing != null)  append(""","bearing":${m.locationBearing}""")
             if (m.locationSpeed != null)    append(""","speed":${m.locationSpeed}""")
             if (m.locationProvider != null) append(""","provider":${m.locationProvider.toJsonString()}""")
-            if (m.locationTime != null)     append(""","timestamp":${isoFormat.format(Date(m.locationTime)).toJsonString()}""")
+            if (m.locationTime != null)     append(""","timestamp":${isoFormat.format(Instant.ofEpochMilli(m.locationTime)).toJsonString()}""")
         }
         return """{"label":"org.openarchive.save.location","data":{$fields}}"""
     }
