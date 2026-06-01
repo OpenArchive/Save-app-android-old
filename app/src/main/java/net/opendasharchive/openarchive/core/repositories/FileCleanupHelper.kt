@@ -4,7 +4,6 @@ import android.content.Context
 import net.opendasharchive.openarchive.core.domain.Evidence
 import net.opendasharchive.openarchive.core.logger.AppLogger
 import net.opendasharchive.openarchive.db.sugar.Media
-import net.opendasharchive.openarchive.util.C2paHelper
 import java.io.File
 
 /**
@@ -17,7 +16,6 @@ class FileCleanupHelper(private val context: Context) {
      */
     fun deleteUploadedMediaFiles(evidence: Evidence) {
         deleteInternalMediaFile(evidence)
-        deleteC2paSidecar(evidence.mediaHashString)
     }
 
     /**
@@ -42,7 +40,6 @@ class FileCleanupHelper(private val context: Context) {
             }
         }
 
-        deleteC2paSidecar(media.mediaHashString)
     }
 
     private fun deleteInternalMediaFile(evidence: Evidence) {
@@ -55,12 +52,6 @@ class FileCleanupHelper(private val context: Context) {
             } catch (e: Exception) {
                 AppLogger.e("Failed to delete media file for ${evidence.id}", e)
             }
-        }
-    }
-
-    private fun deleteC2paSidecar(mediaHashString: String) {
-        if (mediaHashString.isNotEmpty()) {
-            C2paHelper.removeC2paFiles(context, mediaHashString)
         }
     }
 

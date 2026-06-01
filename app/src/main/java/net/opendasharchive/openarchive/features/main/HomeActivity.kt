@@ -28,7 +28,6 @@ import org.koin.androidx.scope.activityRetainedScope
 import net.opendasharchive.openarchive.features.main.ui.SharedImportState
 import net.opendasharchive.openarchive.upload.UploadGate
 import net.opendasharchive.openarchive.upload.UploadJobScheduler
-import net.opendasharchive.openarchive.util.C2paHelper
 
 class HomeActivity : BaseComposeActivity(), AndroidScopeComponent {
 
@@ -98,8 +97,6 @@ class HomeActivity : BaseComposeActivity(), AndroidScopeComponent {
 
     override fun onStart() {
         super.onStart()
-        C2paHelper.init(this)
-
         // On every foreground return: if already unlocked, re-schedule any queued uploads.
         // This recovers from stalled JobService runs (e.g. OS killed the job mid-upload).
         if (!passcodeGate.locked.value) {

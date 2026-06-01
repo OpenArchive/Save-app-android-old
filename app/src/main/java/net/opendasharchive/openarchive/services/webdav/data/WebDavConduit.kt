@@ -260,17 +260,6 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
                 .build()
         )
 
-        val c2paManifest = getC2paManifest()
-        if (c2paManifest != null) {
-            if (mCancelled) throw Exception("Cancelled")
-            AppLogger.d("Uploading C2PA manifest: ${c2paManifest.name}")
-            execute(
-                Request.Builder()
-                    .url(construct(base, path, c2paManifest.name))
-                    .put(c2paManifest.readBytes().toRequestBody("application/json".toMediaTypeOrNull()))
-                    .build()
-            )
-        }
     }
 
     // --- WebDAV HTTP helpers ---

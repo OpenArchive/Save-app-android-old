@@ -30,7 +30,6 @@ import net.opendasharchive.openarchive.services.internetarchive.data.IaConduit
 import net.opendasharchive.openarchive.services.webdav.data.WebDavConduit
 import net.opendasharchive.openarchive.upload.BroadcastManager
 import net.opendasharchive.openarchive.upload.UploadEventBus
-import net.opendasharchive.openarchive.util.C2paHelper
 import net.opendasharchive.openarchive.util.Prefs
 import net.opendasharchive.openarchive.util.toJavaDate
 import kotlinx.serialization.encodeToString
@@ -122,38 +121,6 @@ abstract class Conduit(
     open fun cancel() {
         mCancelled = true
         scope.cancel()
-    }
-
-    /**
-     * Get C2PA manifest file for this media
-     * Returns the sidecar .c2pa.json file if C2PA is enabled and manifest exists
-     */
-    fun getC2paManifest(): File? {
-        if (!Prefs.useC2pa) {
-            AppLogger.d("[C2PA] Disabled, skipping manifest retrieval")
-            return null
-        }
-
-        try {
-            AppLogger.d("[C2PA_DEBUG] getC2paManifest: evidenceHash=${mEvidence.mediaHashString} evidenceFile=${mEvidence.originalFilePath}")
-            val manifestFile = C2paHelper.getC2paFile(mContext, mEvidence.mediaHashString)
-            AppLogger.d("[C2PA_DEBUG] Looking for manifest at: ${manifestFile.absolutePath}")
-
-            if (manifestFile.exists()) {
-                AppLogger.d("[C2PA] Manifest found: ${manifestFile.absolutePath}")
-                return manifestFile
-            } else {
-                AppLogger.w("[C2PA] Manifest not found for ${mEvidence.mediaHashString}")
-                // List existing manifests to help diagnose hash mismatch
-                val c2paDir = manifestFile.parentFile
-                val existing = c2paDir?.listFiles()?.map { it.name } ?: emptyList()
-                AppLogger.d("[C2PA_DEBUG] Existing manifests: $existing")
-                return null
-            }
-        } catch (exception: Exception) {
-            AppLogger.e("[C2PA] Error retrieving manifest", exception)
-            return null
-        }
     }
 
     /**
