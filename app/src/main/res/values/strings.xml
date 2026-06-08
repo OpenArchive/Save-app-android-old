@@ -240,8 +240,8 @@
     <string name="intro_text_archive"><![CDATA[Upload media to Nextcloud or the Internet Archive to keep your media verifiable, safe, and organized for the long term.<br><br>Choose <a href=\"%1$s\"><u>Creative Commons Licensing.</u></a>]]></string>
 
     <string name="intro_link_archive" translatable="false">https://creativecommons.org</string>
-    <string name="intro_text_verify"><![CDATA[Authenticate and verify your media with sha256 hashes and <a href=\"%1$s\"><u>C2PA content credentials.</u></a>]]></string>
-    <string name="intro_link_verify" translatable="false">https://c2pa.org</string>
+    <string name="intro_text_verify"><![CDATA[Authenticate and verify your media with sha256 hashes and <a href=\"%1$s\"><u>Proofmode content credentials.</u></a>]]></string>
+    <string name="intro_link_verify" translatable="false">https://proofmode.org</string>
     <string name="intro_text_encrypt"><![CDATA[<b><i>Save</i></b> always uploads over TLS (Transport Layer Security) to protect your media in transit.<br>To further enhance security, enable <a href=\"%1$s\"><u>Tor</u></a> to prevent interception of your media from your phone to the server.]]></string>
     <string name="intro_link_encrypt" translatable="false">https://www.torproject.org</string>
 
@@ -543,7 +543,13 @@
     <string name="prefs_use_c2pa_title">Enable C2PA</string>
     <string name="prefs_use_c2pa_summary">Generate cryptographic content credentials</string>
     <string name="prefs_use_c2pa_description"><![CDATA[C2PA (Coalition for Content Provenance and Authenticity) is an industry standard for verifying the source and history of media content. <a href=\"%1$s\"><u>Learn more here.</u></a>]]></string>
-    <string name="c2pa_learn_more_url" translatable="false">https://c2pa.org/</string>
+    <string name="c2pa_learn_more_url" translatable="false">https://proofmode.org/</string>
+
+    <!-- Proofmode Strings (restored for localization compatibility) -->
+    <string name="proofmode">Proofmode</string>
+    <string name="prefs_use_proofmode_title">Enable Proofmode</string>
+    <string name="prefs_use_proofmode_summary">Generate cryptographic content credentials</string>
+    <string name="prefs_use_proofmode_description"><![CDATA[Proofmode is an open-source standard for verifying the source and history of media content. <a href=\"%1$s\"><u>Learn more here.</u></a>]]></string>
 
     <string name="c2pa_warning_text"><![CDATA[
     To help verify where your media was captured, C2PA collects metadata including location data from nearby cell towers to corroborate where content was created. Android requires location access to collect this information.<br/><br/>
