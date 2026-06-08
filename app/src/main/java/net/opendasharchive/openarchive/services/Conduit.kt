@@ -125,12 +125,14 @@ abstract class Conduit(
     }
 
     /**
-     * Returns proof companion files for upload.
-     * PGP signatures and proof.json were generated at capture time by CameraViewModel.
-     * This call only submits OTS (network) and returns the pre-generated file list.
+     * Returns proof companion files for upload — camera captures only.
+     * Gallery imports never create the proof_companions dir, so they return empty here.
      */
-    suspend fun getProofFiles(): List<File> =
-        ProofCompanionGenerator.prepareForUpload(mContext, mEvidence.file, mEvidence.mediaHashString)
+    suspend fun getProofFiles(): List<File> {
+        val proofDir = java.io.File(mContext.filesDir, "proof_companions/${mEvidence.mediaHashString}")
+        if (!proofDir.exists()) return emptyList()
+        return ProofCompanionGenerator.prepareForUpload(mContext, mEvidence.file, mEvidence.mediaHashString)
+    }
 
     /**
      * result is a site specific unique id that we can use to fetch the data,
