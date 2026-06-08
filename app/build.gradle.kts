@@ -71,6 +71,10 @@ android {
         versionName = "4.0.5"
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
+        // minSdk=29 (Android 10) requires 64-bit hardware — all supported devices are arm64
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val localProps = loadLocalProperties()
         resValue("string", "mixpanel_key", localProps.getProperty("MIXPANELKEY") ?: "")
@@ -119,10 +123,6 @@ android {
             val localProps = loadLocalProperties()
             val acraEmail = localProps.getProperty("ACRA_EMAIL") ?: System.getenv("ACRA_EMAIL") ?: ""
             buildConfigField("String", "ACRA_EMAIL", "\"$acraEmail\"")
-            // No real devices use x86/x86_64 — emulators can use armeabi-v7a via translation
-            ndk {
-                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
-            }
         }
 
         // Environment dimension
