@@ -7,7 +7,6 @@ import net.opendasharchive.openarchive.core.domain.Evidence
 import net.opendasharchive.openarchive.core.domain.EvidenceStatus
 import net.opendasharchive.openarchive.core.domain.VaultType
 import net.opendasharchive.openarchive.core.logger.AppLogger
-import net.opendasharchive.openarchive.util.C2paHelper
 import net.opendasharchive.openarchive.util.DateUtils
 import net.opendasharchive.openarchive.util.MediaThumbnailGenerator
 import net.opendasharchive.openarchive.util.Utility
@@ -126,19 +125,6 @@ object MediaPicker {
         } catch (e: Exception) {
             AppLogger.e("Failed to generate hash for media", e)
             ""
-        }
-
-        if (logC2pa) {
-            AppLogger.d("[C2PA_DEBUG] MediaPicker hash of copied file: $mediaHashString (file size=${file?.length()})")
-            val expectedManifest = C2paHelper.getC2paFile(context, mediaHashString)
-            AppLogger.d("[C2PA_DEBUG] Expected C2PA manifest path: ${expectedManifest.absolutePath}, exists=${expectedManifest.exists()}")
-            if (!expectedManifest.exists()) {
-                AppLogger.w("[C2PA_DEBUG] *** C2PA MANIFEST MISSING for hash $mediaHashString — upload will skip C2PA ***")
-                // List all existing manifests for comparison
-                val c2paDir = expectedManifest.parentFile
-                val existing = c2paDir?.listFiles()?.map { it.name } ?: emptyList()
-                AppLogger.d("[C2PA_DEBUG] Existing manifests in dir: $existing")
-            }
         }
 
         val thumbnail = try {

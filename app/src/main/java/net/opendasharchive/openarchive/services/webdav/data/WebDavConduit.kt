@@ -260,17 +260,21 @@ class WebDavConduit(evidence: Evidence, context: Context) : Conduit(evidence, co
                 .build()
         )
 
-        val c2paManifest = getC2paManifest()
-        if (c2paManifest != null) {
+        // Upload ProofMode companion files: .proof.json, .asc (PGP sigs), .ots (OpenTimestamps), pubkey.asc
+        for (proofFile in getProofFiles()) {
             if (mCancelled) throw Exception("Cancelled")
-            AppLogger.d("Uploading C2PA manifest: ${c2paManifest.name}")
+            AppLogger.d("[ProofMode] Uploading companion file: ${proofFile.name}")
             execute(
                 Request.Builder()
-                    .url(construct(base, path, c2paManifest.name))
-                    .put(c2paManifest.readBytes().toRequestBody("application/json".toMediaTypeOrNull()))
+                    .url(construct(base, path, proofFile.name))
+                    .put(proofFile.readBytes().toRequestBody("application/octet-stream".toMediaTypeOrNull()))
                     .build()
             )
         }
+
+        // Delete companion files from local storage after successful upload
+        java.io.File(mContext.filesDir, "proof_companions/${mEvidence.mediaHashString}")
+            .deleteRecursively()
     }
 
     // --- WebDAV HTTP helpers ---

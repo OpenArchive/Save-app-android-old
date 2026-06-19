@@ -31,7 +31,6 @@ import net.opendasharchive.openarchive.services.tor.TorServiceManager
 import kotlinx.coroutines.launch
 import net.opendasharchive.openarchive.analytics.api.AnalyticsManager
 import net.opendasharchive.openarchive.analytics.api.session.SessionTracker
-import net.opendasharchive.openarchive.core.security.C2paKeyStore
 import net.opendasharchive.openarchive.analytics.di.analyticsModule
 import net.opendasharchive.openarchive.db.AppDatabase
 import net.opendasharchive.openarchive.db.MigrationWorker
@@ -43,7 +42,8 @@ import net.opendasharchive.openarchive.core.di.passcodeModule
 import net.opendasharchive.openarchive.features.settings.passcode.PasscodeGate
 import net.opendasharchive.openarchive.core.di.retrofitModule
 import net.opendasharchive.openarchive.core.logger.AppLogger
-import net.opendasharchive.openarchive.util.C2paHelper
+import net.opendasharchive.openarchive.util.ProofCompanionGenerator
+import net.opendasharchive.openarchive.util.ProofmodeC2paManager
 import net.opendasharchive.openarchive.core.repositories.MediaRepository
 import net.opendasharchive.openarchive.util.CleanInsightsManager
 import net.opendasharchive.openarchive.util.Prefs
@@ -102,8 +102,11 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
 
         Prefs.load(this)
 
-        // Initialize C2PA Helper
-        C2paHelper.init(this)
+        // Initialize ProofmodeC2paManager (generates self-signed key on first run)
+        ProofmodeC2paManager.init(this)
+
+        // Initialize PGP key for proof companion files
+        ProofCompanionGenerator.init(this)
 
         // --- 2-launch synchronous migration strategy ---
         // L1: If Sugar DB exists and Room migration hasn't run yet, open Room directly
@@ -184,12 +187,6 @@ class SaveApp : SugarApp(), SingletonImageLoader.Factory, DefaultLifecycleObserv
         ProcessLifecycleOwner.get().lifecycle.addObserver(passcodeGate)
 
         applyTheme()
-
-        // Migrate C2PA keys from plaintext SharedPreferences to SecureStorage (one-time)
-        val c2paKeyStore: C2paKeyStore by inject()
-        c2paKeyStore.migrateFromPrefsIfNeeded(
-            androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
-        )
 
         // Schedule periodic cache cleanup (runs every 7 days when battery is not low)
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
