@@ -108,6 +108,7 @@ android {
 
         // Distribution dimension
         create("gms") {
+            isDefault = true
             dimension = "distribution"
             buildConfigField("boolean", "IS_GMS_BUILD", "true")
             buildConfigField("boolean", "IS_FOSS_BUILD", "false")
@@ -127,6 +128,7 @@ android {
 
         // Environment dimension
         create("dev") {
+            isDefault = true
             dimension = "env"
             versionNameSuffix = "-dev"
             applicationIdSuffix = ".debug"
