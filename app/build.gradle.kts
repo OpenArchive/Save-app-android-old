@@ -310,6 +310,7 @@ dependencies {
     "gmsImplementation"(libs.google.play.review.ktx)
     "gmsImplementation"(libs.google.play.app.update.ktx)
     "gmsImplementation"("com.google.android.gms:play-services-location:21.1.0")
+    "gmsImplementation"("com.google.android.play:integrity:1.4.0")
 
     // Tor
     implementation(libs.tor.android)
