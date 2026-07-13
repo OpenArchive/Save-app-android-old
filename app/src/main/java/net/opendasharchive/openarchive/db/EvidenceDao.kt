@@ -7,36 +7,16 @@ import net.opendasharchive.openarchive.core.domain.EvidenceStatus
 @Dao
 interface EvidenceDao {
     @Query("""
-        SELECT * FROM evidence 
-        WHERE submissionId = :submissionId 
-        ORDER BY 
-            CASE 
-                WHEN status IN (2, 4) THEN 0 -- Active (Queued, Uploading)
-                WHEN status = 9 THEN 1       -- Error
-                WHEN status IN (0, 1) THEN 2    -- Local/New
-                WHEN status = 5 THEN 3      -- Uploaded
-                ELSE 4
-            END,
-            CASE WHEN status = 5 THEN uploadedAt ELSE 0 END DESC,
-            priority DESC, 
-            id DESC
+        SELECT * FROM evidence
+        WHERE submissionId = :submissionId
+        ORDER BY id ASC
     """)
     fun observeBySubmission(submissionId: Long): Flow<List<EvidenceEntity>>
 
     @Query("""
-        SELECT * FROM evidence 
-        WHERE archiveId = :archiveId 
-        ORDER BY 
-            CASE 
-                WHEN status IN (2, 4) THEN 0 -- Active
-                WHEN status = 9 THEN 1       -- Error
-                WHEN status IN (0, 1) THEN 2    -- Local/New
-                WHEN status = 5 THEN 3      -- Uploaded
-                ELSE 4
-            END,
-            CASE WHEN status = 5 THEN uploadedAt ELSE 0 END DESC,
-            priority DESC, 
-            id DESC
+        SELECT * FROM evidence
+        WHERE archiveId = :archiveId
+        ORDER BY id ASC
     """)
     fun observeByArchive(archiveId: Long): Flow<List<EvidenceEntity>>
 
@@ -53,7 +33,7 @@ interface EvidenceDao {
         ORDER BY
           CASE WHEN status = 9 THEN 1 ELSE 0 END,
           priority DESC,
-          id DESC
+          id ASC
     """)
     suspend fun getQueueWithErrorsLast(now: Long): List<EvidenceEntity>
 

@@ -62,7 +62,7 @@ fun C2paScreen(
         DefaultScaffold(
             topAppBar = {
                 ComposeAppBar(
-                    title = stringResource(R.string.c2pa_content_authenticity),
+                    title = stringResource(R.string.proofmode),
                     onNavigateBack = {
                         onNavigateBack()
                     }
@@ -141,11 +141,11 @@ fun C2paScreenContent() {
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(R.string.prefs_use_c2pa_title),
+                        text = stringResource(R.string.prefs_use_proofmode_title),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = stringResource(R.string.prefs_use_c2pa_summary),
+                        text = stringResource(R.string.prefs_use_proofmode_summary),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -195,7 +195,7 @@ fun C2paScreenContent() {
         item {
             Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 HtmlText(
-                    textRes = R.string.prefs_use_c2pa_description,
+                    textRes = R.string.prefs_use_proofmode_description,
                     linkRes = R.string.c2pa_learn_more_url,
                     fontSize = 11.sp,
                     linkColor = MaterialTheme.colorScheme.tertiary

@@ -21,8 +21,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.opendasharchive.openarchive.core.logger.AppLogger
-import net.opendasharchive.openarchive.util.C2paHelper
 import net.opendasharchive.openarchive.util.MetadataCollector
+import net.opendasharchive.openarchive.util.ProofCompanionGenerator
+import net.opendasharchive.openarchive.util.ProofmodeC2paManager
 import net.opendasharchive.openarchive.util.Utility
 import java.io.File
 import java.security.MessageDigest
@@ -251,18 +252,16 @@ class CameraViewModel : ViewModel() {
             val metadata = MetadataCollector.collectMetadata(context)
             MetadataCollector.writeExifMetadata(file, metadata)
             AppLogger.d("[C2PA_DEBUG] EXIF written, file size after EXIF: ${file.length()}")
-            val hash = sha256(file)
-            AppLogger.d("[C2PA_DEBUG] SHA-256 of original capture file: $hash")
-            if (hash.isNotEmpty()) {
-                val manifest = C2paHelper.generateManifest(
-                    context   = context,
-                    mediaFile = file,
-                    mediaHash = hash,
-                    metadata  = buildProofMetadata(context, file, hash, metadata)
-                )
-                AppLogger.d("[C2PA_DEBUG] Manifest generated: ${manifest?.absolutePath}, exists=${manifest?.exists()}")
+            val mimeType = android.webkit.MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(file.extension.lowercase())
+                ?: "image/jpeg"
+            val signedFile = ProofmodeC2paManager.embedProof(file, mimeType, metadata, context)
+            if (signedFile != null) {
+                AppLogger.d("[C2PA] Proof embedded: ${signedFile.name}")
+                val hash = computeFileHash(signedFile)
+                if (hash.isNotEmpty()) ProofCompanionGenerator.generateLocalProof(context, signedFile, hash, metadata)
             } else {
-                AppLogger.w("[C2PA_DEBUG] Empty hash — manifest NOT generated for ${file.name}")
+                AppLogger.w("[C2PA] Proof embedding skipped/failed for ${file.name}")
             }
         } catch (e: Exception) {
             AppLogger.e("Provenance write failed for ${file.name}", e)
@@ -273,79 +272,33 @@ class CameraViewModel : ViewModel() {
         try {
             AppLogger.d("[C2PA_DEBUG] writeProvenanceForVideo: file=${file.absolutePath} exists=${file.exists()} size=${file.length()}")
             val metadata = MetadataCollector.collectMetadata(context)
-            val hash = sha256(file)
-            AppLogger.d("[C2PA_DEBUG] SHA-256 of original capture file (video): $hash")
-            if (hash.isNotEmpty()) {
-                val manifest = C2paHelper.generateManifest(
-                    context   = context,
-                    mediaFile = file,
-                    mediaHash = hash,
-                    metadata  = buildProofMetadata(context, file, hash, metadata)
-                )
-                AppLogger.d("[C2PA_DEBUG] Manifest generated: ${manifest?.absolutePath}, exists=${manifest?.exists()}")
+            val mimeType = android.webkit.MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(file.extension.lowercase())
+                ?: "video/mp4"
+            val signedFile = ProofmodeC2paManager.embedProof(file, mimeType, metadata, context)
+            if (signedFile != null) {
+                AppLogger.d("[C2PA] Proof embedded: ${signedFile.name}")
+                val hash = computeFileHash(signedFile)
+                if (hash.isNotEmpty()) ProofCompanionGenerator.generateLocalProof(context, signedFile, hash, metadata)
             } else {
-                AppLogger.w("[C2PA_DEBUG] Empty hash — manifest NOT generated for ${file.name}")
+                AppLogger.w("[C2PA] Proof embedding skipped/failed for ${file.name}")
             }
         } catch (e: Exception) {
             AppLogger.e("Provenance write failed for ${file.name}", e)
         }
     }
 
-    private fun sha256(file: File): String = try {
+    private fun computeFileHash(file: File): String = try {
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { stream ->
-            val buffer = ByteArray(8192)
-            var bytesRead: Int
-            while (stream.read(buffer).also { bytesRead = it } != -1) {
-                digest.update(buffer, 0, bytesRead)
-            }
+            val buf = ByteArray(8192)
+            var n: Int
+            while (stream.read(buf).also { n = it } != -1) digest.update(buf, 0, n)
         }
         digest.digest().joinToString("") { "%02x".format(it) }
     } catch (e: Exception) {
-        AppLogger.e("SHA-256 hash failed for ${file.name}", e)
+        AppLogger.e("[C2PA] Hash computation failed for ${file.name}", e)
         ""
-    }
-
-    private fun buildProofMetadata(
-        context: Context,
-        file: File,
-        hash: String,
-        metadata: MetadataCollector.CaptureMetadata
-    ): Map<String, String> {
-        val isoFmt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).also {
-            it.timeZone = java.util.TimeZone.getTimeZone("UTC")
-        }
-        val mimeType = android.webkit.MimeTypeMap.getSingleton()
-            .getMimeTypeFromExtension(file.extension.lowercase())
-            ?: "application/octet-stream"
-        return buildMap {
-            put("title",            file.name)
-            put("mimeType",         mimeType)
-            put("File Hash SHA256", hash)
-            put("File Path",        file.absolutePath)
-            put("File Created",     isoFmt.format(java.util.Date(metadata.captureTime)))
-            put("File Modified",    isoFmt.format(java.util.Date(file.lastModified())))
-            put("Proof Generated",  isoFmt.format(java.util.Date(metadata.captureTime)))
-            put("Notes", "${metadata.appName} ${metadata.appVersion}")
-            put("Manufacturer", metadata.deviceMake)
-            put("Hardware", "${metadata.deviceMake} ${metadata.deviceModel}")
-            put("Locale",   metadata.locale)
-            put("Language", metadata.language)
-            metadata.screenSizeInches?.let { put("ScreenSize", it.toString()) }
-            metadata.latitude?.let         { put("Location.Latitude",  it.toString()) }
-            metadata.longitude?.let        { put("Location.Longitude", it.toString()) }
-            metadata.locationAltitude?.let { put("Location.Altitude",  it.toString()) }
-            metadata.locationAccuracy?.let { put("Location.Accuracy",  it.toString()) }
-            metadata.locationBearing?.let  { put("Location.Bearing",   it.toString()) }
-            metadata.locationSpeed?.let    { put("Location.Speed",     it.toString()) }
-            metadata.locationTime?.let     { put("Location.Time",      it.toString()) }
-            metadata.locationProvider?.let { put("Location.Provider",  it) }
-            metadata.networkType?.let { put("NetworkType", it) }
-            metadata.networkType?.let { put("DataType",    it) }
-            metadata.ipv4?.let        { put("IPv4", it) }
-            metadata.ipv6?.let        { put("IPv6", it) }
-            metadata.cellInfo?.let    { put("CellInfo", it) }
-        }
     }
 
     fun stopVideoRecording() {

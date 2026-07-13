@@ -85,8 +85,10 @@ dependencyResolutionManagement {
             content {
                 includeModule("com.github.esafirm", "android-image-picker")
                 includeModule("com.github.abdularis", "circularimageview")
+                includeModule("com.github.contentauth", "c2pa-android")
             }
         }
+
     }
 }
 rootProject.name = "save-android-old"
