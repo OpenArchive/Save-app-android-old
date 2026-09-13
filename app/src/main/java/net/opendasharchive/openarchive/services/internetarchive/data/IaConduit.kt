@@ -133,11 +133,14 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                 }
             }
 
-            // Upload metadata after content succeeds — non-fatal if it fails.
-            // IA item already exists with content; missing meta.json just means IA uses defaults.
+            // Upload metadata after content succeeds. Content + metadata are treated as one
+            // unit: a meta.json failure fails the whole job (jobFailed below via the outer
+            // catch) so the queue re-attempts. On retry, isAlreadyUploaded() (above) skips
+            // the already-present content and only meta.json is re-sent.
             var metadataUploaded = false
             var metaAttempt = 0
             val maxMetaRetries = 3
+            var lastMetaError: Throwable? = null
             while (!metadataUploaded && metaAttempt < maxMetaRetries) {
                 if (metaAttempt > 0) delay(2_000L * metaAttempt)
                 metaAttempt++
@@ -145,11 +148,12 @@ class IaConduit(evidence: Evidence, context: Context) : Conduit(evidence, contex
                     client.uploadMetaData(metaJson, fileName, auth)
                     metadataUploaded = true
                 } catch (e: Throwable) {
+                    lastMetaError = e
                     AppLogger.w("meta.json attempt $metaAttempt/$maxMetaRetries failed for $fileName: ${e.message}")
                 }
             }
             if (!metadataUploaded) {
-                AppLogger.e("meta.json failed all retries for $fileName — item uploaded without custom metadata")
+                throw lastMetaError ?: IOException("meta.json upload failed for $fileName")
             }
 
             jobSucceeded()

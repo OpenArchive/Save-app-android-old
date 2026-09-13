@@ -259,7 +259,7 @@ class CameraViewModel : ViewModel() {
             if (signedFile != null) {
                 AppLogger.d("[C2PA] Proof embedded: ${signedFile.name}")
                 val hash = computeFileHash(signedFile)
-                if (hash.isNotEmpty()) ProofCompanionGenerator.generateLocalProof(context, signedFile, hash)
+                if (hash.isNotEmpty()) ProofCompanionGenerator.generateLocalProof(context, signedFile, hash, metadata)
             } else {
                 AppLogger.w("[C2PA] Proof embedding skipped/failed for ${file.name}")
             }
@@ -279,7 +279,7 @@ class CameraViewModel : ViewModel() {
             if (signedFile != null) {
                 AppLogger.d("[C2PA] Proof embedded: ${signedFile.name}")
                 val hash = computeFileHash(signedFile)
-                if (hash.isNotEmpty()) ProofCompanionGenerator.generateLocalProof(context, signedFile, hash)
+                if (hash.isNotEmpty()) ProofCompanionGenerator.generateLocalProof(context, signedFile, hash, metadata)
             } else {
                 AppLogger.w("[C2PA] Proof embedding skipped/failed for ${file.name}")
             }

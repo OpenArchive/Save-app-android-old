@@ -50,8 +50,19 @@ object ProofCompanionGenerator {
     private const val PENDING_OTS_FILE = "pending_ots.txt"
     private const val OTS_QUEUE_MAX = 500
     private const val PGP_IDENTITY = "OpenArchive Save <proof@openarchive.app>"
-    private const val OTS_CALENDAR = "https://a.pool.opentimestamps.org/timestamp"
+    private const val OTS_CALENDAR = "https://a.pool.opentimestamps.org/digest"
     private const val OTS_TIMEOUT_MS = 15_000
+
+    // OpenTimestamps detached-file format: fixed 31-byte magic + 1-byte major version.
+    // Every valid .ots file (and every OTS verifier, incl. opentimestamps.org) requires this
+    // preamble before the hash-op tag + digest + serialized timestamp.
+    private val OTS_HEADER_MAGIC = byteArrayOf(
+        0x00, 0x4f, 0x70, 0x65, 0x6e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x73,
+        0x00, 0x00, 0x50, 0x72, 0x6f, 0x6f, 0x66, 0x00,
+        0xbf.toByte(), 0x89.toByte(), 0xe2.toByte(), 0xe8.toByte(), 0x84.toByte(), 0xe8.toByte(), 0x92.toByte(), 0x94.toByte()
+    )
+    private const val OTS_MAJOR_VERSION: Byte = 0x01
+    private const val OTS_OP_SHA256: Byte = 0x08
 
     // PGP BouncyCastle API requires a passphrase for its internal AES layer.
     // The secret key ring file itself is additionally encrypted at rest via a
@@ -79,21 +90,46 @@ object ProofCompanionGenerator {
     }
 
     /**
-     * Called at capture time (no network). Generates proof.json and PGP signatures
-     * immediately after C2PA embedding while the file bytes are known-final.
-     * This ensures PGP signatures are provably of the same bytes the SHA-256 hash covers.
+     * Called at capture time. Generates proof.json, proof.csv, PGP signatures, and
+     * HowToVerifyProofData.txt immediately after C2PA embedding while the file bytes are
+     * known-final. Passing [metadata] ensures all sensor/device fields make it into the proof
+     * without round-tripping through EXIF. Also submits the OTS timestamp and requests device
+     * attestation (.gst) right away — all proof material is complete at capture time; nothing
+     * is generated later at upload time.
      */
-    suspend fun generateLocalProof(context: Context, evidenceFile: File, mediaHash: String) {
+    suspend fun generateLocalProof(
+        context: Context,
+        evidenceFile: File,
+        mediaHash: String,
+        metadata: MetadataCollector.CaptureMetadata? = null
+    ) {
         if (!Prefs.useC2pa) return
         withContext(Dispatchers.IO) {
             try {
                 val outDir = File(context.filesDir, "proof_companions/$mediaHash").also { it.mkdirs() }
 
-                val proofJson = buildProofJson(evidenceFile, mediaHash)
-                File(outDir, "$mediaHash.proof.json").writeText(proofJson)
+                val fields = buildProofFields(evidenceFile, mediaHash, metadata)
+
+                val proofJson = buildProofJson(fields)
+                val proofCsv  = buildProofCsv(fields)
+
+                val proofJsonFile = File(outDir, "$mediaHash.proof.json")
+                val proofCsvFile  = File(outDir, "$mediaHash.proof.csv")
+                proofJsonFile.writeText(proofJson)
+                proofCsvFile.writeText(proofCsv)
 
                 pgpSignStream(context, evidenceFile, File(outDir, "$mediaHash.asc"))
                 pgpSign(context, proofJson.toByteArray(Charsets.UTF_8), File(outDir, "$mediaHash.proof.json.asc"))
+                pgpSign(context, proofCsv.toByteArray(Charsets.UTF_8), File(outDir, "$mediaHash.proof.csv.asc"))
+
+                File(outDir, "HowToVerifyProofData.txt").writeText(
+                    buildHowToVerify(evidenceFile.name, mediaHash)
+                )
+
+                // OTS calendar submission and device attestation — done now so every proof
+                // artifact exists immediately after capture, not deferred to upload time.
+                submitOts(context, mediaHash, File(outDir, "$mediaHash.ots"))
+                SafetyNetHelper.requestGst(context, mediaHash, File(outDir, "$mediaHash.gst"))
 
                 AppLogger.i("[Proof] Local proof generated at capture time for $mediaHash")
             } catch (e: Exception) {
@@ -103,37 +139,55 @@ object ProofCompanionGenerator {
     }
 
     /**
-     * Called at upload time. Submits OTS (network), falls back to generating proof files
-     * if generateLocalProof was not called at capture, then returns all files for upload.
+     * Called at upload time. All proof material — including OTS and .gst — is generated at
+     * capture time by [generateLocalProof]; this only assembles the file list, with a
+     * defensive fallback that regenerates anything missing (should not occur for camera
+     * captures, but covers edge cases like a process death between capture and upload).
      */
     suspend fun prepareForUpload(context: Context, evidenceFile: File, mediaHash: String): List<File> = withContext(Dispatchers.IO) {
         if (!Prefs.useC2pa) return@withContext emptyList()
         try {
             val outDir = File(context.filesDir, "proof_companions/$mediaHash").also { it.mkdirs() }
-            val proofJsonFile = File(outDir, "$mediaHash.proof.json")
-            val mediaSigFile  = File(outDir, "$mediaHash.asc")
-            val jsonSigFile   = File(outDir, "$mediaHash.proof.json.asc")
+            val proofJsonFile  = File(outDir, "$mediaHash.proof.json")
+            val proofCsvFile   = File(outDir, "$mediaHash.proof.csv")
+            val mediaSigFile   = File(outDir, "$mediaHash.asc")
+            val jsonSigFile    = File(outDir, "$mediaHash.proof.json.asc")
+            val csvSigFile     = File(outDir, "$mediaHash.proof.csv.asc")
+            val howToFile      = File(outDir, "HowToVerifyProofData.txt")
+            val otsFile        = File(outDir, "$mediaHash.ots")
+            val gstFile        = File(outDir, "$mediaHash.gst")
 
             // Defensive fallback — should not occur for camera captures but handles edge cases
+            // (e.g. process death between capture and upload)
             if (!proofJsonFile.exists() || !mediaSigFile.exists() || !jsonSigFile.exists()) {
                 AppLogger.w("[Proof] Local proof missing for $mediaHash — generating at upload time")
-                val proofJson = buildProofJson(evidenceFile, mediaHash)
-                proofJsonFile.writeText(proofJson)
+                val fields = buildProofFields(evidenceFile, mediaHash, null)
+                proofJsonFile.writeText(buildProofJson(fields))
+                proofCsvFile.writeText(buildProofCsv(fields))
                 pgpSignStream(context, evidenceFile, mediaSigFile)
-                pgpSign(context, proofJson.toByteArray(Charsets.UTF_8), jsonSigFile)
+                pgpSign(context, proofJsonFile.readBytes(), jsonSigFile)
+                pgpSign(context, proofCsvFile.readBytes(), csvSigFile)
+                howToFile.writeText(buildHowToVerify(evidenceFile.name, mediaHash))
             }
-
-            // OTS is network-only — submitted at upload time with retry queue
-            val otsFile = File(outDir, "$mediaHash.ots")
-            submitOts(context, mediaHash, otsFile)
+            if (!otsFile.exists()) {
+                AppLogger.w("[Proof] OTS missing for $mediaHash — submitting at upload time")
+                submitOts(context, mediaHash, otsFile)
+            }
+            if (!gstFile.exists()) {
+                SafetyNetHelper.requestGst(context, mediaHash, gstFile)
+            }
 
             val pubKeyFile = File(context.filesDir, PUBLIC_KEY_FILE)
             buildList {
                 add(proofJsonFile)
+                add(proofCsvFile)
                 add(mediaSigFile)
                 add(jsonSigFile)
+                if (csvSigFile.exists()) add(csvSigFile)
                 if (pubKeyFile.exists()) add(pubKeyFile)
                 if (otsFile.exists()) add(otsFile)
+                if (gstFile.exists()) add(gstFile)
+                if (howToFile.exists()) add(howToFile)
             }.also {
                 AppLogger.i("[Proof] ${it.size} companion files ready for upload: $mediaHash")
             }
@@ -144,15 +198,16 @@ object ProofCompanionGenerator {
     }
 
     // ---------------------------------------------------------------------------
-    // Proof JSON — ProofMode v1 field names
+    // Proof fields — shared between JSON and CSV builders
     // ---------------------------------------------------------------------------
 
-    private fun buildProofJson(file: File, hash: String): String {
+    private fun buildProofFields(
+        file: File,
+        hash: String,
+        metadata: MetadataCollector.CaptureMetadata?
+    ): LinkedHashMap<String, String?> {
         val now = isoFmt.format(Instant.now())
 
-        // Read capture time from EXIF TAG_DATETIME — written at capture time by MetadataCollector,
-        // guaranteed consistent with the C2PA manifest timestamp and the EXIF in the signed file.
-        // EXIF datetime is in UTC (MetadataCollector writes it that way).
         val exifDtFormat = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss").withZone(ZoneOffset.UTC)
         val created = try {
             ExifInterface(file.absolutePath)
@@ -168,35 +223,62 @@ object ProofCompanionGenerator {
 
         val fields = linkedMapOf<String, String?>()
         fields["File Hash SHA256"] = hash
-        fields["File Path"] = file.absolutePath
-        fields["File Created"] = created
-        fields["File Modified"] = created
-        fields["Proof Generated"] = now
-        fields["Notes"] = "OpenArchive Save ${BuildConfig.VERSION_NAME}"
-        fields["Manufacturer"] = Build.MANUFACTURER
-        fields["Hardware"] = "${Build.MANUFACTURER} ${Build.MODEL}"
-        fields["Locale"] = Locale.getDefault().country
-        fields["Language"] = Locale.getDefault().displayLanguage
+        fields["File Path"]        = file.absolutePath
+        fields["File Created"]     = created
+        fields["File Modified"]    = created
+        fields["Proof Generated"]  = now
+        fields["Notes"]            = "${metadata?.appName ?: "OpenArchive Save"} ${BuildConfig.VERSION_NAME}"
+        fields["App.Name"]         = metadata?.appName
+        fields["Manufacturer"]     = metadata?.deviceMake ?: Build.MANUFACTURER
+        fields["Device.Brand"]     = metadata?.deviceBrand ?: Build.BRAND
+        fields["Device.Model"]     = metadata?.deviceModel ?: Build.MODEL
+        fields["Hardware"]         = "${metadata?.deviceMake ?: Build.MANUFACTURER} ${metadata?.deviceModel ?: Build.MODEL}"
+        fields["Locale"]           = metadata?.locale ?: Locale.getDefault().country
+        fields["Language"]         = metadata?.language ?: Locale.getDefault().displayLanguage
+        fields["Screen.Size"]      = metadata?.screenSizeInches?.let { "%.2f".format(it) }
+        fields["Network.Type"]     = metadata?.networkType
+        fields["Network.IPv4"]     = metadata?.ipv4
+        fields["Network.IPv6"]     = metadata?.ipv6
+        fields["Network.CellInfo"] = metadata?.cellInfo
 
-        // Read GPS + device info from EXIF written at capture time
-        try {
-            val exif = ExifInterface(file.absolutePath)
-            val latLon = exif.latLong
-            if (latLon != null) {
-                fields["Location.Latitude"] = latLon[0].toString()
-                fields["Location.Longitude"] = latLon[1].toString()
-            }
-            exif.getAttribute(ExifInterface.TAG_GPS_ALTITUDE)
-                ?.let { fields["Location.Altitude"] = it }
-            exif.getAttribute(ExifInterface.TAG_GPS_SPEED)
-                ?.let { fields["Location.Speed"] = it }
-            exif.getAttribute(ExifInterface.TAG_GPS_TRACK)
-                ?.let { fields["Location.Bearing"] = it }
-            exif.getAttribute(ExifInterface.TAG_GPS_PROCESSING_METHOD)
-                ?.removePrefix("charset=Ascii ")?.lowercase()
-                ?.let { fields["Location.Provider"] = it }
-        } catch (_: Exception) {}
+        // GPS — prefer live metadata, fall back to EXIF
+        if (metadata?.latitude != null && metadata.longitude != null) {
+            fields["Location.Latitude"]  = metadata.latitude.toString()
+            fields["Location.Longitude"] = metadata.longitude.toString()
+            metadata.locationAltitude?.let  { fields["Location.Altitude"]  = it.toString() }
+            metadata.locationSpeed?.let     { fields["Location.Speed"]     = it.toString() }
+            metadata.locationBearing?.let   { fields["Location.Bearing"]   = it.toString() }
+            metadata.locationProvider?.let  { fields["Location.Provider"]  = it }
+            metadata.locationAccuracy?.let  { fields["Location.Accuracy"]  = it.toString() }
+            metadata.locationTime?.let      { fields["Location.Time"]      = it.toString() }
+        } else {
+            try {
+                val exif = ExifInterface(file.absolutePath)
+                val latLon = exif.latLong
+                if (latLon != null) {
+                    fields["Location.Latitude"]  = latLon[0].toString()
+                    fields["Location.Longitude"] = latLon[1].toString()
+                }
+                exif.getAttribute(ExifInterface.TAG_GPS_ALTITUDE)
+                    ?.let { fields["Location.Altitude"] = it }
+                exif.getAttribute(ExifInterface.TAG_GPS_SPEED)
+                    ?.let { fields["Location.Speed"] = it }
+                exif.getAttribute(ExifInterface.TAG_GPS_TRACK)
+                    ?.let { fields["Location.Bearing"] = it }
+                exif.getAttribute(ExifInterface.TAG_GPS_PROCESSING_METHOD)
+                    ?.removePrefix("charset=Ascii ")?.lowercase()
+                    ?.let { fields["Location.Provider"] = it }
+            } catch (_: Exception) {}
+        }
 
+        return fields
+    }
+
+    // ---------------------------------------------------------------------------
+    // Proof JSON — ProofMode v1 field names
+    // ---------------------------------------------------------------------------
+
+    private fun buildProofJson(fields: LinkedHashMap<String, String?>): String {
         val sb = StringBuilder("{\n")
         val entries = fields.entries.filter { it.value != null }.toList()
         entries.forEachIndexed { i, (k, v) ->
@@ -207,6 +289,65 @@ object ProofCompanionGenerator {
         sb.append("}")
         return sb.toString()
     }
+
+    // ---------------------------------------------------------------------------
+    // Proof CSV — same fields, header + data row
+    // ---------------------------------------------------------------------------
+
+    private fun buildProofCsv(fields: LinkedHashMap<String, String?>): String {
+        val present = fields.entries.filter { it.value != null }
+        val header = present.joinToString(",") { csvEscape(it.key) }
+        val data   = present.joinToString(",") { csvEscape(it.value!!) }
+        return "$header\n$data\n"
+    }
+
+    // ---------------------------------------------------------------------------
+    // HowToVerifyProofData.txt — dynamically generated with real hash/filename
+    // ---------------------------------------------------------------------------
+
+    private fun buildHowToVerify(mediaFileName: String, hash: String): String = """
+Brief information on how to verify the media file, proof and signatures contained in a ProofMode bundle.
+Please visit https://proofmode.org or email support@guardianproject.info for more information.
+
+1) Import public key shared from ProofMode:
+
+gpg --import pubkey.asc
+
+gpg: key xxx: public key "proof@openarchive.app" imported
+gpg: Total number processed: 1
+gpg:               imported: 1
+
+2) Check the hash of the media file against the hash in the proof metadata:
+
+sha256sum $mediaFileName
+
+$hash  $mediaFileName
+
+3) Verify signature of the media file:
+
+gpg --dearmor pubkey.asc
+gpg --no-default-keyring --keyring ./pubkey.asc.gpg --homedir ./ --verify $hash.asc $mediaFileName
+
+gpg: Good signature from "proof@openarchive.app" [unknown]
+
+4) Verify signature of the ProofMode CSV data:
+
+gpg --verify $hash.proof.csv.asc $hash.proof.csv
+
+gpg: Good signature from "proof@openarchive.app" [unknown]
+
+5) Verify signature of the ProofMode JSON data:
+
+gpg --verify $hash.proof.json.asc $hash.proof.json
+
+gpg: Good signature from "proof@openarchive.app" [unknown]
+
+6) If a .ots file is present, visit https://opentimestamps.org/ and upload $hash.ots to verify
+   the Bitcoin blockchain notarisation. (It can take several hours for the timestamp to confirm.)
+
+7) If a .gst file is present, that is a JWT from the Google Play Integrity API attesting device
+   integrity at capture time. Decode the JWT value at https://jwt.io/ to inspect the claims.
+""".trimStart()
 
     // ---------------------------------------------------------------------------
     // PGP key generation and detached signing
@@ -371,14 +512,24 @@ object ProofCompanionGenerator {
                 doOutput = true
                 connectTimeout = OTS_TIMEOUT_MS
                 readTimeout = OTS_TIMEOUT_MS
-                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                setRequestProperty("Content-Type", "application/octet-stream")
                 setRequestProperty("Accept", "application/octet-stream")
             }
             conn.outputStream.use { it.write(hashBytes) }
             val success = conn.responseCode == 200
             if (success) {
+                val calendarResponse = conn.inputStream.use { it.readBytes() }
                 outFile.parentFile?.mkdirs()
-                outFile.writeBytes(conn.inputStream.use { it.readBytes() })
+                // Assemble a spec-compliant detached .ots: magic header + version + hash-op tag
+                // + digest, followed by the calendar's serialized (pending) timestamp. Writing
+                // the raw calendar response alone (previous behavior) produced a file no OTS
+                // verifier could read.
+                outFile.outputStream().use { out ->
+                    out.write(OTS_HEADER_MAGIC)
+                    out.write(byteArrayOf(OTS_MAJOR_VERSION, OTS_OP_SHA256))
+                    out.write(hashBytes)
+                    out.write(calendarResponse)
+                }
                 AppLogger.i("[OTS] Timestamp received for $hexHash")
             } else {
                 AppLogger.w("[OTS] Calendar returned HTTP ${conn.responseCode}")
@@ -469,5 +620,13 @@ object ProofCompanionGenerator {
         val escaped = s.replace("\\", "\\\\").replace("\"", "\\\"")
             .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
         return "\"$escaped\""
+    }
+
+    private fun csvEscape(s: String): String {
+        return if (s.contains(',') || s.contains('"') || s.contains('\n')) {
+            "\"${s.replace("\"", "\"\"")}\""
+        } else {
+            s
+        }
     }
 }
